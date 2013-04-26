@@ -7,6 +7,10 @@ typedef struct
     int block_len;
 } bt_block_t;
 
+typedef void *(*func_getpiece_f)( void *udata, int piece);
+
+typedef void (*func_write_block_to_stream_f)(
+    void* pce, bt_block_t * blk, unsigned char ** msg);
 
 typedef void (
     *func_log_f
@@ -28,14 +32,6 @@ typedef int (
 );
 
 typedef int (
-    *func_have_f
-)   (
-    void *udata,
-    void * peer,
-    int piece
-);
-
-typedef int (
     *func_pushblock_f
 )   (
     void *udata,
@@ -44,13 +40,12 @@ typedef int (
     void *data
 );
 
-
 typedef int (
     *func_send_f
 )   (
     void *udata,
-    void * peer,
-    void *send_data,
+    const void * peer,
+    const void *send_data,
     const int len
 );
 
@@ -85,17 +80,6 @@ typedef int (
     void *,
     void *pr
 );
-
-/*  send/receiver */
-typedef struct
-{
-    func_send_f send;
-    func_recv_f recv;
-    func_disconnect_f disconnect;
-    func_connect_f connect;
-} sendreceiver_i;
-
-#include "bt_piece_i.h"
 
 #define PC_NONE 0
 #define PC_HANDSHAKE_SENT 1<<0
@@ -136,37 +120,10 @@ int bt_peerconn_peer_is_interested(void *pco);
 
 int bt_peerconn_is_active(void *pco);
 
-//void bt_peerconn_set_pieceinfo(void *pco, bt_piece_info_t * pi);
 
 void bt_peerconn_set_peer_id(void *pco, const char *peer_id);
 
 void bt_peerconn_set_infohash(void *pco, const char *infohash);
-
-//void bt_peerconn_set_pwp_cfg(void *pco, bt_pwp_cfg_t * cfg);
-
-//void bt_peerconn_set_func_get_infohash(void *pco, func_get_infohash_f func);
-
-void bt_peerconn_set_func_send(void *pco, func_send_f func);
-
-//void bt_peerconn_set_func_getpiece(void *pco, func_getpiece_f func);
-
-void bt_peerconn_set_func_pollblock(void *pco, func_pollblock_f func);
-
-void bt_peerconn_set_func_have(void *pco, func_have_f func);
-
-void bt_peerconn_set_func_connect(void *pco, func_connect_f func);
-
-void bt_peerconn_set_func_disconnect(void *pco, func_disconnect_f func);
-
-void bt_peerconn_set_func_pushblock(void *pco, func_pushblock_f func);
-
-void bt_peerconn_set_func_recv(void *pco, func_recv_f func);
-
-void bt_peerconn_set_func_log(void *pco, func_log_f func);
-
-//void bt_peerconn_set_func_piece_is_complete(void *pco, func_get_int_f func_piece_is_complete);
-
-void bt_peerconn_set_isr_udata(void *pco, void *udata);
 
 void bt_peerconn_set_peer(void *pco, void * peer);
 
@@ -224,8 +181,28 @@ void bt_peerconn_step(void *pco);
 
 int bt_peerconn_peer_has_piece(void *pco, const int piece_idx);
 
-void bt_peerconn_set_ipce(void *pco,
-    func_write_block_to_stream_f func_write_block_to_stream,
-    func_get_int_f func_piece_is_complete,
-    func_getpiece_f func_getpiece,
-    void* caller);
+
+typedef struct {
+    /* sendreceiver work */
+    func_send_f send;
+    func_recv_f recv;
+    func_connect_f connect;
+    func_disconnect_f disconnect;
+
+    /* manage piece related operations */
+    func_write_block_to_stream_f write_block_to_stream;
+    func_get_int_f piece_is_complete;
+    func_getpiece_f getpiece;
+
+    /* We're able to request a block from the peer now.
+     * Ask our caller if they have an idea of what block they would like. */
+    func_pollblock_f pollblock;
+    /* We've just downloaded the block and want to allocate it. */
+    func_pushblock_f pushblock;
+
+    /* logging */
+    func_log_f log;
+} pwp_connection_functions_t;
+
+void bt_peerconn_set_functions(void *pco, pwp_connection_functions_t* funcs, void* caller);
+

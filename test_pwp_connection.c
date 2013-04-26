@@ -95,27 +95,30 @@ static int __FUNC_disconnect(
     return 0;
 }
 
-static void __FUNC_MOCK_push_block(
-    test_reader_t * reader __attribute__((__unused__)), 
+static int __FUNC_MOCK_push_block(
+    void * reader __attribute__((__unused__)), 
     void * peer  __attribute__((__unused__)),
     bt_block_t * block __attribute__((__unused__)),
     void *data __attribute__((__unused__))
 )
 {
-
+    return 1;
 }
 
 /*  allocate the block */
-static void __FUNC_push_block(
-    test_reader_t * reader,
+static int __FUNC_push_block(
+        void* r,
     void * peer __attribute__((__unused__)),
     bt_block_t * block,
     void *data
 )
 {
+    test_reader_t * reader = r;
+
     memcpy(&reader->last_block, block, sizeof(bt_block_t));
     assert(block->block_len < 10);
     memcpy(reader->last_block_data, data, sizeof(char) * block->block_len);
+    return 1;
 }
 
 static void *__reader_set(
@@ -174,9 +177,9 @@ static unsigned char *__sender_set(
 /*  Just a mock.
  *  Used when sent data is not tested */
 static int __FUNC_MOCK_send(
-    test_sender_t * sender __attribute__((__unused__)),
+    void* s __attribute__((__unused__)),
     const void *peer __attribute__((__unused__)),
-    const unsigned char *send_data __attribute__((__unused__)),
+    const void *send_data __attribute__((__unused__)),
     const int len __attribute__((__unused__))
 )
 {
@@ -184,12 +187,14 @@ static int __FUNC_MOCK_send(
 }
 
 static int __FUNC_send(
-    test_sender_t * sender,
+    void* s,
     const void *peer __attribute__((__unused__)),
-    const unsigned char *send_data,
+    const void *send_data,
     const int len
 )
 {
+    test_sender_t * sender = s;
+
     memcpy(sender->last_send_data + sender->pos, send_data, len);
 
 #if 0
@@ -206,9 +211,9 @@ static int __FUNC_send(
 }
 
 static int __FUNC_failing_send(
-    test_sender_t * sender __attribute__((__unused__)),
+    void * sender __attribute__((__unused__)),
     const void *peer __attribute__((__unused__)),
-    const unsigned char *send_data __attribute__((__unused__)),
+    const void *send_data __attribute__((__unused__)),
     const int len __attribute__((__unused__))
 )
 {
@@ -271,13 +276,15 @@ void TestPWP_sending_handshake_sets_handshake_sent_state(
 {
     void *pc;
     test_sender_t sender;
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_send
+    };
 
     __sender_set(&sender);
     pc = bt_peerconn_new();
     bt_peerconn_set_peer_id(pc, __mock_peerid);
     bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_set_isr_udata(pc, &sender);
-    bt_peerconn_set_func_send(pc, (void *) __FUNC_send);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_send_handshake(pc);
     CuAssertTrue(tc, (PC_HANDSHAKE_SENT & bt_peerconn_get_state(pc)));
 }
@@ -291,12 +298,15 @@ void TestPWP_handshake_sent_state_not_set_when_send_failed(
 {
     void *pc;
     test_sender_t sender;
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_failing_send
+    };
 
     __sender_set(&sender);
     pc = bt_peerconn_new();
-    bt_peerconn_set_isr_udata(pc, &sender);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     /*  this sending function fails on every send */
-    bt_peerconn_set_func_send(pc, (void *) __FUNC_failing_send);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_set_peer_id(pc, __mock_peerid);
     bt_peerconn_set_infohash(pc,__mock_infohash);
     bt_peerconn_send_handshake(pc);
@@ -312,7 +322,16 @@ void TestPWP_send_Request_spawns_wellformed_response(
     CuTest * tc
 )
 {
-    unsigned char msg[10], *ptr = msg;
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_failing_send,
+        .recv = __FUNC_peercon_recv,
+        .disconnect = __FUNC_disconnect,
+        .pushblock = __FUNC_push_block,
+        .write_block_to_stream = mock_piece_write_block_to_stream,
+        .piece_is_complete = __FUNC_pieceiscomplete,
+        .getpiece = __FUNC_sender_get_piece
+    };
+    unsigned char msg[50], *ptr = msg;
     void *pc;
     test_sender_t sender;
     bt_block_t request;
@@ -339,7 +358,9 @@ void TestPWP_send_Request_spawns_wellformed_response(
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &sender);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
+#if 0
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
     bt_peerconn_set_func_disconnect(pc, (void *) __FUNC_disconnect);
     bt_peerconn_set_func_pushblock(pc, (void *) __FUNC_push_block);
@@ -348,6 +369,7 @@ void TestPWP_send_Request_spawns_wellformed_response(
         __FUNC_pieceiscomplete,
         __FUNC_sender_get_piece,
         (void*)&sender);
+#endif
     bt_peerconn_unchoke(pc);
     /*  request message needs to check if we completed the requested piece */
     bt_peerconn_process_request(pc, &request);
@@ -368,13 +390,15 @@ void TestPWP_send_state_change_is_wellformed(
     test_sender_t sender;
 
     unsigned char *ptr;
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_failing_send
+    };
 
     ptr = __sender_set(&sender);
     pc = bt_peerconn_new();
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &sender);
-    bt_peerconn_set_func_send(pc, (void *) __FUNC_send);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_send_statechange(pc, PWP_MSGTYPE_INTERESTED);
 
     CuAssertTrue(tc, 1 == bitstream_read_uint32(&ptr));
@@ -396,17 +420,16 @@ void TestPWP_send_Have_is_wellformed(
 
     unsigned char *ptr;
 
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_failing_send,
+        .getpiece = __FUNC_sender_get_piece
+    };
+
     ptr = __sender_set(&sender);
     pc = bt_peerconn_new();
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &sender);
-    bt_peerconn_set_ipce(pc,
-        NULL,
-        NULL,
-        __FUNC_sender_get_piece,
-        (void*)&sender);
-    bt_peerconn_set_func_send(pc, (void *) __FUNC_send);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_send_have(pc, 17);
 
     CuAssertTrue(tc, 5 == bitstream_read_uint32(&ptr));
@@ -418,6 +441,12 @@ void TestPWP_send_BitField_is_wellformed(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_send,
+        .piece_is_complete = __FUNC_pieceiscomplete,
+        .getpiece = __FUNC_sender_get_piece
+    };
+
     void *pc;
 
     test_sender_t sender;
@@ -432,14 +461,8 @@ void TestPWP_send_BitField_is_wellformed(
      */
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &sender);
-    bt_peerconn_set_func_send(pc, (void *) __FUNC_send);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     /*  piece complete func will always return 1 (ie. piece is complete) */
-    bt_peerconn_set_ipce(pc,
-        NULL,
-        __FUNC_pieceiscomplete,
-        __FUNC_sender_get_piece,
-        (void*)&sender);
     bt_peerconn_send_bitfield(pc);
 
     ptr = sender.last_send_data;
@@ -461,6 +484,9 @@ void TestPWP_send_Request_is_wellformed(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_send,
+    };
     void *pc;
 
     test_sender_t sender;
@@ -477,8 +503,7 @@ void TestPWP_send_Request_is_wellformed(
     pc = bt_peerconn_new();
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &sender);
-    bt_peerconn_set_func_send(pc, (void *) __FUNC_send);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_send_request(pc, &blk);
 
     CuAssertTrue(tc, 13 == bitstream_read_uint32(&ptr));
@@ -509,7 +534,7 @@ void TxestPWP_send_RequestForPieceOnlyIfPeerHasPiece_is_wellformed(
     pc = bt_peerconn_new();
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &sender);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_set_func_send(pc, (void *) __FUNC_send);
     bt_peerconn_send_request(pc, &blk);
 
@@ -527,6 +552,11 @@ void TestPWP_send_Piece_is_wellformed(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_failing_send,
+        .write_block_to_stream = mock_piece_write_block_to_stream,
+        .getpiece = __FUNC_sender_get_piece
+    };
     void *pc;
 
     test_sender_t sender;
@@ -544,13 +574,7 @@ void TestPWP_send_Piece_is_wellformed(
     pc = bt_peerconn_new();
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_ipce(pc,
-        mock_piece_write_block_to_stream,
-        NULL,
-        __FUNC_sender_get_piece,
-        (void*)&sender);
-    bt_peerconn_set_isr_udata(pc, &sender);
-    bt_peerconn_set_func_send(pc, (void *) __FUNC_send);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_send_piece(pc, &blk);
     /*  length */
     CuAssertTrue(tc, 13 == bitstream_read_uint32(&ptr));
@@ -574,6 +598,9 @@ void TestPWP_send_Cancel_is_wellformed(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_send,
+    };
     void *pc;
 
     test_sender_t sender;
@@ -590,8 +617,7 @@ void TestPWP_send_Cancel_is_wellformed(
     pc = bt_peerconn_new();
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &sender);
-    bt_peerconn_set_func_send(pc, (void *) __FUNC_send);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_send_cancel(pc, &blk);
 
     CuAssertTrue(tc, 13 == bitstream_read_uint32(&ptr));
@@ -603,8 +629,8 @@ void TestPWP_send_Cancel_is_wellformed(
 
 /*----------------------------------------------------------------------------*/
 
-/*
- * The peer is recorded as chocked when we set it to choked
+/**
+ * The peer is recorded as chocked when we set to choked
  * */
 void TestPWP_choke_sets_as_choked(
     CuTest * tc
@@ -640,9 +666,13 @@ void TestPWP_no_reading_without_handshake(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .recv = __FUNC_peercon_recv,
+        .disconnect = __FUNC_disconnect,
+    };
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
 
@@ -654,10 +684,8 @@ void TestPWP_no_reading_without_handshake(
     pc = bt_peerconn_new();
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
-    bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_set_state(pc, PC_CONNECTED);
-    bt_peerconn_set_func_disconnect(pc, (void *) __FUNC_disconnect);
     bt_peerconn_set_peer_id(pc, __mock_peerid);
     /*  handshaking requires infohash */
     strcpy(reader.infohash, "00000000000000000000");
@@ -678,9 +706,13 @@ void TestPWP_read_msg_other_than_bitfield_after_handshake_disconnects(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .recv = __FUNC_peercon_recv,
+        .disconnect = __FUNC_disconnect,
+    };
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
     ptr = __reader_set(&reader, msg);
@@ -696,9 +728,7 @@ void TestPWP_read_msg_other_than_bitfield_after_handshake_disconnects(
                           PC_HANDSHAKE_RECEIVED);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
-    bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
-    bt_peerconn_set_func_disconnect(pc, (void *) __FUNC_disconnect);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_process_msg(pc);
 
     CuAssertTrue(tc, 1 == reader.has_disconnected);
@@ -711,9 +741,12 @@ void TestPWP_read_HaveMsg_marks_peer_as_having_piece(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .recv = __FUNC_peercon_recv,
+    };
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
     ptr = __reader_set(&reader, msg);
@@ -728,8 +761,7 @@ void TestPWP_read_HaveMsg_marks_peer_as_having_piece(
                           PC_HANDSHAKE_RECEIVED);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
-    bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_process_msg(pc);
     CuAssertTrue(tc, bt_peerconn_peer_has_piece(pc, 1));
 }
@@ -742,9 +774,13 @@ void TestPWP_read_havemsg_disconnects_with_piece_idx_out_of_bounds(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .recv = __FUNC_peercon_recv,
+        .disconnect = __FUNC_disconnect,
+    };
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
     ptr = __reader_set(&reader, msg);
@@ -759,9 +795,7 @@ void TestPWP_read_havemsg_disconnects_with_piece_idx_out_of_bounds(
                           PC_HANDSHAKE_RECEIVED);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
-    bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
-    bt_peerconn_set_func_disconnect(pc, (void *) __FUNC_disconnect);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_process_msg(pc);
 
     CuAssertTrue(tc, 1 == reader.has_disconnected);
@@ -785,9 +819,12 @@ void TestPWP_read_ChokeMsg_marks_us_as_choked(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .recv = __FUNC_peercon_recv,
+    };
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
 
@@ -799,8 +836,7 @@ void TestPWP_read_ChokeMsg_marks_us_as_choked(
     pc = bt_peerconn_new();
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
-    bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_set_state(pc,
                           PC_CONNECTED | PC_HANDSHAKE_SENT |
                           PC_HANDSHAKE_RECEIVED);
@@ -812,9 +848,13 @@ void TestPWP_read_ChokeMsg_empties_our_pending_requests(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_MOCK_send,
+        .recv = __FUNC_peercon_recv,
+    };
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
     bt_block_t blk;
 
     memset(&reader, 0, sizeof(test_reader_t));
@@ -825,13 +865,12 @@ void TestPWP_read_ChokeMsg_empties_our_pending_requests(
     ptr = __reader_set(&reader, msg);
     bitstream_write_uint32(&ptr, 1);       /* length = 1 */
     bitstream_write_ubyte(&ptr, 0);        /* choke = 0 */
+
     /*  peer connection */
     pc = bt_peerconn_new();
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
-    bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
-    bt_peerconn_set_func_send(pc, (void *) __FUNC_MOCK_send);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_set_state(pc,
                           PC_CONNECTED | PC_HANDSHAKE_SENT |
                           PC_HANDSHAKE_RECEIVED);
@@ -849,9 +888,12 @@ void TestPWP_read_UnChokeMsg_marks_us_as_unchoked(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .recv = __FUNC_peercon_recv,
+    };
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
 
@@ -859,14 +901,14 @@ void TestPWP_read_UnChokeMsg_marks_us_as_unchoked(
     ptr = __reader_set(&reader, msg);
     bitstream_write_uint32(&ptr, 1);
     bitstream_write_ubyte(&ptr, 0);
+
     pc = bt_peerconn_new();
     bt_peerconn_set_state(pc,
                           PC_CONNECTED | PC_HANDSHAKE_SENT |
                           PC_HANDSHAKE_RECEIVED);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
-    bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_process_msg(pc);
     CuAssertTrue(tc, 1 == bt_peerconn_im_choked(pc));
 
@@ -885,9 +927,13 @@ void TestPWP_read_PeerIsInterested_marks_peer_as_interested(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_MOCK_send,
+        .recv = __FUNC_peercon_recv,
+    };
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
 
@@ -902,9 +948,7 @@ void TestPWP_read_PeerIsInterested_marks_peer_as_interested(
                           PC_HANDSHAKE_RECEIVED);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
-    bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
-    bt_peerconn_set_func_send(pc, (void *) __FUNC_MOCK_send);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_process_msg(pc);
     CuAssertTrue(tc, 1 == bt_peerconn_peer_is_interested(pc));
 }
@@ -916,9 +960,13 @@ void TestPWP_read_PeerIsUnInterested_marks_peer_as_uninterested(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_MOCK_send,
+        .recv = __FUNC_peercon_recv,
+    };
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
 
@@ -933,9 +981,7 @@ void TestPWP_read_PeerIsUnInterested_marks_peer_as_uninterested(
                           PC_HANDSHAKE_RECEIVED);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
-    bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
-    bt_peerconn_set_func_send(pc, (void *) __FUNC_MOCK_send);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_process_msg(pc);
     CuAssertTrue(tc, 1 == bt_peerconn_peer_is_interested(pc));
 
@@ -955,10 +1001,12 @@ void TestPWP_read_Bitfield_marks_peers_pieces_as_haved_by_peer(
     CuTest * tc
 )
 {
-#if 1
+    pwp_connection_functions_t funcs = {
+        .recv = __FUNC_peercon_recv,
+    };
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
 
@@ -976,15 +1024,13 @@ void TestPWP_read_Bitfield_marks_peers_pieces_as_haved_by_peer(
                           PC_HANDSHAKE_RECEIVED);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
-    bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     CuAssertTrue(tc, 0 == bt_peerconn_peer_has_piece(pc, 0));
     bt_peerconn_process_msg(pc);
     CuAssertTrue(tc, 1 == bt_peerconn_peer_has_piece(pc, 0));
     CuAssertTrue(tc, 1 == bt_peerconn_peer_has_piece(pc, 1));
     CuAssertTrue(tc, 1 == bt_peerconn_peer_has_piece(pc, 2));
     CuAssertTrue(tc, 1 == bt_peerconn_peer_has_piece(pc, 3));
-#endif
 //    CuAssertTrue(tc, 0);
 }
 
@@ -995,9 +1041,13 @@ void TestPWP_read_disconnect_if_Bitfield_received_more_than_once(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .recv = __FUNC_peercon_recv,
+        .disconnect = __FUNC_disconnect,
+    };
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
 
@@ -1017,9 +1067,7 @@ void TestPWP_read_disconnect_if_Bitfield_received_more_than_once(
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
-    bt_peerconn_set_func_recv(pc, __FUNC_peercon_recv);
-    bt_peerconn_set_func_disconnect(pc, __FUNC_disconnect);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_process_msg(pc);
     CuAssertTrue(tc, 1 == reader.has_disconnected);
 }
@@ -1031,7 +1079,7 @@ void TxestPWP_readBitfieldGreaterThanNPieces(
 {
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
 
@@ -1048,7 +1096,7 @@ void TxestPWP_readBitfieldGreaterThanNPieces(
                           PC_HANDSHAKE_RECEIVED);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_set_func_disconnect(pc, (void *) __FUNC_disconnect);
     bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
     bt_peerconn_process_msg(pc);
@@ -1074,7 +1122,7 @@ void TxestPWP_readBitfieldLessThanNPieces(
 {
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
 
@@ -1090,7 +1138,7 @@ void TxestPWP_readBitfieldLessThanNPieces(
                           PC_HANDSHAKE_RECEIVED);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_set_func_disconnect(pc, (void *) __FUNC_disconnect);
     bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
     bt_peerconn_process_msg(pc);
@@ -1113,7 +1161,7 @@ void TestPWP_read_Request_of_piece_not_completed_disconnects_peer(
 {
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
     //ptr = __reader_set(&reader, msg);
@@ -1130,20 +1178,20 @@ void TestPWP_read_Request_of_piece_not_completed_disconnects_peer(
     reader.pos = 0;
     reader.data = msg;
 
+    pwp_connection_functions_t funcs = {
+        .recv = __FUNC_peercon_recv,
+        .disconnect = __FUNC_disconnect,
+        .piece_is_complete = __FUNC_pieceiscomplete_fail,
+        .getpiece = __FUNC_reader_get_piece
+    };
+
     pc = bt_peerconn_new();
     bt_peerconn_set_state(pc,
                           PC_CONNECTED | PC_HANDSHAKE_SENT |
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
-    bt_peerconn_set_func_disconnect(pc, __FUNC_disconnect);
-    bt_peerconn_set_func_recv(pc, __FUNC_peercon_recv);
-    bt_peerconn_set_ipce(pc,
-        NULL,
-        __FUNC_pieceiscomplete_fail,
-        __FUNC_reader_get_piece,
-        (void*)&reader);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_process_msg(pc);
     CuAssertTrue(tc, 1 == reader.has_disconnected);
 }
@@ -1155,9 +1203,15 @@ void TestPWP_read_Request_with_invalid_piece_idx_disconnects_peer(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .recv = __FUNC_peercon_recv,
+        .disconnect = __FUNC_disconnect,
+        .piece_is_complete = __FUNC_pieceiscomplete,
+        .getpiece = __FUNC_reader_get_piece
+    };
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
 
@@ -1177,16 +1231,9 @@ void TestPWP_read_Request_with_invalid_piece_idx_disconnects_peer(
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
-    bt_peerconn_set_func_disconnect(pc, (void *) __FUNC_disconnect);
-    bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     /*  we need this for us to know if the request is valid */
     /*  this is required for this test: */
-    bt_peerconn_set_ipce(pc,
-        NULL,
-        __FUNC_pieceiscomplete,
-        __FUNC_reader_get_piece,
-        (void*)&reader);
     bt_peerconn_process_msg(pc);
     CuAssertTrue(tc, 1 == reader.has_disconnected);
 }
@@ -1199,9 +1246,18 @@ void TestPWP_read_Request_with_invalid_block_length_disconnects_peer(
 )
 {
 #if 0
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_failing_send,
+        .recv = __FUNC_peercon_recv,
+        .disconnect = __FUNC_disconnect,
+        .pushblock = __FUNC_push_block,
+        .write_block_to_stream = mock_piece_write_block_to_stream,
+        .piece_is_complete = __FUNC_pieceiscomplete,
+        .getpiece = __FUNC_sender_get_piece
+    };
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
 
@@ -1212,7 +1268,7 @@ void TestPWP_read_Request_with_invalid_block_length_disconnects_peer(
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_set_func_disconnect(pc, (void *) __FUNC_disconnect);
     bt_peerconn_set_ipce(pc,
         NULL,
@@ -1259,9 +1315,14 @@ void TestPWP_read_piece_results_in_disconnect_if_we_havent_requested_this_piece(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .recv = __FUNC_peercon_recv,
+        .disconnect = __FUNC_disconnect,
+        .pushblock = __FUNC_push_block,
+    };
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
 
@@ -1282,10 +1343,7 @@ void TestPWP_read_piece_results_in_disconnect_if_we_havent_requested_this_piece(
                           PC_HANDSHAKE_RECEIVED);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
-    bt_peerconn_set_func_disconnect(pc, (void *) __FUNC_disconnect);
-    bt_peerconn_set_func_pushblock(pc, (void *) __FUNC_push_block);
-    bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_process_msg(pc);
     CuAssertTrue(tc, 1 == reader.has_disconnected);
 }
@@ -1294,9 +1352,14 @@ void TestPWP_read_piece_results_in_correct_receivable(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .recv = __FUNC_peercon_recv,
+        .disconnect = __FUNC_disconnect,
+        .pushblock = __FUNC_push_block,
+    };
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
     bt_block_t blk;
 
     memset(&reader, 0, sizeof(test_reader_t));
@@ -1309,16 +1372,14 @@ void TestPWP_read_piece_results_in_correct_receivable(
     bitstream_write_uint32(&ptr, 0);       /*  byte offset is 0 */
     bitstream_write_ubyte(&ptr, 0xDE);
     bitstream_write_ubyte(&ptr, 0xAD);
+
     pc = bt_peerconn_new();
     bt_peerconn_set_state(pc,
                           PC_CONNECTED | PC_HANDSHAKE_SENT |
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
-    bt_peerconn_set_func_disconnect(pc, (void *) __FUNC_disconnect);
-    bt_peerconn_set_func_pushblock(pc, (void *) __FUNC_push_block);
-    bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     /*  make sure we're at least requesting this piece */
     blk.piece_idx = 1;
     blk.block_byte_offset = 0;
@@ -1336,7 +1397,9 @@ void TestPWP_read_piece_results_in_correct_receivable(
 void TestPWP_requesting_block_increments_pending_requests(
     CuTest * tc
 )
-{
+{    pwp_connection_functions_t funcs = {
+        .send = __FUNC_MOCK_send,
+    };
     bt_block_t blk;
     void *pc;
 
@@ -1344,10 +1407,9 @@ void TestPWP_requesting_block_increments_pending_requests(
     memset(&blk, 0, sizeof(bt_block_t));
     /* peer connection */
     pc = bt_peerconn_new();
-    bt_peerconn_set_isr_udata(pc, NULL);
-    bt_peerconn_set_func_send(pc, (void *) __FUNC_MOCK_send);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
+    bt_peerconn_set_functions(pc, &funcs, NULL);
     CuAssertTrue(tc, 0 == bt_peerconn_get_npending_requests(pc));
     bt_peerconn_request_block(pc, &blk);
     CuAssertTrue(tc, 1 == bt_peerconn_get_npending_requests(pc));
@@ -1357,9 +1419,14 @@ void TestPWP_read_Piece_decreases_pending_requests(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_MOCK_send,
+        .recv = __FUNC_peercon_recv,
+        .pushblock = __FUNC_MOCK_push_block,
+    };
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
     bt_block_t blk;
 
     memset(&reader, 0, sizeof(test_reader_t));
@@ -1380,10 +1447,7 @@ void TestPWP_read_Piece_decreases_pending_requests(
                           PC_HANDSHAKE_SENT | PC_HANDSHAKE_RECEIVED);
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
-    bt_peerconn_set_func_pushblock(pc, (void *) __FUNC_MOCK_push_block);
-    bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
-    bt_peerconn_set_func_send(pc, (void *) __FUNC_MOCK_send);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_request_block(pc, &blk);
     CuAssertTrue(tc, 1 == bt_peerconn_get_npending_requests(pc));
     bt_peerconn_process_msg(pc);
@@ -1400,9 +1464,18 @@ void TestPWP_read_CancelMsg_cancels_last_request(
 )
 {
 #if 0
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_failing_send,
+        .recv = __FUNC_peercon_recv,
+        .disconnect = __FUNC_disconnect,
+        .pushblock = __FUNC_push_block,
+        .write_block_to_stream = mock_piece_write_block_to_stream,
+        .piece_is_complete = __FUNC_pieceiscomplete,
+        .getpiece = __FUNC_sender_get_piece
+    };
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
 
@@ -1416,7 +1489,7 @@ void TestPWP_read_CancelMsg_cancels_last_request(
     pc = bt_peerconn_new();
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_set_func_disconnect(pc, (void *) __FUNC_disconnect);
     bt_peerconn_set_func_pushblock(pc, (void *) __FUNC_push_block);
     bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
@@ -1489,7 +1562,7 @@ void TxestPWP_readPiece_disconnectsIfBlockTooBig(
 {
     void *pc;
     test_reader_t reader;
-    unsigned char msg[10], *ptr = msg;
+    unsigned char msg[50], *ptr = msg;
 
     memset(&reader, 0, sizeof(test_reader_t));
 
@@ -1503,30 +1576,12 @@ void TxestPWP_readPiece_disconnectsIfBlockTooBig(
     pc = bt_peerconn_new();
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &reader);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
     bt_peerconn_set_func_disconnect(pc, (void *) __FUNC_disconnect);
     bt_peerconn_set_func_pushblock(pc, (void *) __FUNC_push_block);
     bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
     bt_peerconn_process_msg(pc);
     CuAssertTrue(tc, 1 == reader.has_disconnected);
-}
-#endif
-
-typedef struct
-{
-    int len;
-    const unsigned char *rest;
-} bt_pwp_msg_header_t;
-
-#if 0
-static int __send(
-    void *udata __attribute__((__unused__)),
-    void * peer __attribute__((__unused__)),
-    void *send_data __attribute__((__unused__)),
-    const int len __attribute__((__unused__))
-)
-{
-
 }
 #endif
 
@@ -1548,7 +1603,7 @@ void TxestPWP_send_HandShake_is_wellformed(
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
     bt_peerconn_set_func_send(pc, __send);
-    bt_peerconn_set_isr_udata(pc, &sender);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     /*  handshaking requires infohash */
     strcpy(sender.infohash, "00000000000000000000");
     bt_peerconn_set_infohash(pc,__mock_infohash);
@@ -1561,6 +1616,9 @@ void TestPWP_wont_send_unless_receieved_handshake(
     CuTest * tc
 )
 {
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_failing_send,
+    };
     void *pc;
     test_sender_t sender;
 
@@ -1568,8 +1626,7 @@ void TestPWP_wont_send_unless_receieved_handshake(
     pc = bt_peerconn_new();
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
-    bt_peerconn_set_isr_udata(pc, &sender);
-    bt_peerconn_set_func_send(pc, (void *) __FUNC_failing_send);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_set_active(pc, 1);
     /*  handshaking requires infohash */
     strcpy(sender.infohash, "00000000000000000000");

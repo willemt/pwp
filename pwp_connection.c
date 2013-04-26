@@ -130,25 +130,6 @@ typedef struct
     int piece_len;
     int num_pieces;
 
-
-    /* sendreceiver work */
-    sendreceiver_i isr;
-    void *isr_udata;
-
-
-    /* We're able to request a block from the peer now.
-     * Ask our caller if they have an idea of what block they would like. */
-    func_pollblock_f func_pollblock;
-
-    /* We've just downloaded the block and want to allocate it. */
-    func_pushblock_f func_pushblock;
-
-    /* manage piece related operations */
-    bt_piece_i ipce;
-
-    /* logging */
-    func_log_f func_log;
-
     /* info of who we are connected to */
     void *peer_udata;
 
@@ -157,6 +138,9 @@ typedef struct
 
     const bt_pwp_cfg_t *cfg;
 
+    pwp_connection_functions_t *func;
+
+    void *caller;
 } bt_peer_connection_t;
 
 /*----------------------------------------------------------------------------*/
@@ -190,9 +174,9 @@ static void __log(bt_peer_connection_t * me, const char *format, ...)
 
     va_start(args, format);
     vsprintf(buffer, format, args);
-    if (!me->func_log)
+    if (!(me->func && me->func->log))
         return;
-    me->func_log(me->isr_udata, me->peer_udata, buffer);
+    me->func->log(me->caller, me->peer_udata, buffer);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -204,9 +188,9 @@ static void __disconnect(bt_peer_connection_t * me, const char *reason, ...)
 
     va_start(args, reason);
     vsprintf(buffer, reason, args);
-    if (me->isr.disconnect)
+    if (me->func->disconnect)
     {
-        me->isr.disconnect(me->isr_udata, me->peer_udata, buffer);
+       me->func->disconnect(me->caller, me->peer_udata, buffer);
     }
 }
 
@@ -215,7 +199,7 @@ static int __read_byte_from_peer(bt_peer_connection_t * me, unsigned char * val)
     unsigned char buf[1000], *ptr = buf;
     int len = 1;
 
-    me->isr.recv(me->isr_udata, me->peer_udata, (char*)ptr, &len);
+    me->func->recv(me->caller, me->peer_udata, (char*)ptr, &len);
 
 #if 0
     if (0 == me->isr.recv(me->isr_udata, me->peer_udata, ptr, &len))
@@ -236,7 +220,9 @@ static int __read_uint32_from_peer(bt_peer_connection_t * me, uint32_t * val)
     unsigned char buf[1000], *ptr = buf;
     int len = 4;
 
-    if (0 == me->isr.recv(me->isr_udata, me->peer_udata, (char*)ptr, &len))
+    assert(me->func && me->func->recv);
+
+    if (0 == me->func->recv(me->caller, me->peer_udata, (char*)ptr, &len))
     {
         assert(FALSE);
         return 0;
@@ -259,9 +245,9 @@ static int __send_to_peer(bt_peer_connection_t * me, void *data, const int len)
 {
     int ret;
 
-    if (me->isr.send)
+    if (me->func && me->func->send)
     {
-        ret = me->isr.send(me->isr_udata, me->peer_udata, data, len);
+        ret = me->func->send(me->caller, me->peer_udata, data, len);
 
         if (0 == ret)
         {
@@ -344,103 +330,12 @@ void bt_peerconn_set_infohash(void *pco, const char *infohash)
     me->infohash = infohash;
 }
 
-#if 0
-void bt_peerconn_set_pwp_cfg(void *pco, bt_pwp_cfg_t * cfg)
+void bt_peerconn_set_functions(void *pco, pwp_connection_functions_t* funcs, void* caller)
 {
     bt_peer_connection_t *me = pco;
 
-    me->cfg = cfg;
-}
-
-void bt_peerconn_set_func_get_infohash(void *pco, func_get_infohash_f func)
-{
-    bt_peer_connection_t *me = pco;
-
-    me->func_get_infohash = func;
-}
-#endif
-
-void bt_peerconn_set_func_send(void *pco, func_send_f func)
-{
-    bt_peer_connection_t *me = pco;
-
-    me->isr.send = func;
-}
-
-#if 0
-void bt_peerconn_set_func_getpiece(void *pco, func_getpiece_f func)
-{
-    bt_peer_connection_t *me = pco;
-
-    me->func_getpiece = func;
-}
-#endif
-
-void bt_peerconn_set_ipce(void *pco,
-    func_write_block_to_stream_f func_write_block_to_stream,
-    func_get_int_f func_piece_is_complete,
-    func_getpiece_f func_getpiece,
-    void* caller)
-{
-    bt_peer_connection_t *me = pco;
-
-    me->ipce.func_write_block_to_stream = func_write_block_to_stream;
-    me->ipce.func_piece_is_complete = func_piece_is_complete;
-    me->ipce.func_getpiece =  func_getpiece;
-    me->ipce.caller = caller;
-}
-
-void bt_peerconn_set_func_pollblock(void *pco, func_pollblock_f func)
-{
-    bt_peer_connection_t *me = pco;
-
-    me->func_pollblock = func;
-}
-
-void bt_peerconn_set_func_connect(void *pco, func_connect_f func)
-{
-    bt_peer_connection_t *me = pco;
-
-    me->isr.connect = func;
-}
-
-void bt_peerconn_set_func_disconnect(void *pco, func_disconnect_f func)
-{
-    bt_peer_connection_t *me = pco;
-
-    me->isr.disconnect = func;
-}
-
-/**
- * We have just downloaded the block and want to allocate it.  */
-void bt_peerconn_set_func_pushblock(void *pco, func_pushblock_f func)
-{
-    bt_peer_connection_t *me = pco;
-
-    me->func_pushblock = func;
-}
-
-void bt_peerconn_set_func_recv(void *pco, func_recv_f func)
-{
-    bt_peer_connection_t *me = pco;
-
-    me->isr.recv = func;
-}
-
-void bt_peerconn_set_func_log(void *pco, func_log_f func)
-{
-    bt_peer_connection_t *me = pco;
-
-    me->func_log = func;
-}
-
-/*----------------------------------------------------------------------------*/
-
-void bt_peerconn_set_isr_udata(void *pco, void *udata)
-{
-    bt_peer_connection_t *me = pco;
-
-    me->isr_udata = udata;
+    me->func = funcs;
+    me->caller = caller;
 }
 
 void bt_peerconn_set_peer(void *pco, void * peer)
@@ -502,8 +397,8 @@ void bt_peerconn_unchoke(void * pco)
 
 static void *__get_piece(bt_peer_connection_t * me, const int piece_idx)
 {
-    assert(me->ipce.func_getpiece);
-    return me->ipce.func_getpiece(me->ipce.caller, piece_idx);
+    assert(me->func->getpiece);
+    return me->func->getpiece(me->caller, piece_idx);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -561,7 +456,7 @@ void bt_peerconn_send_piece(void *pco, bt_block_t * req)
     int size;
 
     assert(me);
-    assert(me->ipce.func_write_block_to_stream);
+    assert(me->func->write_block_to_stream);
 
     /*  get data to send */
     pce = __get_piece(me, req->piece_idx);
@@ -579,7 +474,7 @@ void bt_peerconn_send_piece(void *pco, bt_block_t * req)
     bitstream_write_ubyte(&ptr, PWP_MSGTYPE_PIECE);
     bitstream_write_uint32(&ptr, req->piece_idx);
     bitstream_write_uint32(&ptr, req->block_byte_offset);
-    me->ipce.func_write_block_to_stream(pce,req,(unsigned char**)&ptr);
+    me->func->write_block_to_stream(pce,req,(unsigned char**)&ptr);
     __send_to_peer(me, data, size);
 
 #if 0
@@ -665,26 +560,24 @@ void bt_peerconn_send_cancel(void *pco, bt_block_t * cancel)
 }
 
 static void __write_bitfield_to_stream_from_getpiece_func(bt_peer_connection_t* me,
-        unsigned char ** ptr, void *udata, func_getpiece_f func_getpiece, func_get_int_f
-                                                          func_piece_is_complete)
+        unsigned char ** ptr)
 {
     int ii;
     unsigned char bits;
 
-    assert(func_getpiece);
-    assert(func_piece_is_complete);
+    assert(me->func->getpiece);
+    assert(me->func->piece_is_complete);
 
     /*  for all pieces set bit = 1 if we have the completed piece */
     for (bits = 0, ii = 0; ii < me->num_pieces; ii++)
     {
         void *pce;
 
-        pce = func_getpiece(udata, ii);
-        bits |= func_piece_is_complete(udata, pce) << (7 - (ii % 8));
+        pce = me->func->getpiece(me->caller, ii);
+        bits |= me->func->piece_is_complete(me, pce) << (7 - (ii % 8));
         /* ...up to eight bits, write to byte */
         if (((ii + 1) % 8 == 0) || me->num_pieces - 1 == ii)
         {
-//            printf("writing: %x\n", bits);
             bitstream_write_ubyte(ptr, bits);
             bits = 0;
         }
@@ -716,9 +609,7 @@ void bt_peerconn_send_bitfield(void *pco)
         ((me->num_pieces % 8 == 0) ? 0 : 1);
     bitstream_write_uint32(&ptr, size - sizeof(uint32_t));
     bitstream_write_ubyte(&ptr, PWP_MSGTYPE_BITFIELD);
-    __write_bitfield_to_stream_from_getpiece_func(me, &ptr, me->isr_udata,
-                                                  me->ipce.func_getpiece,
-                                                  me->ipce.func_piece_is_complete);
+    __write_bitfield_to_stream_from_getpiece_func(me, &ptr);
 #if 0
     /*  ensure padding */
     if (ii % 8 != 0)
@@ -992,12 +883,12 @@ int bt_peerconn_process_request(void * pco, bt_block_t * request)
         return 0;
     }
 
-    assert(me->ipce.func_piece_is_complete);
+    assert(me->func->piece_is_complete);
 
     /* ensure that we have completed this piece.
      * The peer should know if we have completed this piece or not, so
      * asking for it is an indicator of a invalid peer. */
-    if (0 == me->ipce.func_piece_is_complete(me, pce))
+    if (0 == me->func->piece_is_complete(me, pce))
     {
         __disconnect(me, "requested piece %d is not completed",
                      request->piece_idx);
@@ -1107,7 +998,7 @@ static int __recv_piece(bt_peer_connection_t * me,
           request.piece_idx, request.block_byte_offset, request.block_len);
 
     /* insert block into database */
-    me->func_pushblock(me->isr_udata, me->peer_udata, &request, block_data);
+    me->func->pushblock(me->caller, me->peer_udata, &request, block_data);
 
     /*  there should have been a request polled */
     assert(req);
@@ -1216,7 +1107,7 @@ static int __process_msg(void *pco,
         }
 
         /*  send bitfield */
-        if (me->ipce.func_getpiece)
+        if (me->func->getpiece)
         {
             bt_peerconn_send_bitfield(me);
             bt_peerconn_send_statechange(me, PWP_MSGTYPE_INTERESTED);
@@ -1402,7 +1293,7 @@ static void __make_request(bt_peer_connection_t * me)
 {
     bt_block_t blk;
 
-    if (0 == me->func_pollblock(me->isr_udata, &me->state.have_bitfield, &blk))
+    if (0 == me->func->pollblock(me->caller, &me->state.have_bitfield, &blk))
     {
         bt_peerconn_request_block(me, &blk);
     }
@@ -1420,11 +1311,11 @@ void bt_peerconn_step(void *pco)
     {
         int ret;
 
-        assert(me->isr.connect);
+        assert(me->func->connect);
 
         /* connect to this peer  */
         __log(me, "[connecting],%.*s", 20, me->peer_id);
-        ret = me->isr.connect(me->isr_udata, me, me->peer_udata);
+        ret = me->func->connect(me->caller, me, me->peer_udata);
 
         /* check if we haven't failed before too many times
          * we do not want to stay in an end-less loop */
