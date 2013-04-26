@@ -66,18 +66,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define INFO_HASH_LEN 20
 
 
-//    Choked:
-//      When true, this flag means that the choked peer is not allowed to
-//      request data. 
-#define PEER_STATEF_CHOKED (1<<1)
-
-    // Interested:
-    //    When true, this flag means a peer is interested in requesting data
-    //    from another peer. This indicates that the peer will start requesting
-    //    blocks if it is unchoked. 
-#define PEER_STATEF_INTERESTED (1<<2)
-
-
 // f_f_lywA ==(m€kb€kb (m) ?€ü "pa€kb" :0f=df,xj0
 #define bt_pwp_msgtype_to_string(m)\
     PWP_MSGTYPE_CHOKE == (m) ? "CHOKE" :\
@@ -89,8 +77,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     PWP_MSGTYPE_REQUEST == (m) ? "REQUEST" :\
     PWP_MSGTYPE_PIECE == (m) ? "PIECE" :\
     PWP_MSGTYPE_CANCEL == (m) ? "CANCEL" : "none"\
-
-
 
 static const bt_pwp_cfg_t __default_cfg = {.max_pending_requests = 10 };
 
@@ -107,13 +93,15 @@ typedef struct
     bitfield_t have_bitfield;
 
     int flags;
+
+    /* count number of failed connections */
     int failed_connections;
 
 } peer_connection_state_t;
 
 typedef struct
 {
-    int timestamp;
+//    int timestamp;
     bt_block_t blk;
 } request_t;
 
@@ -143,7 +131,6 @@ typedef struct
     void *caller;
 } bt_peer_connection_t;
 
-/*----------------------------------------------------------------------------*/
 
 static unsigned long __request_hash(const void *obj)
 {
@@ -210,7 +197,6 @@ static int __read_byte_from_peer(bt_peer_connection_t * me, unsigned char * val)
 #endif
 
     *val = bitstream_read_ubyte(&ptr);
-//    printf("read len:%d b 0x%1x %c\n", read, *val, *val);
 
     return 1;
 }
@@ -229,7 +215,6 @@ static int __read_uint32_from_peer(bt_peer_connection_t * me, uint32_t * val)
     }
 
     *val = bitstream_read_uint32(&ptr);
-//    printf("read u %d\n", *val);
     return 1;
 }
 
@@ -360,7 +345,7 @@ int bt_peerconn_peer_is_choked(void *pco)
     return me->state.im_choking;
 }
 
-/*
+/**
  * @return whether I am choked or not
  */
 int bt_peerconn_im_choked(void *pco)
@@ -446,8 +431,6 @@ int bt_peerconn_send_statechange(void * pco, const int msg_type)
  * */
 void bt_peerconn_send_piece(void *pco, bt_block_t * req)
 {
-#define BYTES_SENT 1
-
     bt_peer_connection_t *me = pco;
     static int data_len;
     static unsigned char *data = NULL;
@@ -468,8 +451,6 @@ void bt_peerconn_send_piece(void *pco, bt_block_t * req)
     }
 
     ptr = data;
-//    assert(__has_piece(bt, req->piece_idx));
-//    assert(__piece_is_complete(pce, bt->piece_len));
     bitstream_write_uint32(&ptr, size - 4);
     bitstream_write_ubyte(&ptr, PWP_MSGTYPE_PIECE);
     bitstream_write_uint32(&ptr, req->piece_idx);
@@ -478,6 +459,8 @@ void bt_peerconn_send_piece(void *pco, bt_block_t * req)
     __send_to_peer(me, data, size);
 
 #if 0
+    #define BYTES_SENT 1
+
     for (ii = req->block_len; ii > 0;)
     {
         int len = BYTES_SENT < ii ? BYTES_SENT : ii;
@@ -720,7 +703,7 @@ int bt_peerconn_recv_handshake(void *pco, const char *info_hash)
 //    strncpy(peer_infohash, &handshake[1 + name_len + 8], INFO_HASH_LEN);
     if (strncmp(peer_infohash, info_hash, 20))
     {
-        printf("handshake: invalid infohash: '%s' vs '%s'\n", info_hash,
+        __log(me, "handshake: invalid infohash: '%s' vs '%s'\n", info_hash,
                peer_infohash);
         return FALSE;
     }
@@ -1008,8 +991,10 @@ static int __recv_piece(bt_peer_connection_t * me,
     return 1;
 }
 
-static int __mark_peer_as_have_from_have_payload(bt_peer_connection_t* me,
-        int payload_len, int (*fn_read_byte) (bt_peer_connection_t *, unsigned char *))
+static int __mark_peer_as_have_from_have_payload(
+        bt_peer_connection_t* me,
+        int payload_len,
+        int (*fn_read_byte) (bt_peer_connection_t *, unsigned char *))
 {
     int ii, piece_idx;
 
@@ -1173,7 +1158,6 @@ static int __process_msg(void *pco,
             }
             break;
         case PWP_MSGTYPE_UNCHOKE:
-            printf("unchoked: %lx\n", (long unsigned int) pco);
             me->state.peer_choking = FALSE;
             __log(me, "read,unchoke");
             break;
@@ -1262,8 +1246,6 @@ void bt_peerconn_process_msg(void *pco)
     __process_msg(pco, __read_uint32_from_peer, __read_byte_from_peer);
 }
 
-/*----------------------------------------------------------------------------*/
-
 int bt_peerconn_get_npending_requests(const void* pco)
 {
     const bt_peer_connection_t * me = pco;
@@ -1277,8 +1259,8 @@ void bt_peerconn_request_block(void * pco, bt_block_t * blk)
     bt_peer_connection_t * me = pco;
     request_t *req;
 
-//    printf("request block: %d %d %d\n",
-//           blk->piece_idx, blk->block_byte_offset, blk->block_len);
+    __log(me, "request block: %d %d %d\n",
+           blk->piece_idx, blk->block_byte_offset, blk->block_len);
 
     req = malloc(sizeof(request_t));
     __request_fit(blk, me->piece_len);
@@ -1363,7 +1345,7 @@ void bt_peerconn_step(void *pco)
 
         if (bt_peerconn_im_choked(me))
         {
-//            printf("peer is choking us %lx\n", (long unsigned int) pco);
+            __log(me,"peer is choking us %lx\n", (long unsigned int) pco);
             return;
         }
 
@@ -1382,19 +1364,11 @@ void bt_peerconn_step(void *pco)
     }
 }
 
-/*----------------------------------------------------------------------------*/
-
 /** 
  *  @return 1 if the peer has this piece; otherwise 0 */
 int bt_peerconn_peer_has_piece(void *pco, const int piece_idx)
 {
     bt_peer_connection_t *me = pco;
-
-#if 0
-    printf("read: %lx\n", me->state.have_bitfield[cint]);
-    printf("zead: %lx\n",
-           me->state.have_bitfield[cint] & (1 << (31 - piece_idx % 32)));
-#endif
 
     return bitfield_is_marked(&me->state.have_bitfield, piece_idx);
 }
