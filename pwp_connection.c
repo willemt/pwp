@@ -1179,7 +1179,10 @@ static int __process_msg(void *pco,
 
                 assert(payload_len == 4);
                 if (0 == fn_read_uint32(me, &piece_idx))
+                {
                     return 0;
+                }
+
                 if (1 == bt_peerconn_mark_peer_has_piece(me, piece_idx))
                 {
 //                    assert(bt_peerconn_peer_has_piece(me, piece_idx));
@@ -1214,10 +1217,11 @@ static int __process_msg(void *pco,
                     return 0;
                 if (0 == fn_read_uint32(me, (uint32_t*)&request.block_len))
                     return 0;
+
                 __log(me, "read,cancel,pieceidx=%d offset=%d length=%d",
                       request.piece_idx, request.block_byte_offset,
                       request.block_len);
-                assert(FALSE);
+
 //                FIXME_STUB;
 //                queue_remove(peer->request_queue);
             }

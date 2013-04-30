@@ -256,6 +256,17 @@ static int __FUNC_pieceiscomplete_fail(
 }
 
 /*----------------------------------------------------------------------------*/
+void TestPWP_getset_peer(
+    CuTest * tc
+)
+{
+    void *pc;
+    char* peer = "test";
+
+    pc = bt_peerconn_new();
+    pc = bt_peerconn_set_peer(peer);
+    CuAssertTrue(tc, peer == bt_peerconn_get_peer(pc));
+}
 
 void TestPWP_init_has_us_choked(
     CuTest * tc
@@ -265,6 +276,16 @@ void TestPWP_init_has_us_choked(
 
     pc = bt_peerconn_new();
     CuAssertTrue(tc, 1 == bt_peerconn_im_choked(pc));
+}
+
+void TestPWP_init_not_interested(
+    CuTest * tc
+)
+{
+    void *pc;
+
+    pc = bt_peerconn_new();
+    CuAssertTrue(tc, 0 == bt_peerconn_im_interested(pc));
 }
 
 /**
@@ -331,6 +352,7 @@ void TestPWP_send_Request_spawns_wellformed_response(
         .piece_is_complete = __FUNC_pieceiscomplete,
         .getpiece = __FUNC_sender_get_piece
     };
+
     unsigned char msg[50], *ptr = msg;
     void *pc;
     test_sender_t sender;
@@ -359,17 +381,6 @@ void TestPWP_send_Request_spawns_wellformed_response(
     bt_peerconn_set_num_pieces(pc,20);
     bt_peerconn_set_piece_len(pc,20);
     bt_peerconn_set_functions(pc, &funcs, &sender);
-#if 0
-    bt_peerconn_set_functions(pc, &funcs, &sender);
-    bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
-    bt_peerconn_set_func_disconnect(pc, (void *) __FUNC_disconnect);
-    bt_peerconn_set_func_pushblock(pc, (void *) __FUNC_push_block);
-    bt_peerconn_set_ipce(pc,
-        mock_piece_write_block_to_stream,
-        __FUNC_pieceiscomplete,
-        __FUNC_sender_get_piece,
-        (void*)&sender);
-#endif
     bt_peerconn_unchoke(pc);
     /*  request message needs to check if we completed the requested piece */
     bt_peerconn_process_request(pc, &request);
@@ -693,10 +704,6 @@ void TestPWP_no_reading_without_handshake(
     bt_peerconn_process_msg(pc);
     /* we have disconnected */
     CuAssertTrue(tc, 1 == reader.has_disconnected);
-//    CuAssertTrue(tc, 0 == bt_peerconn_im_choked(pc));
-    bt_peerconn_set_state(pc,
-                          PC_CONNECTED | PC_HANDSHAKE_SENT |
-                          PC_HANDSHAKE_RECEIVED);
 }
 
 /*
@@ -1306,6 +1313,14 @@ void TestPWP_read_Request_with_invalid_block_length_disconnects_peer(
     CuAssertTrue(tc, 0);
 }
 
+void TestPWP_read_Request_of_piece_which_client_has_results_in_disconnect(
+    CuTest * tc
+)
+{
+    CuAssertTrue(tc, 0);
+}
+
+
 /*----------------------------------------------------------------------------*/
 
 /*
@@ -1534,6 +1549,76 @@ void TestPWP_read_disconnect_if_peer_requests_while_choked(
     CuAssertTrue(tc, 0);
 }
 
+void TestPWP_read_disconnect_if_handshake_has_invalid_name_length(
+    CuTest * tc
+)
+{
+    CuAssertTrue(tc, 0);
+#if 0
+    pwp_connection_functions_t funcs = {
+        .recv = __FUNC_peercon_recv,
+        .disconnect = __FUNC_disconnect,
+    };
+    void *pc;
+    test_reader_t reader;
+    unsigned char msg[50], *ptr = msg;
+    bt_block_t blk;
+
+    memset(&reader, 0, sizeof(test_reader_t));
+
+    /*  piece */
+    ptr = __reader_set(&reader, msg);
+    bitstream_write_uint32(&ptr, 11);      /*  payload */
+    bitstream_write_ubyte(&ptr, 7);        /*  piece type */
+    bitstream_write_uint32(&ptr, 1);       /*  piece one */
+    bitstream_write_uint32(&ptr, 0);       /*  byte offset is 0 */
+    bitstream_write_ubyte(&ptr, 0xDE);
+    bitstream_write_ubyte(&ptr, 0xAD);
+
+    pc = bt_peerconn_new();
+    bt_peerconn_set_state(pc,
+                          PC_CONNECTED | PC_HANDSHAKE_SENT |
+                          PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
+    bt_peerconn_set_num_pieces(pc,20);
+    bt_peerconn_set_piece_len(pc,20);
+    bt_peerconn_set_functions(pc, &funcs, &reader);
+    /*  make sure we're at least requesting this piece */
+    blk.piece_idx = 1;
+    blk.block_byte_offset = 0;
+    blk.block_len = 2;
+    bt_peerconn_request_block(pc, &blk);
+    bt_peerconn_process_msg(pc);
+    CuAssertTrue(tc, 0 == reader.has_disconnected);
+    CuAssertTrue(tc, 1 == reader.last_block.piece_idx);
+    CuAssertTrue(tc, 0 == reader.last_block.block_byte_offset);
+    CuAssertTrue(tc, 2 == reader.last_block.block_len);
+    CuAssertTrue(tc, 0xDE == reader.last_block_data[0]);
+    CuAssertTrue(tc, 0xAD == reader.last_block_data[1]);
+#endif
+}
+
+
+void TestPWP_read_disconnect_if_handshake_has_invalid_protocol_name(
+    CuTest * tc
+)
+{
+    CuAssertTrue(tc, 0);
+}
+
+void TestPWP_read_disconnect_if_handshake_has_used_reserved_eight_bytes(
+    CuTest * tc
+)
+{
+    CuAssertTrue(tc, 0);
+}
+
+void TestPWP_read_disconnect_if_handshake_has_infohash_that_is_different_from_ours(
+    CuTest * tc
+)
+{
+    CuAssertTrue(tc, 0);
+}
+
 /*
  * If this name matches the local peers own ID name, the connection MUST be dropped
  */
@@ -1554,6 +1639,21 @@ void TestPWP_read_disconnect_if_handshake_shows_a_peer_with_same_peerid_as_other
 {
     CuAssertTrue(tc, 0);
 }
+
+void TestPWP_read_disconnect_if_handshake_shows_a_peerid_which_has_invalid_length(
+    CuTest * tc
+)
+{
+    CuAssertTrue(tc, 0);
+}
+
+void TestPWP_read_valid_handshake_results_in_state_changing_to_handshake_received(
+    CuTest * tc
+)
+{
+    CuAssertTrue(tc, 0);
+}
+
 
 #if 0
 void TxestPWP_readPiece_disconnectsIfBlockTooBig(
