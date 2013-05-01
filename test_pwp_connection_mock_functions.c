@@ -26,11 +26,10 @@ int __FUNC_peercon_recv(
     int *len
 )
 {
-    test_reader_t * reader = r;
+    test_sender_t * sender = r;
 
-    memcpy(buf, &reader->data[reader->pos], sizeof(char) * (*len));
-//    printf("%d\n", reader->pos);
-    reader->pos += *len;
+    memcpy(buf, &sender->read_data[sender->read_pos], sizeof(char) * (*len));
+    sender->read_pos += *len;
 
 #if 0
     printf("read:");
@@ -46,18 +45,6 @@ int __FUNC_peercon_recv(
     return 1;
 }
 
-void *__FUNC_reader_get_piece(
-    void * r,
-    const int idx __attribute__((__unused__))
-)
-{
-    test_reader_t * reader = r;
-    void *piece;
-
-    piece = reader->piece;
-    return piece;
-}
-
 /*----------------------------------------------------------------------------*/
 
 int __FUNC_disconnect(
@@ -66,13 +53,14 @@ int __FUNC_disconnect(
     char *reason __attribute__((__unused__))
 )
 {
-    test_reader_t * reader = r;
-    reader->has_disconnected = 1;
+    test_sender_t * sender = r;
+    sender->has_disconnected = 1;
+//    printf("DISCONNECT: %s\n", reason);
     return 0;
 }
 
 int __FUNC_MOCK_push_block(
-    void * reader __attribute__((__unused__)), 
+    void * sender __attribute__((__unused__)), 
     void * peer  __attribute__((__unused__)),
     bt_block_t * block __attribute__((__unused__)),
     void *data __attribute__((__unused__))
@@ -89,16 +77,17 @@ int __FUNC_push_block(
     void *data
 )
 {
-    test_reader_t * reader = r;
+    test_sender_t * sender = r;
 
-    memcpy(&reader->last_block, block, sizeof(bt_block_t));
+    memcpy(&sender->read_last_block, block, sizeof(bt_block_t));
     assert(block->block_len < 10);
-    memcpy(reader->last_block_data, data, sizeof(char) * block->block_len);
+    memcpy(sender->read_last_block_data, data, sizeof(char) * block->block_len);
     return 1;
 }
 
+#if 0
 void *__reader_set(
-    test_reader_t * reader,
+    test_sender_t * reader,
     unsigned char *msg
 )
 {
@@ -123,21 +112,33 @@ void *__reader_set(
 
     return msg;
 }
+#endif
 
 /*----------------------------------------------------------------------------*/
 /*  Send data                                                                 */
 /*----------------------------------------------------------------------------*/
 
 unsigned char *__sender_set(
-    test_sender_t * sender
+    test_sender_t * sender,
+    unsigned char *read_msg,
+    unsigned char *send_msg
 )
 {
     bt_block_t blk;
     char piecedata[4] = { 0xDE, 0xAD, 0xBE, 0xEF };
     void *dc;
 
-    /* init the sender */
+    /* init */
     memset(sender, 0, sizeof(test_sender_t));
+
+    /* send */
+    sender->send_pos = 0;
+    sender->send_data = (char*)send_msg;
+
+    /* read */
+    sender->read_pos = 0;
+    sender->read_data = (char*)read_msg;
+    sender->has_disconnected = 0;
 
     /* create holding place for data written */
     dc = bt_diskmem_new();
@@ -153,8 +154,7 @@ unsigned char *__sender_set(
     blk.block_len = 4;
     mock_piece_write_block(sender->piece, NULL, &blk, piecedata);
 
-
-    return sender->last_send_data;
+    return NULL;
 }
 
 /*  Just a mock.
@@ -189,10 +189,8 @@ int __FUNC_send(
     printf("\n");
 #endif
 
-    memcpy(sender->last_send_data + sender->pos, send_data, len);
-
-    sender->pos += len;
-
+    memcpy(sender->send_data + sender->send_pos, send_data, len);
+    sender->send_pos += len;
     return 1;
 }
 
@@ -216,6 +214,14 @@ void *__FUNC_sender_get_piece(
 
     piece = sender->piece;
     return piece;
+}
+
+void* __FUNC_get_piece_never_have(
+    void* s __attribute__((__unused__)),
+    const int idx __attribute__((__unused__))
+)
+{
+    return NULL;
 }
 
 /**

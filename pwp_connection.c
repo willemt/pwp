@@ -272,17 +272,6 @@ int bt_peerconn_is_active(void *pco)
     return me->isactive;
 }
 
-#if 0
-void bt_peerconn_set_pieceinfo(void *pco, bt_piece_info_t * pi)
-{
-    bt_peer_connection_t *me = pco;
-
-    me->pi = pi;
-//    assert(0 < me->num_pieces);
-    bitfield_init(&me->state.have_bitfield, me->num_pieces);
-}
-#endif
-
 void bt_peerconn_set_piece_info(void *pco, int num_pieces, int piece_len)
 {
     bt_peer_connection_t *me = pco;
@@ -291,23 +280,6 @@ void bt_peerconn_set_piece_info(void *pco, int num_pieces, int piece_len)
     bitfield_init(&me->state.have_bitfield, me->num_pieces);
     me->piece_len = piece_len;
 }
-
-#if 0
-void bt_peerconn_set_num_pieces(void *pco, int num_pieces)
-{
-    bt_peer_connection_t *me = pco;
-
-    me->num_pieces = num_pieces;
-    bitfield_init(&me->state.have_bitfield, me->num_pieces);
-}
-
-void bt_peerconn_set_piece_len(void *pco, int piece_len)
-{
-    bt_peer_connection_t *me = pco;
-
-    me->piece_len = piece_len;
-}
-#endif
 
 void bt_peerconn_set_my_peer_id(void *pco, const char *peer_id)
 {
@@ -901,24 +873,30 @@ int bt_peerconn_process_request(void * pco, bt_block_t * request)
         return 0;
     }
 
-    assert(me->func->piece_is_complete);
-
-    /* ensure that we have completed this piece.
-     * The peer should know if we have completed this piece or not, so
-     * asking for it is an indicator of a invalid peer. */
-    if (0 == me->func->piece_is_complete(me, pce))
-    {
-        __disconnect(me, "requested piece %d is not completed",
-                     request->piece_idx);
-        return 0;
-    }
-
     /* ensure that the peer needs this piece
      * If the peer doesn't need the piece then that means the peer is
      * potentially invalid */
     if (bt_peerconn_peer_has_piece(me, request->piece_idx))
     {
         __disconnect(me, "peer requested pce%d which they confirmed they had",
+                     request->piece_idx);
+        return 0;
+    }
+
+    /* ensure that block request length is valid  */
+    if (request->block_len == 0 || me->piece_len < request->block_byte_offset + request->block_len)
+    {
+        __disconnect(me, "invalid block request"); 
+        return 0;
+    }
+
+    /* ensure that we have completed this piece.
+     * The peer should know if we have completed this piece or not, so
+     * asking for it is an indicator of a invalid peer. */
+    assert(me->func->piece_is_complete);
+    if (0 == me->func->piece_is_complete(me, pce))
+    {
+        __disconnect(me, "requested piece %d is not completed",
                      request->piece_idx);
         return 0;
     }
@@ -934,6 +912,13 @@ static int __recv_request(bt_peer_connection_t * me,
                   int (*fn_read_uint32) (bt_peer_connection_t *, uint32_t *))
 {
     bt_block_t request;
+
+    /* check that the client doesn't request when they are choked */
+    if (bt_peerconn_peer_is_choked(me))
+    {
+        __disconnect(me, "peer requested when they were choked");
+        return 0;
+    }
 
     /*  ensure payload length is correct */
     if (payload_len != 11)
@@ -1136,6 +1121,7 @@ static int __process_msg(void *pco,
         return 0;
     }
 
+
     if (0 == fn_read_uint32(me, &msg_len))
     {
         return 0;
@@ -1216,6 +1202,7 @@ static int __process_msg(void *pco,
                 uint32_t piece_idx;
 
                 assert(payload_len == 4);
+
                 if (0 == fn_read_uint32(me, &piece_idx))
                 {
                     return 0;
@@ -1225,6 +1212,7 @@ static int __process_msg(void *pco,
                 {
 //                    assert(bt_peerconn_peer_has_piece(me, piece_idx));
                 }
+
 //                bitfield_mark(&me->state.have_bitfield, piece_idx);
                 __log(me, "read,have,pieceidx=%d", piece_idx);
 

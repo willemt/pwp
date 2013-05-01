@@ -32,13 +32,14 @@ void TestPWP_sending_handshake_sets_handshake_sent_state(
     CuTest * tc
 )
 {
+    unsigned char msg[1000];
     void *pc;
     test_sender_t sender;
     pwp_connection_functions_t funcs = {
         .send = __FUNC_send
     };
 
-    __sender_set(&sender);
+    __sender_set(&sender,NULL,msg);
     pc = bt_peerconn_new();
     bt_peerconn_set_my_peer_id(pc, __mock_my_peer_id);
     bt_peerconn_set_their_peer_id(pc, __mock_their_peer_id);
@@ -55,13 +56,14 @@ void TestPWP_handshake_sent_state_not_set_when_send_failed(
     CuTest * tc
 )
 {
+    unsigned char msg[1000];
     void *pc;
     test_sender_t sender;
     pwp_connection_functions_t funcs = {
         .send = __FUNC_failing_send
     };
 
-    __sender_set(&sender);
+    __sender_set(&sender,NULL,msg);
     pc = bt_peerconn_new();
     bt_peerconn_set_functions(pc, &funcs, &sender);
     /*  this sending function fails on every send */
@@ -84,27 +86,27 @@ void TestPWP_no_reading_without_handshake(
         .disconnect = __FUNC_disconnect,
     };
     void *pc;
-    test_reader_t reader;
-    unsigned char msg[1000], *ptr;
+    test_sender_t sender;
+    unsigned char msg[1000], *ptr = msg;
 
-    memset(&reader, 0, sizeof(test_reader_t));
+    memset(&sender, 0, sizeof(test_sender_t));
 
     /*  choke */
-    ptr = __reader_set(&reader, msg);
+    __sender_set(&sender,msg,NULL);
     bitstream_write_uint32(&ptr, 1);       /*  length = 1 */
     bitstream_write_ubyte(&ptr, 0);        /*  0 = choke */
     /*  peer connection */
     pc = bt_peerconn_new();
     bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_functions(pc, &funcs, &reader);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_set_state(pc, PC_CONNECTED);
     bt_peerconn_set_my_peer_id(pc, __mock_my_peer_id);
     /*  handshaking requires infohash */
-    strcpy(reader.infohash, "00000000000000000000");
+    strcpy(sender.infohash, "00000000000000000000");
     bt_peerconn_set_infohash(pc,__mock_infohash);
     bt_peerconn_process_msg(pc);
     /* we have disconnected */
-    CuAssertTrue(tc, 1 == reader.has_disconnected);
+    CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 
 /**
@@ -122,11 +124,11 @@ void TxestPWP_read_msg_other_than_bitfield_after_handshake_disconnects(
         .disconnect = __FUNC_disconnect,
     };
     void *pc;
-    test_reader_t reader;
+    test_sender_t sender;
     unsigned char msg[1000], *ptr;
 
-    memset(&reader, 0, sizeof(test_reader_t));
-    ptr = __reader_set(&reader, msg);
+    memset(&sender, 0, sizeof(test_sender_t));
+    ptr = __sender_set(&sender, msg);
     bitstream_write_uint32(&ptr, 5);
     bitstream_write_ubyte(&ptr, 4);        /*  have */
     bitstream_write_uint32(&ptr, 1);       /*  piece 1 */
@@ -138,10 +140,10 @@ void TxestPWP_read_msg_other_than_bitfield_after_handshake_disconnects(
                           PC_CONNECTED | PC_HANDSHAKE_SENT |
                           PC_HANDSHAKE_RECEIVED);
     bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_functions(pc, &funcs, &reader);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_process_msg(pc);
 
-    CuAssertTrue(tc, 1 == reader.has_disconnected);
+    CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 #endif
 
@@ -154,14 +156,14 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_invalid_name_length(
         .disconnect = __FUNC_disconnect,
     };
     void *pc;
-    test_reader_t reader;
-    unsigned char msg[1000], *ptr;
+    test_sender_t sender;
+    unsigned char msg[1000], *ptr = msg;
     int ii;
 
-    memset(&reader, 0, sizeof(test_reader_t));
+    memset(&sender, 0, sizeof(test_sender_t));
 
     /* handshake */
-    ptr = __reader_set(&reader, msg);
+    __sender_set(&sender,msg,NULL);
     bitstream_write_ubyte(&ptr, 0); /* pn len */
 //    bitstream_write_ubyte(&ptr, strlen(PROTOCOL_NAME)); /* pn len */
 //    bitstream_write_string(&ptr, PROTOCOL_NAME, strlen(PROTOCOL_NAME); /* pn */
@@ -173,9 +175,9 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_invalid_name_length(
     pc = bt_peerconn_new();
     bt_peerconn_set_state(pc, PC_CONNECTED | PC_HANDSHAKE_SENT);
     bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_functions(pc, &funcs, &reader);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_process_msg(pc);
-    CuAssertTrue(tc, 1 == reader.has_disconnected);
+    CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 
 void TestPWP_handshake_read_disconnect_if_handshake_has_invalid_protocol_name(
@@ -187,14 +189,14 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_invalid_protocol_name(
         .disconnect = __FUNC_disconnect,
     };
     void *pc;
-    test_reader_t reader;
-    unsigned char msg[1000], *ptr;
+    test_sender_t sender;
+    unsigned char msg[1000], *ptr = msg;
     int ii;
 
-    memset(&reader, 0, sizeof(test_reader_t));
+    memset(&sender, 0, sizeof(test_sender_t));
 
     /* handshake */
-    ptr = __reader_set(&reader, msg);
+    __sender_set(&sender,msg,NULL);
     bitstream_write_ubyte(&ptr, strlen("Garbage Protocol")); /* pn len */
     bitstream_write_string(&ptr, "Garbage Protocol", strlen("Garbage Protocol")); /* pn */
     for (ii=0;ii<8;ii++)
@@ -205,9 +207,9 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_invalid_protocol_name(
     pc = bt_peerconn_new();
     bt_peerconn_set_state(pc, PC_CONNECTED | PC_HANDSHAKE_SENT);
     bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_functions(pc, &funcs, &reader);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_process_msg(pc);
-    CuAssertTrue(tc, 1 == reader.has_disconnected);
+    CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 
 void TestPWP_handshake_read_disconnect_if_handshake_has_used_reserved_eight_bytes(
@@ -219,14 +221,16 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_used_reserved_eight_byte
         .disconnect = __FUNC_disconnect,
     };
     void *pc;
-    test_reader_t reader;
+    test_sender_t sender;
     unsigned char msg[1000], *ptr;
     int ii;
 
-    memset(&reader, 0, sizeof(test_reader_t));
+    memset(&sender, 0, sizeof(test_sender_t));
+
+    ptr = msg;
 
     /* handshake */
-    ptr = __reader_set(&reader, msg);
+    __sender_set(&sender,msg,NULL);
     bitstream_write_ubyte(&ptr, strlen(PROTOCOL_NAME)); /* pn len */
     bitstream_write_string(&ptr, PROTOCOL_NAME, strlen(PROTOCOL_NAME)); /* pn */
     for (ii=0;ii<7;ii++)
@@ -240,9 +244,9 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_used_reserved_eight_byte
     bt_peerconn_set_piece_info(pc,20,20);
     bt_peerconn_set_their_peer_id(pc,__mock_their_peer_id);
     bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_set_functions(pc, &funcs, &reader);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_process_msg(pc);
-    CuAssertTrue(tc, 1 == reader.has_disconnected);
+    CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 
 void TestPWP_handshake_read_disconnect_if_handshake_has_infohash_that_is_same_as_ours(
@@ -254,14 +258,16 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_infohash_that_is_same_as
         .disconnect = __FUNC_disconnect,
     };
     void *pc;
-    test_reader_t reader;
+    test_sender_t sender;
     unsigned char msg[1000], *ptr;
     int ii;
 
-    memset(&reader, 0, sizeof(test_reader_t));
+    memset(&sender, 0, sizeof(test_sender_t));
+
+    ptr = msg;
 
     /* handshake */
-    ptr = __reader_set(&reader, msg);
+    __sender_set(&sender,msg,NULL);
     bitstream_write_ubyte(&ptr, strlen(PROTOCOL_NAME)); /* pn len */
     bitstream_write_string(&ptr, PROTOCOL_NAME, strlen(PROTOCOL_NAME)); /* pn */
     bitstream_write_ubyte(&ptr, 1);        /*  reserved */
@@ -276,9 +282,9 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_infohash_that_is_same_as
     bt_peerconn_set_infohash(pc,"00000000000000000001");
     bt_peerconn_set_my_peer_id(pc,__mock_my_peer_id);
     bt_peerconn_set_their_peer_id(pc,__mock_my_peer_id);
-    bt_peerconn_set_functions(pc, &funcs, &reader);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_process_msg(pc);
-    CuAssertTrue(tc, 1 == reader.has_disconnected);
+    CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 
 /**
@@ -293,14 +299,16 @@ void TestPWP_handshake_read_disconnect_if_handshake_shows_a_peer_with_different_
         .disconnect = __FUNC_disconnect,
     };
     void *pc;
-    test_reader_t reader;
+    test_sender_t sender;
     unsigned char msg[1000], *ptr;
     int ii;
 
-    memset(&reader, 0, sizeof(test_reader_t));
+    memset(&sender, 0, sizeof(test_sender_t));
+
+    ptr = msg;
 
     /* handshake */
-    ptr = __reader_set(&reader, msg);
+    __sender_set(&sender,msg,NULL);
     bitstream_write_ubyte(&ptr, strlen(PROTOCOL_NAME)); /* pn len */
     bitstream_write_string(&ptr, PROTOCOL_NAME, strlen(PROTOCOL_NAME)); /* pn */
     bitstream_write_ubyte(&ptr, 1);        /*  reserved */
@@ -314,9 +322,9 @@ void TestPWP_handshake_read_disconnect_if_handshake_shows_a_peer_with_different_
     bt_peerconn_set_piece_info(pc,20,20);
     bt_peerconn_set_their_peer_id(pc,__mock_their_peer_id);
     bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_set_functions(pc, &funcs, &reader);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_process_msg(pc);
-    CuAssertTrue(tc, 1 == reader.has_disconnected);
+    CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 
 /*
@@ -331,14 +339,16 @@ void TestPWP_handshake_read_disconnect_if_handshake_shows_peer_with_our_peer_id(
         .disconnect = __FUNC_disconnect,
     };
     void *pc;
-    test_reader_t reader;
+    test_sender_t sender;
     unsigned char msg[1000], *ptr;
     int ii;
 
-    memset(&reader, 0, sizeof(test_reader_t));
+    memset(&sender, 0, sizeof(test_sender_t));
+
+    ptr = msg;
 
     /* handshake */
-    ptr = __reader_set(&reader, msg);
+    __sender_set(&sender,msg,NULL);
     bitstream_write_ubyte(&ptr, strlen(PROTOCOL_NAME)); /* pn len */
     bitstream_write_string(&ptr, PROTOCOL_NAME, strlen(PROTOCOL_NAME)); /* pn */
     bitstream_write_ubyte(&ptr, 1);        /*  reserved */
@@ -354,9 +364,9 @@ void TestPWP_handshake_read_disconnect_if_handshake_shows_peer_with_our_peer_id(
     bt_peerconn_set_my_peer_id(pc,__mock_my_peer_id);
     bt_peerconn_set_their_peer_id(pc,__mock_my_peer_id);
     bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_set_functions(pc, &funcs, &reader);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_process_msg(pc);
-    CuAssertTrue(tc, 1 == reader.has_disconnected);
+    CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 
 /*
@@ -378,14 +388,15 @@ void TestPWP_handshake_read_valid_handshake_results_in_state_changing_to_handsha
         .disconnect = __FUNC_disconnect,
     };
     void *pc;
-    test_reader_t reader;
+    test_sender_t sender;
     unsigned char msg[1000], *ptr;
     int ii;
 
-    memset(&reader, 0, sizeof(test_reader_t));
+    memset(&sender, 0, sizeof(test_sender_t));
+    ptr = msg;
 
     /* handshake */
-    ptr = __reader_set(&reader, msg);
+    __sender_set(&sender,msg,NULL);
     bitstream_write_ubyte(&ptr, strlen(PROTOCOL_NAME)); /* pn len */
     bitstream_write_string(&ptr, PROTOCOL_NAME, strlen(PROTOCOL_NAME)); /* pn */
     for (ii=0;ii<8;ii++)
@@ -400,9 +411,9 @@ void TestPWP_handshake_read_valid_handshake_results_in_state_changing_to_handsha
     bt_peerconn_set_my_peer_id(pc,__mock_my_peer_id);
     bt_peerconn_set_their_peer_id(pc,__mock_their_peer_id);
     bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_set_functions(pc, &funcs, &reader);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_process_msg(pc);
-    CuAssertTrue(tc, 0 == reader.has_disconnected);
+    CuAssertTrue(tc, 0 == sender.has_disconnected);
     CuAssertTrue(tc, bt_peerconn_get_state(pc) == (PC_CONNECTED | PC_HANDSHAKE_SENT | PC_HANDSHAKE_RECEIVED));
 }
 
@@ -413,13 +424,13 @@ void TxestPWP_readPiece_disconnectsIfBlockTooBig(
 )
 {
     void *pc;
-    test_reader_t reader;
+    test_sender_t sender;
     unsigned char msg[1000], *ptr;
 
-    memset(&reader, 0, sizeof(test_reader_t));
+    memset(&sender, 0, sizeof(test_sender_t));
 
     /*  piece */
-    ptr = __reader_set(&reader, msg);
+    ptr = __sender_set(&sender, msg);
     bitstream_write_uint32(&ptr, 11);
     bitstream_write_ubyte(&ptr, 7);
     bitstream_write_uint32(&ptr, 1);
@@ -427,12 +438,12 @@ void TxestPWP_readPiece_disconnectsIfBlockTooBig(
     bitstream_write_ubyte(&ptr, 0xDE);
     pc = bt_peerconn_new();
     bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_functions(pc, &funcs, &reader);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
     bt_peerconn_set_func_disconnect(pc, (void *) __FUNC_disconnect);
     bt_peerconn_set_func_pushblock(pc, (void *) __FUNC_push_block);
     bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
     bt_peerconn_process_msg(pc);
-    CuAssertTrue(tc, 1 == reader.has_disconnected);
+    CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 #endif
 
@@ -472,7 +483,7 @@ void TestPWP_handshake_wont_send_unless_receieved_handshake(
     void *pc;
     test_sender_t sender;
 
-    __sender_set(&sender);
+    __sender_set(&sender,NULL,NULL);
     pc = bt_peerconn_new();
     bt_peerconn_set_piece_info(pc,20,20);
     bt_peerconn_set_functions(pc, &funcs, &sender);

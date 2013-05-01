@@ -1,25 +1,22 @@
 
 typedef struct
 {
-    int pos;
-    char *data;
-    unsigned char last_send_data[128];
+    /* send */
+    int send_pos;
+    char *send_data;
+
+    /* read */
+    int read_pos;
+    char *read_data;
+
+    bt_block_t read_last_block;
+    unsigned char read_last_block_data[10];
+
     void *piece;
     char infohash[21];
-} test_sender_t;
 
-typedef struct
-{
-    int pos;
-    unsigned char *data;
     int has_disconnected;
-
-    void *piece;
-
-    bt_block_t last_block;
-    unsigned char last_block_data[10];
-    char infohash[21];
-} test_reader_t;
+} test_sender_t;
 
 
 int __FUNC_peercon_recv( void* r, void * peer __attribute__((__unused__)), char *buf, int *len);
@@ -32,11 +29,17 @@ int __FUNC_MOCK_push_block( void * reader __attribute__((__unused__)), void * pe
 
 int __FUNC_push_block( void* r, void * peer __attribute__((__unused__)), bt_block_t * block, void *data);
 
-void *__reader_set( test_reader_t * reader, unsigned char *msg);
+unsigned char *__sender_set(
+    test_sender_t * sender,
+    unsigned char *read_msg,
+    unsigned char *send_msg);
 
-unsigned char *__sender_set( test_sender_t * sender);
 
 int __FUNC_MOCK_send( void* s __attribute__((__unused__)), const void *peer __attribute__((__unused__)), const void *send_data __attribute__((__unused__)), const int len __attribute__((__unused__)));
+
+void* __FUNC_get_piece_never_have(
+    void* s __attribute__((__unused__)),
+    const int idx __attribute__((__unused__)));
 
 int __FUNC_send( void* s, const void *peer __attribute__((__unused__)), const void *send_data, const int len);
 
