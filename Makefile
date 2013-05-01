@@ -36,10 +36,10 @@ main.c:
 	fi
 	sh make-tests.sh > main.c
 
-tests: main.c pwp_connection.o test_pwp_connection.c mock_piece.c bt_diskmem.c CuTest.c main.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c 
+tests: main.c pwp_connection.o test_pwp_connection.c test_pwp_connection_handshake.c test_pwp_connection_handshake.c test_pwp_connection_send.c test_pwp_connection_mock_functions.c mock_piece.c bt_diskmem.c CuTest.c main.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c 
 	$(CC) $(CCFLAGS) -o $@ $^
 	./tests
-	gcov main.c test_pwp_connection.c pwp_connection.c
+	gcov main.c test_pwp_connection.c test_pwp_connection_send.c pwp_connection.c
 
 pwp_connection.o: pwp_connection.c 
 	$(CC) $(CCFLAGS) -c -o $@ $^

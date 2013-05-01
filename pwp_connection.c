@@ -83,12 +83,6 @@ static const bt_pwp_cfg_t __default_cfg = {.max_pending_requests = 10 };
 /*  state */
 typedef struct
 {
-    /* un/choked, etc */
-    bool im_choking;            // this client is choking the peer
-    bool im_interested;         // this client is interested in the peer
-    bool peer_choking;          // peer is choking this client
-    bool peer_interested;       // peer is interested in this client 
-
     /* this bitfield indicates which pieces the peer has */
     bitfield_t have_bitfield;
 
@@ -121,7 +115,8 @@ typedef struct
     /* info of who we are connected to */
     void *peer_udata;
 
-    const char *peer_id;
+    const char *my_peer_id;
+    const char *their_peer_id;
     const char *infohash;
 
     const bt_pwp_cfg_t *cfg;
@@ -185,6 +180,9 @@ static int __read_byte_from_peer(bt_peer_connection_t * me, unsigned char * val)
 {
     unsigned char buf[1000], *ptr = buf;
     int len = 1;
+
+    assert(me->func);
+    assert(me->func->recv);
 
     me->func->recv(me->caller, me->peer_udata, (char*)ptr, &len);
 
@@ -252,10 +250,7 @@ void *bt_peerconn_new()
     bt_peer_connection_t *me;
 
     me = calloc(1, sizeof(bt_peer_connection_t));
-    me->state.im_interested = FALSE;
-    me->state.im_choking = TRUE;
-    me->state.peer_choking = TRUE;
-    me->state.flags = PC_NONE;
+    me->state.flags = PC_IM_CHOKING | PC_PEER_CHOKING;
     me->pendreqs = hashmap_new(__request_hash, __request_compare, 11);
     me->cfg = &__default_cfg;
     return me;
@@ -288,6 +283,16 @@ void bt_peerconn_set_pieceinfo(void *pco, bt_piece_info_t * pi)
 }
 #endif
 
+void bt_peerconn_set_piece_info(void *pco, int num_pieces, int piece_len)
+{
+    bt_peer_connection_t *me = pco;
+
+    me->num_pieces = num_pieces;
+    bitfield_init(&me->state.have_bitfield, me->num_pieces);
+    me->piece_len = piece_len;
+}
+
+#if 0
 void bt_peerconn_set_num_pieces(void *pco, int num_pieces)
 {
     bt_peer_connection_t *me = pco;
@@ -302,11 +307,18 @@ void bt_peerconn_set_piece_len(void *pco, int piece_len)
 
     me->piece_len = piece_len;
 }
+#endif
 
-void bt_peerconn_set_peer_id(void *pco, const char *peer_id)
+void bt_peerconn_set_my_peer_id(void *pco, const char *peer_id)
 {
     bt_peer_connection_t *me = pco;
-    me->peer_id = peer_id;
+    me->my_peer_id = peer_id;
+}
+
+void bt_peerconn_set_their_peer_id(void *pco, const char *peer_id)
+{
+    bt_peer_connection_t *me = pco;
+    me->their_peer_id = peer_id;
 }
 
 void bt_peerconn_set_infohash(void *pco, const char *infohash)
@@ -335,14 +347,25 @@ int bt_peerconn_peer_is_interested(void *pco)
 {
     bt_peer_connection_t *me = pco;
 
-    return me->state.peer_interested;
+    return 0 != (me->state.flags & PC_PEER_INTERESTED);
 }
 
 int bt_peerconn_peer_is_choked(void *pco)
 {
     bt_peer_connection_t *me = pco;
 
-    return me->state.im_choking;
+    return 0 != (me->state.flags & PC_IM_CHOKING);
+}
+
+
+/**
+ *
+ */
+int bt_peerconn_flag_is_set(void *pco, const int flag)
+{
+    bt_peer_connection_t *me = pco;
+
+    return 0 != (me->state.flags & flag);
 }
 
 /**
@@ -352,21 +375,29 @@ int bt_peerconn_im_choked(void *pco)
 {
     bt_peer_connection_t *me = pco;
 
-    return me->state.peer_choking;
+    return 0 != (me->state.flags & PC_PEER_CHOKING);
 }
 
 int bt_peerconn_im_interested(void *pco)
 {
     bt_peer_connection_t *me = pco;
 
-    return me->state.im_interested;
+    return 0 != (me->state.flags & PC_IM_INTERESTED);
+}
+
+void bt_peerconn_set_im_interested(void * pco)
+{
+    bt_peer_connection_t *me = pco;
+
+    bt_peerconn_send_statechange(me, PWP_MSGTYPE_INTERESTED);
+    me->state.flags |= PC_IM_INTERESTED;
 }
 
 void bt_peerconn_choke(void * pco)
 {
     bt_peer_connection_t *me = pco;
 
-    me->state.im_choking = TRUE;
+    me->state.flags |= PC_IM_CHOKING;
     bt_peerconn_send_statechange(me, PWP_MSGTYPE_CHOKE);
 }
 
@@ -374,7 +405,7 @@ void bt_peerconn_unchoke(void * pco)
 {
     bt_peer_connection_t *me = pco;
 
-    me->state.im_choking = FALSE;
+    me->state.flags &= ~PC_IM_CHOKING;
     bt_peerconn_send_statechange(me, PWP_MSGTYPE_UNCHOKE);
 }
 
@@ -446,7 +477,8 @@ void bt_peerconn_send_piece(void *pco, bt_block_t * req)
     size = 4 * 3 + 1 + req->block_len;
     if (data_len < size)
     {
-        data = realloc(data, size);
+        //data = realloc(data, size);
+        data = malloc(size);
         data_len = size;
     }
 
@@ -616,7 +648,7 @@ void bt_peerconn_send_bitfield(void *pco)
  *  otherwise 0
  *
  ******/
-int bt_peerconn_recv_handshake(void *pco, const char *info_hash)
+int bt_peerconn_recv_handshake(void *pco, const char *expected_info_hash)
 {
     bt_peer_connection_t *me = pco;
 
@@ -629,12 +661,12 @@ int bt_peerconn_recv_handshake(void *pco, const char *info_hash)
     char peer_id[PEER_ID_LEN];
     char peer_reserved[8 + 1];
 
-    // Name Length:
-    // The unsigned value of the first byte indicates the length of a character
-    // string containing the protocol name. In BTP/1.0 this number is 19. The
-    // local peer knows its own protocol name and hence also the length of it.
-    // If this length is different than the value of this first byte, then the
-    // connection MUST be dropped. 
+    /* Name Length:
+    The unsigned value of the first byte indicates the length of a character
+    string containing the protocol name. In BTP/1.0 this number is 19. The
+    local peer knows its own protocol name and hence also the length of it.
+    If this length is different than the value of this first byte, then the
+    connection MUST be dropped. */
     if (0 == __read_byte_from_peer(me, &name_len))
     {
         __disconnect(me, "handshake: invalid name length: '%d'\n", name_len);
@@ -648,13 +680,13 @@ int bt_peerconn_recv_handshake(void *pco, const char *info_hash)
         return FALSE;
     }
 
-    // Protocol Name:
-    // This is a character string which MUST contain the exact name of the 
-    // protocol in ASCII and have the same length as given in the Name Length
-    // field. The protocol name is used to identify to the local peer which
-    // version of BTP the remote peer uses.
-    // If this string is different from the local peers own protocol name, then
-    // the connection is to be dropped. 
+    /* Protocol Name:
+    This is a character string which MUST contain the exact name of the 
+    protocol in ASCII and have the same length as given in the Name Length
+    field. The protocol name is used to identify to the local peer which
+    version of BTP the remote peer uses.
+    If this string is different from the local peers own protocol name, then
+    the connection is to be dropped. */
     for (ii = 0; ii < name_len; ii++)
     {
         if (0 == __read_byte_from_peer(me, (unsigned char*)&peer_pname[ii]))
@@ -671,27 +703,30 @@ int bt_peerconn_recv_handshake(void *pco, const char *info_hash)
         return FALSE;
     }
 
-    // Reserved:
-    // The next 8 bytes in the string are reserved for future extensions and
-    // should be read without interpretation. 
+    /* Reserved:
+    The next 8 bytes in the string are reserved for future extensions and
+    should be read without interpretation. */
     for (ii = 0; ii < 8; ii++)
     {
-        if (0 == __read_byte_from_peer(me, (unsigned char*)&peer_reserved[ii]))
+        if (0 == __read_byte_from_peer(me, (unsigned char*)&peer_reserved[ii]) || 
+                peer_reserved[ii] != 0)
         {
             __disconnect(me, "handshake: reserved bytes not empty\n");
             return 0;
         }
     }
-    // Info Hash:
-    // The next 20 bytes in the string are to be interpreted as a 20-byte SHA1
-    // of the info key in the metainfo file. Presumably, since both the local
-    // and the remote peer contacted the tracker as a result of reading in the
-    // same .torrent file, the local peer will recognize the info hash value and
-    // will be able to serve the remote peer. If this is not the case, then the
-    // connection MUST be dropped. This situation can arise if the local peer
-    // decides to no longer serve the file in question for some reason. The info
-    // hash may be used to enable the client to serve multiple torrents on the
-    // same port. 
+
+    /* Info Hash:
+    The next 20 bytes in the string are to be interpreted as a 20-byte SHA1
+    of the info key in the metainfo file. Presumably, since both the local
+    and the remote peer contacted the tracker as a result of reading in the
+    same .torrent file, the local peer will recognize the info hash value and
+    will be able to serve the remote peer. If this is not the case, then the
+    connection MUST be dropped. This situation can arise if the local peer
+    decides to no longer serve the file in question for some reason. The info
+    hash may be used to enable the client to serve multiple torrents on the
+    same port. */
+    assert(expected_info_hash);
     for (ii = 0; ii < INFO_HASH_LEN; ii++)
     {
         if (0 == __read_byte_from_peer(me, (unsigned char*)&peer_infohash[ii]))
@@ -700,24 +735,26 @@ int bt_peerconn_recv_handshake(void *pco, const char *info_hash)
             return 0;
         }
     }
-//    strncpy(peer_infohash, &handshake[1 + name_len + 8], INFO_HASH_LEN);
-    if (strncmp(peer_infohash, info_hash, 20))
+    /* check info hash matches expected */
+    if (strncmp(peer_infohash, expected_info_hash, 20))
     {
-        __log(me, "handshake: invalid infohash: '%s' vs '%s'\n", info_hash,
+        __log(me, "handshake: invalid infohash: '%s' vs '%s'\n", peer_infohash,
                peer_infohash);
-        return FALSE;
+        __disconnect(me, "handshake: infohash bytes not empty\n");
+        return 0;
     }
 
-    // At this stage, if the connection has not been dropped, then the local
-    // peer MUST send its own handshake back, which includes the last step: 
+    /* At this stage, if the connection has not been dropped, then the local
+    peer MUST send its own handshake back, which includes the last step: */
 
-    // Peer ID:
-    // The last 20 bytes of the handshake are to be interpreted as the
-    // self-designated name of the peer. The local peer must use this name to id
-    // entify the connection hereafter. Thus, if this name matches the local
-    // peers own ID name, the connection MUST be dropped. Also, if any other
-    // peer has already identified itself to the local peer using that same peer
-    // ID, the connection MUST be dropped. 
+    /* Peer ID:
+    The last 20 bytes of the handshake are to be interpreted as the
+    self-designated name of the peer. The local peer must use this name to id
+    entify the connection hereafter. Thus, if this name matches the local
+    peers own ID name, the connection MUST be dropped. Also, if any other
+    peer has already identified itself to the local peer using that same peer
+    ID, the connection MUST be dropped. */
+    assert(me->their_peer_id);
     for (ii = 0; ii < PEER_ID_LEN; ii++)
     {
         if (0 == __read_byte_from_peer(me, (unsigned char*)&peer_id[ii]))
@@ -727,13 +764,15 @@ int bt_peerconn_recv_handshake(void *pco, const char *info_hash)
         }
     }
 
-    me->peer_id = strdup(peer_id);
-//    me->state.peer_choking = FALSE;
-//    me->state.im_choking = FALSE;
+    /* disconnect if peer's ID is the same as ours */
+    if (!strncmp(peer_id,me->my_peer_id,20))
+    {
+        __disconnect(me, "handshake: peer_id same as ours\n");
+        return 0;
+    }
 
     me->state.flags |= PC_HANDSHAKE_RECEIVED;
-
-    __log(me, "[connection],gothandshake,%.*s", 20, me->peer_id);
+    __log(me, "[connection],gothandshake,%.*s", 20, me->their_peer_id);
 
     return TRUE;
 }
@@ -752,10 +791,10 @@ int bt_peerconn_send_handshake(void *pco)
 {
     bt_peer_connection_t *me = pco;
     char buf[1024], *protocol_name = PROTOCOL_NAME, *ptr;
-    int size;
+    int size, ii;
 
     assert(me->infohash);
-    assert(me->peer_id);
+    assert(me->my_peer_id);
 
 //    sprintf(buf, "%c%s" PWP_PC_HANDSHAKE_RESERVERD "%s%s",
 //            strlen(protocol_name), protocol_name, infohash, peerid);
@@ -763,24 +802,20 @@ int bt_peerconn_send_handshake(void *pco)
     ptr = buf;
 
     /* protocol name length */
-    ptr[0] = strlen(protocol_name);
-    ptr += 1;
+    bitstream_write_ubyte((unsigned char**)&ptr, strlen(protocol_name));
 
     /* protocol name */
-    strcpy(ptr, protocol_name);
-    ptr += strlen(protocol_name);
+    bitstream_write_string((unsigned char**)&ptr, protocol_name, strlen(protocol_name));
 
     /* reserved characters */
-    memset(ptr, 0, 8);
-    ptr += 8;
+    for (ii=0;ii<8;ii++)
+        bitstream_write_ubyte((unsigned char**)&ptr, 0);
 
     /* infohash */
-    memcpy(ptr, me->infohash, 20);
-    ptr += 20;
+    bitstream_write_string((unsigned char**)&ptr, me->infohash, 20);
 
     /* peerid */
-    memcpy(ptr, me->peer_id, 20);
-    ptr += 20;
+    bitstream_write_string((unsigned char**)&ptr, me->my_peer_id, 20);
 
     /* calculate total handshake size */
     size = 1 + strlen(protocol_name) + 8 + 20 + 20;
@@ -820,6 +855,8 @@ int bt_peerconn_mark_peer_has_piece(void *pco, const int piece_idx)
     bt_peer_connection_t *me = pco;
     int bf_len;
 
+    printf("marking piece as have\n");
+
     /* make sure piece is within bitfield length */
     bf_len = bitfield_get_length(&me->state.have_bitfield);
     if (bf_len <= piece_idx || piece_idx < 0)
@@ -828,6 +865,7 @@ int bt_peerconn_mark_peer_has_piece(void *pco, const int piece_idx)
         return 0;
     }
 
+    printf("marking piece as have\n");
     /* remember that they have this piece */
     bitfield_mark(&me->state.have_bitfield, piece_idx);
 
@@ -845,7 +883,7 @@ int bt_peerconn_process_request(void * pco, bt_block_t * request)
     void *pce;
 
     /* We're choking - we aren't obligated to respond to this request */
-    if (me->state.im_choking)
+    if (bt_peerconn_peer_is_choked(me))
     {
         return 0;
     }
@@ -909,7 +947,7 @@ static int __recv_request(bt_peer_connection_t * me,
 
     /* ensure request indices are valid */
     if (0 == fn_read_uint32(me, (uint32_t*)&request.piece_idx) ||
-//      0 == fn_read_uint32(me, (uint32_t*)&request.block_byte_offset) ||
+        0 == fn_read_uint32(me, (uint32_t*)&request.block_byte_offset) ||
         0 == fn_read_uint32(me, (uint32_t*)&request.block_len))
     {
         return 0;
@@ -949,7 +987,6 @@ static int __recv_piece(bt_peer_connection_t * me,
 
     if (0 == fn_read_uint32(me, (uint32_t*)&request.piece_idx))
         return 0;
-
     if (0 == fn_read_uint32(me, (uint32_t*)&request.block_byte_offset))
         return 0;
 
@@ -1048,7 +1085,9 @@ static int __recv_bitfield(bt_peer_connection_t * me, int payload_len,
     str = bitfield_str(&me->state.have_bitfield);
     __log(me, "read,bitfield,%s", str);
     free(str);
+
     me->state.flags |= PC_BITFIELD_RECEIVED;
+
     return 1;
 }
 
@@ -1125,6 +1164,7 @@ static int __process_msg(void *pco,
         /*  make sure bitfield is received after handshake */
         if (!(me->state.flags & PC_BITFIELD_RECEIVED))
         {
+#if 0
             if (msg_id != PWP_MSGTYPE_BITFIELD)
             {
                 __disconnect(me, "unexpected message; expected bitfield");
@@ -1136,13 +1176,14 @@ static int __process_msg(void *pco,
             }
 
             return 1;
+#endif
         }
 
         switch (msg_id)
         {
         case PWP_MSGTYPE_CHOKE:
             {
-                me->state.peer_choking = TRUE;
+                me->state.flags |= PC_PEER_CHOKING;
                 __log(me, "read,choke");
 
                 request_t *req;
@@ -1158,24 +1199,26 @@ static int __process_msg(void *pco,
             }
             break;
         case PWP_MSGTYPE_UNCHOKE:
-            me->state.peer_choking = FALSE;
+            me->state.flags &= ~PC_PEER_CHOKING;
             __log(me, "read,unchoke");
             break;
         case PWP_MSGTYPE_INTERESTED:
-            me->state.peer_interested = TRUE;
-            if (me->state.im_choking)
+            me->state.flags |= PC_PEER_INTERESTED;
+            if (bt_peerconn_peer_is_choked(me))
             {
                 bt_peerconn_unchoke(me);
             }
             __log(me, "read,interested");
             break;
         case PWP_MSGTYPE_UNINTERESTED:
-            me->state.peer_interested = FALSE;
+            me->state.flags &= ~PC_PEER_INTERESTED;
             __log(me, "read,uninterested");
             break;
         case PWP_MSGTYPE_HAVE:
             {
                 uint32_t piece_idx;
+
+                printf("HAVEMSG\n");
 
                 assert(payload_len == 4);
                 if (0 == fn_read_uint32(me, &piece_idx))
@@ -1211,6 +1254,8 @@ static int __process_msg(void *pco,
                 bt_block_t request;
 
                 assert(payload_len == 12);
+
+                /* check request is valid */
                 if (0 == fn_read_uint32(me, (uint32_t*)&request.piece_idx))
                     return 0;
                 if (0 == fn_read_uint32(me, (uint32_t*)&request.block_byte_offset))
@@ -1300,7 +1345,7 @@ void bt_peerconn_step(void *pco)
         assert(me->func->connect);
 
         /* connect to this peer  */
-        __log(me, "[connecting],%.*s", 20, me->peer_id);
+        __log(me, "[connecting],%.*s", 20, me->their_peer_id);
         ret = me->func->connect(me->caller, me, me->peer_udata);
 
         /* check if we haven't failed before too many times
@@ -1317,7 +1362,7 @@ void bt_peerconn_step(void *pco)
         }
         else
         {
-            __log(me, "[connected],%.*s", 20, me->peer_id);
+            __log(me, "[connected],%.*s", 20, me->their_peer_id);
 
             me->state.flags = PC_CONNECTED;
 
@@ -1334,9 +1379,9 @@ void bt_peerconn_step(void *pco)
     }
 
     /* unchoke interested peer */
-    if (me->state.peer_interested)
+    if (bt_peerconn_peer_is_interested(me))
     {
-        if (me->state.im_choking)
+        if (bt_peerconn_peer_is_choked(me))
         {
             bt_peerconn_unchoke(me);
         }
@@ -1363,8 +1408,7 @@ void bt_peerconn_step(void *pco)
     }
     else
     {
-        bt_peerconn_send_statechange(me, PWP_MSGTYPE_INTERESTED);
-        me->state.im_interested = TRUE;
+        bt_peerconn_set_im_interested(me);
     }
 }
 

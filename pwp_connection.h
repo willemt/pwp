@@ -90,6 +90,10 @@ typedef int (
 #define PC_CONNECTED 1<<4
 /*  we can't communicate with the peer */
 #define PC_UNCONTACTABLE_PEER 1<<5
+#define PC_IM_CHOKING 1<<6
+#define PC_IM_INTERESTED 1<<7
+#define PC_PEER_CHOKING 1<<8
+#define PC_PEER_INTERESTED 1<<9
 
 typedef enum
 {
@@ -120,8 +124,9 @@ int bt_peerconn_peer_is_interested(void *pco);
 
 int bt_peerconn_is_active(void *pco);
 
+void bt_peerconn_set_my_peer_id(void *pco, const char *peer_id);
 
-void bt_peerconn_set_peer_id(void *pco, const char *peer_id);
+void bt_peerconn_set_their_peer_id(void *pco, const char *peer_id);
 
 void bt_peerconn_set_infohash(void *pco, const char *infohash);
 
@@ -159,9 +164,7 @@ int bt_peerconn_recv_handshake(void *pco, const char *info_hash);
 
 int bt_peerconn_send_handshake(void *pco);
 
-void bt_peerconn_set_num_pieces(void *pco, int num_pieces);
-
-void bt_peerconn_set_piece_len(void *pco, int piece_len);
+void bt_peerconn_set_piece_info(void *pco, int num_pieces, int piece_len);
 
 void bt_peerconn_set_state(void *pco, const int state);
 
@@ -205,4 +208,6 @@ typedef struct {
 } pwp_connection_functions_t;
 
 void bt_peerconn_set_functions(void *pco, pwp_connection_functions_t* funcs, void* caller);
+
+int bt_peerconn_flag_is_set(void *pco, const int flag);
 

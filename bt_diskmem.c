@@ -76,14 +76,26 @@ static int __write_block(
 #if 0
     int ii;
 
-    printf("diskmem:");
+    printf("diskmem %d:", blk->block_byte_offset);
     for (ii = 0; ii < blk->block_len; ii++)
-        printf("%02x,", blkdata[ii]);
+        printf("%02x,", ((const unsigned char*)blkdata)[ii]);
     printf("\n");
 #endif
 
     assert(dc->data);
     memcpy(dc->data + blk->block_byte_offset, blkdata, blk->block_len);
+
+#if 0
+    {
+    int ii;
+
+    printf("diskmem %d:", blk->block_byte_offset);
+    for (ii = 0; ii < blk->block_len; ii++)
+        printf("%02x,", ((const unsigned char*)dc->data)[ii]);
+    printf("\n");
+    }
+#endif
+
     return 1;
 }
 
