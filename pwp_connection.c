@@ -51,6 +51,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "pwp_connection.h"
 #include "linked_list_hashmap.h"
+#include "linked_list_queue.h"
 #include "bitfield.h"
 #include "bitstream.h"
 
@@ -106,6 +107,9 @@ typedef struct
 
     /*  requests that we are waiting to get */
     hashmap_t *pendreqs;
+
+    /* requests we are fufilling for the peer */
+    linked_list_queue_t *pendpeerreqs;
 
     int isactive;
 
@@ -252,6 +256,7 @@ void *bt_peerconn_new()
     me = calloc(1, sizeof(bt_peer_connection_t));
     me->state.flags = PC_IM_CHOKING | PC_PEER_CHOKING;
     me->pendreqs = hashmap_new(__request_hash, __request_compare, 11);
+    me->pendpeerreqs = llqueue_new();
     me->cfg = &__default_cfg;
     return me;
 }
@@ -370,6 +375,13 @@ void bt_peerconn_choke(void * pco)
     bt_peer_connection_t *me = pco;
 
     me->state.flags |= PC_IM_CHOKING;
+
+    /* expunge requests */
+    while (0 < llqueue_count(me->pendpeerreqs))
+    {
+        free(llqueue_poll(me->pendpeerreqs));
+    }
+
     bt_peerconn_send_statechange(me, PWP_MSGTYPE_CHOKE);
 }
 
@@ -901,7 +913,17 @@ int bt_peerconn_process_request(void * pco, bt_block_t * request)
         return 0;
     }
 
-    bt_peerconn_send_piece(me, request);
+    /* append block to our pending request queue */
+    /* don't append the block twice */
+    if (!llqueue_get_item_via_cmpfunction(
+                me->pendpeerreqs,request,(void*)__request_compare))
+    {
+        bt_block_t* blk;
+
+        blk = malloc(sizeof(bt_block_t));
+        memcpy(blk,request, sizeof(bt_block_t));
+        llqueue_offer(me->pendpeerreqs,blk);
+    }
 
     return 1;
 }
@@ -1121,7 +1143,6 @@ static int __process_msg(void *pco,
         return 0;
     }
 
-
     if (0 == fn_read_uint32(me, &msg_len))
     {
         return 0;
@@ -1245,6 +1266,9 @@ static int __process_msg(void *pco,
              * ---------------------------------------------*/
             {
                 bt_block_t request;
+                bt_block_t *removed;
+
+                printf("cancel msg\n");
 
                 assert(payload_len == 12);
 
@@ -1260,6 +1284,12 @@ static int __process_msg(void *pco,
                       request.piece_idx, request.block_byte_offset,
                       request.block_len);
 
+                /* remove from linked list queue */
+                removed = llqueue_remove_item_via_cmpfunction(
+                        me->pendpeerreqs, &request, (void*)__request_compare);
+
+                free(removed);
+
 //                FIXME_STUB;
 //                queue_remove(peer->request_queue);
             }
@@ -1270,7 +1300,7 @@ static int __process_msg(void *pco,
     return 1;
 }
 
-/*
+/**
  * fit the request in the piece size so that we don't break anything */
 static void __request_fit(bt_block_t * request, const int piece_len)
 {
@@ -1281,17 +1311,27 @@ static void __request_fit(bt_block_t * request, const int piece_len)
     }
 }
 
-/*
+/**
  * read current message from receiving end */
 void bt_peerconn_process_msg(void *pco)
 {
     __process_msg(pco, __read_uint32_from_peer, __read_byte_from_peer);
 }
 
+/**
+ * @return number of requests we required from the peer */
 int bt_peerconn_get_npending_requests(const void* pco)
 {
     const bt_peer_connection_t * me = pco;
     return hashmap_count(me->pendreqs);
+}
+
+/**
+ * @return number of requests we required from the peer */
+int bt_peerconn_get_npending_peer_requests(const void* pco)
+{
+    const bt_peer_connection_t * me = pco;
+    return llqueue_count(me->pendpeerreqs);
 }
 
 /**
@@ -1328,6 +1368,16 @@ void bt_peerconn_step(void *pco)
     bt_peer_connection_t *me;
 
     me = pco;
+
+    /* send one pending request to the peer */
+    if (0 < llqueue_count(me->pendpeerreqs))
+    {
+        bt_block_t* blk;
+
+        blk = llqueue_poll(me->pendpeerreqs);
+        bt_peerconn_send_piece(me, blk);
+        free(blk);
+    }
 
     /*  if the peer is not connected and is contactable */
     if (!(me->state.flags & PC_CONNECTED) &&

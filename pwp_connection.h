@@ -178,6 +178,8 @@ void bt_peerconn_process_msg(void *pco);
 
 int bt_peerconn_get_npending_requests(const void * pco);
 
+int bt_peerconn_get_npending_peer_requests(const void* pco);
+
 void bt_peerconn_request_block(void * pco, bt_block_t * blk);
 
 void bt_peerconn_step(void *pco);

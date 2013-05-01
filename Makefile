@@ -2,12 +2,13 @@ CONTRIB_DIR = ..
 HASHMAP_DIR = $(CONTRIB_DIR)/CHashMapViaLinkedList
 BITFIELD_DIR = $(CONTRIB_DIR)/CBitfield
 BITSTREAM_DIR = $(CONTRIB_DIR)/CBitstream
+LLQUEUE_DIR = $(CONTRIB_DIR)/CLinkedListQueue
 
 GCOV_OUTPUT = *.gcda *.gcno *.gcov 
 GCOV_CCFLAGS = -fprofile-arcs -ftest-coverage
 SHELL  = /bin/bash
 CC     = gcc
-CCFLAGS = -g -O2 -Wall -Werror -W -fno-omit-frame-pointer -fno-common -fsigned-char $(GCOV_CCFLAGS) -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR)
+CCFLAGS = -g -O2 -Wall -Werror -W -fno-omit-frame-pointer -fno-common -fsigned-char $(GCOV_CCFLAGS) -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR)
 
 all: tests
 
@@ -26,8 +27,13 @@ cbitstream:
 	git --git-dir=$(BITSTREAM_DIR)/.git init 
 	pushd $(BITSTREAM_DIR); git pull git@github.com:willemt/CBitstream.git; popd
 
+clinkedlistqueue:
+	mkdir -p $(LLQUEUE_DIR)/.git
+	git --git-dir=$(LLQUEUE_DIR)/.git init 
+	pushd $(LLQUEUE_DIR); git pull git@github.com:willemt/CLinkedListQueue.git; popd
 
-download-contrib: chashmap cbitfield cbitstream
+
+download-contrib: chashmap cbitfield cbitstream clinkedlistqueue
 
 main.c:
 	if test -d $(HASHMAP_DIR); \
@@ -36,7 +42,7 @@ main.c:
 	fi
 	sh make-tests.sh > main.c
 
-tests: main.c pwp_connection.o test_pwp_connection.c test_pwp_connection_handshake.c test_pwp_connection_handshake.c test_pwp_connection_send.c test_pwp_connection_mock_functions.c mock_piece.c bt_diskmem.c CuTest.c main.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c 
+tests: main.c pwp_connection.o test_pwp_connection.c test_pwp_connection_handshake.c test_pwp_connection_handshake.c test_pwp_connection_send.c test_pwp_connection_mock_functions.c mock_piece.c bt_diskmem.c CuTest.c main.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c
 	$(CC) $(CCFLAGS) -o $@ $^
 	./tests
 	gcov main.c test_pwp_connection.c test_pwp_connection_send.c pwp_connection.c
