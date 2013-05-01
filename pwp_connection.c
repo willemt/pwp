@@ -855,8 +855,6 @@ int bt_peerconn_mark_peer_has_piece(void *pco, const int piece_idx)
     bt_peer_connection_t *me = pco;
     int bf_len;
 
-    printf("marking piece as have\n");
-
     /* make sure piece is within bitfield length */
     bf_len = bitfield_get_length(&me->state.have_bitfield);
     if (bf_len <= piece_idx || piece_idx < 0)
@@ -865,7 +863,6 @@ int bt_peerconn_mark_peer_has_piece(void *pco, const int piece_idx)
         return 0;
     }
 
-    printf("marking piece as have\n");
     /* remember that they have this piece */
     bitfield_mark(&me->state.have_bitfield, piece_idx);
 
@@ -1230,7 +1227,13 @@ static int __process_msg(void *pco,
                 }
 //                bitfield_mark(&me->state.have_bitfield, piece_idx);
                 __log(me, "read,have,pieceidx=%d", piece_idx);
-//                bt_peerconn_send_interested();
+
+                /* tell the peer we are intested if we don't have this piece */
+                if (!__get_piece(me, piece_idx))
+                {
+                    bt_peerconn_set_im_interested(me);
+                }
+                
             }
             break;
         case PWP_MSGTYPE_BITFIELD:

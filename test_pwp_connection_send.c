@@ -29,7 +29,6 @@ static int __disconnect_msg(
         void* b __attribute__((__unused__)),
         char* msg)
 {
-    //printf("%02x %02x, %s\n",  *(unsigned int*)a, *(unsigned int*)b, (char*)msg);
     printf("DISCONNECT: %s\n", (char*)msg);
     return 1;
 }
@@ -399,14 +398,41 @@ void TestPWP_read_havemsg_disconnects_with_piece_idx_out_of_bounds(
 }
 
 /*
- * A peer receiving a HAVE message MUST send an interested message to the sender if indeed it lacks the piece announced
+ * A peer receiving a HAVE message MUST send an interested message to the sender if indeed it lacks
+ * the piece announced
+ *
  * NOTE: NON-CRITICAL
  */
-void TestPWP_read_send_interested_if_lacking_piece_from_have_msg(
+void TestPWP_send_interested_if_lacking_piece_from_have_msg(
     CuTest * tc
 )
 {
-    CuAssertTrue(tc, 0);
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_send,
+        .recv = __FUNC_peercon_recv,
+        .disconnect = __disconnect_msg,
+        .getpiece = __FUNC_sender_get_piece
+    };
+    void *pc;
+    test_sender_t sender;
+    unsigned char msg[50], *ptr = msg;
+
+    memset(&sender, 0, sizeof(test_sender_t));
+    ptr = __sender_set(&sender, msg);
+    bitstream_write_uint32(&ptr, 5);       /*  length */
+    bitstream_write_ubyte(&ptr, 4);        /*  HAVE */
+    bitstream_write_uint32(&ptr, 1);       /*  piece 1 */
+
+    /*  peer connection */
+    pc = bt_peerconn_new();
+    bt_peerconn_set_state(pc, STATE_READY_TO_SENDRECV);
+    bt_peerconn_set_piece_info(pc,20,20);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
+    bt_peerconn_process_msg(pc);
+
+    /* check send interested message */
+    CuAssertTrue(tc, 1 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 2 == bitstream_read_ubyte(&ptr));
 }
 
 /*
