@@ -1161,10 +1161,10 @@ static int __process_msg(void *pco,
             return 0;
         }
 
+#if 0 /* this has been removed as bitfields are optional */
         /*  make sure bitfield is received after handshake */
         if (!(me->state.flags & PC_BITFIELD_RECEIVED))
         {
-#if 0
             if (msg_id != PWP_MSGTYPE_BITFIELD)
             {
                 __disconnect(me, "unexpected message; expected bitfield");
@@ -1176,8 +1176,8 @@ static int __process_msg(void *pco,
             }
 
             return 1;
-#endif
         }
+#endif
 
         switch (msg_id)
         {
@@ -1218,8 +1218,6 @@ static int __process_msg(void *pco,
             {
                 uint32_t piece_idx;
 
-                printf("HAVEMSG\n");
-
                 assert(payload_len == 4);
                 if (0 == fn_read_uint32(me, &piece_idx))
                 {
@@ -1240,7 +1238,11 @@ static int __process_msg(void *pco,
              * operation, and MAY choose not to send it if it has no pieces at
              * all. This message MUST not be sent at any other time during the
              * communication. */
-            __recv_bitfield(me, payload_len, fn_read_byte);
+            if (0 == __recv_bitfield(me, payload_len,fn_read_byte))
+            {
+                __disconnect(me, "bad bitfield");
+                return 0;
+            }
             break;
         case PWP_MSGTYPE_REQUEST:
             return __recv_request(me, payload_len, fn_read_uint32);
