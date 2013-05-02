@@ -2,12 +2,12 @@
 /*  bt block */
 typedef struct
 {
-    int piece_idx;
-    int block_byte_offset;
-    int block_len;
+    unsigned int piece_idx;
+    unsigned int block_byte_offset;
+    unsigned int block_len;
 } bt_block_t;
 
-typedef void *(*func_getpiece_f)( void *udata, int piece);
+typedef void *(*func_getpiece_f)( void *udata, unsigned int piece);
 
 typedef void (*func_write_block_to_stream_f)(
     void* pce, bt_block_t * blk, unsigned char ** msg);
@@ -81,19 +81,19 @@ typedef int (
     void *pr
 );
 
-#define PC_NONE 0
-#define PC_HANDSHAKE_SENT 1<<0
-#define PC_HANDSHAKE_RECEIVED 1<<1
-#define PC_DISCONNECTED 1<<2
-#define PC_BITFIELD_RECEIVED 1<<3
+#define PC_NONE ((unsigned int)0)
+#define PC_HANDSHAKE_SENT ((unsigned int)1<<0)
+#define PC_HANDSHAKE_RECEIVED ((unsigned int)1<<1)
+#define PC_DISCONNECTED ((unsigned int)1<<2)
+#define PC_BITFIELD_RECEIVED ((unsigned int)1<<3)
 /*  connected to peer */
-#define PC_CONNECTED 1<<4
+#define PC_CONNECTED ((unsigned int)1<<4)
 /*  we can't communicate with the peer */
-#define PC_UNCONTACTABLE_PEER 1<<5
-#define PC_IM_CHOKING 1<<6
-#define PC_IM_INTERESTED 1<<7
-#define PC_PEER_CHOKING 1<<8
-#define PC_PEER_INTERESTED 1<<9
+#define PC_UNCONTACTABLE_PEER ((unsigned int)1<<5)
+#define PC_IM_CHOKING ((unsigned int)1<<6)
+#define PC_IM_INTERESTED ((unsigned int)1<<7)
+#define PC_PEER_CHOKING ((unsigned int)1<<8)
+#define PC_PEER_INTERESTED ((unsigned int)1<<9)
 
 typedef enum
 {
@@ -148,7 +148,7 @@ int bt_peerconn_get_download_rate(const void * pco);
 
 int bt_peerconn_get_upload_rate(const void * pco);
 
-int bt_peerconn_send_statechange(void * pco, const int msg_type);
+int bt_peerconn_send_statechange(void * pco, const unsigned char msg_type);
 
 void bt_peerconn_send_piece(void *pco, bt_block_t * req);
 
@@ -174,7 +174,7 @@ int bt_peerconn_mark_peer_has_piece(void *pco, const int piece_idx);
 
 int bt_peerconn_process_request(void * pco, bt_block_t * request);
 
-void bt_peerconn_process_msg(void *pco);
+int bt_peerconn_process_msg(void *pco);
 
 int bt_peerconn_get_npending_requests(const void * pco);
 

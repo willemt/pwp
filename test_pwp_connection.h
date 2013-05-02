@@ -39,13 +39,13 @@ int __FUNC_MOCK_send( void* s __attribute__((__unused__)), const void *peer __at
 
 void* __FUNC_get_piece_never_have(
     void* s __attribute__((__unused__)),
-    const int idx __attribute__((__unused__)));
+    const unsigned int idx __attribute__((__unused__)));
 
 int __FUNC_send( void* s, const void *peer __attribute__((__unused__)), const void *send_data, const int len);
 
 int __FUNC_failing_send( void * sender __attribute__((__unused__)), const void *peer __attribute__((__unused__)), const void *send_data __attribute__((__unused__)), const int len __attribute__((__unused__)));
 
-void *__FUNC_sender_get_piece( void* s, const int idx __attribute__((__unused__)));
+void *__FUNC_sender_get_piece( void* s, const unsigned int idx __attribute__((__unused__)));
 
 int __FUNC_pieceiscomplete( void *bto __attribute__((__unused__)), void *piece __attribute__((__unused__)));
 

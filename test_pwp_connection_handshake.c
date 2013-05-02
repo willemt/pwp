@@ -74,7 +74,7 @@ void TestPWP_handshake_sent_state_not_set_when_send_failed(
     CuAssertTrue(tc, 0 == (PC_HANDSHAKE_SENT & bt_peerconn_get_state(pc)));
 }
 
-/*
+/**
  * Disconnect if non-handshake data arrives before the handshake
  */
 void TestPWP_no_reading_without_handshake(
@@ -327,8 +327,10 @@ void TestPWP_handshake_read_disconnect_if_handshake_shows_a_peer_with_different_
     CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 
-/*
- * If this name matches the local peers own ID name, the connection MUST be dropped
+/**
+ * If this matches the local peers own ID , the connection MUST be dropped
+ *
+ * Note: some clients don't seem to have peer IDs
  */
 void TestPWP_handshake_read_disconnect_if_handshake_shows_peer_with_our_peer_id(
     CuTest * tc
@@ -383,7 +385,8 @@ void TestPWP_handshake_read_disconnect_if_handshake_shows_a_peer_with_same_peer_
 void TestPWP_handshake_read_valid_handshake_results_in_state_changing_to_handshake_received(
     CuTest * tc
 )
-{    pwp_connection_functions_t funcs = {
+{
+    pwp_connection_functions_t funcs = {
         .recv = __FUNC_peercon_recv,
         .disconnect = __FUNC_disconnect,
     };
@@ -415,6 +418,72 @@ void TestPWP_handshake_read_valid_handshake_results_in_state_changing_to_handsha
     bt_peerconn_process_msg(pc);
     CuAssertTrue(tc, 0 == sender.has_disconnected);
     CuAssertTrue(tc, bt_peerconn_get_state(pc) == (PC_CONNECTED | PC_HANDSHAKE_SENT | PC_HANDSHAKE_RECEIVED));
+}
+
+void TestPWP_handshake_read_valid_handshake_results_in_sending_valid_handshake_and_bitfield(
+    CuTest * tc
+)
+{
+    pwp_connection_functions_t funcs = {
+        .recv = __FUNC_peercon_recv,
+        .disconnect = __FUNC_disconnect,
+        .send = __FUNC_send,
+        .getpiece = __FUNC_sender_get_piece,
+        .piece_is_complete = __FUNC_pieceiscomplete,
+    };
+    void *pc;
+    test_sender_t sender;
+    unsigned char msg[1000], *ptr;
+    unsigned char msg_s[1000];
+    char buf_read[1000];
+    int ii;
+
+    memset(&sender, 0, sizeof(test_sender_t));
+    ptr = msg;
+
+    /* receive handshake */
+    __sender_set(&sender,msg,msg_s);
+    bitstream_write_ubyte(&ptr, strlen(PROTOCOL_NAME)); /* pn len */
+    bitstream_write_string(&ptr, PROTOCOL_NAME, strlen(PROTOCOL_NAME)); /* pn */
+    for (ii=0;ii<8;ii++)
+        bitstream_write_ubyte(&ptr, 0);        /*  reserved */
+    bitstream_write_string(&ptr, __mock_infohash, 20); /* ih */
+    bitstream_write_string(&ptr, __mock_their_peer_id, 20); /* pi */
+
+    pc = bt_peerconn_new();
+    bt_peerconn_set_state(pc, PC_CONNECTED);
+    bt_peerconn_set_piece_info(pc,20,20);
+    bt_peerconn_set_infohash(pc,__mock_infohash);
+    bt_peerconn_set_my_peer_id(pc,__mock_my_peer_id);
+    bt_peerconn_set_their_peer_id(pc,__mock_their_peer_id);
+    bt_peerconn_set_infohash(pc,__mock_infohash);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
+    bt_peerconn_process_msg(pc);
+    CuAssertTrue(tc, 0 == sender.has_disconnected);
+    CuAssertTrue(tc, bt_peerconn_get_state(pc) == (PC_CONNECTED | PC_HANDSHAKE_SENT | PC_HANDSHAKE_RECEIVED));
+
+    /* send handshake */
+    ptr = msg_s;
+    CuAssertTrue(tc, strlen(PROTOCOL_NAME) == bitstream_read_ubyte(&ptr)); /* pn len */
+    bitstream_read_string(&ptr, buf_read, strlen(PROTOCOL_NAME)); /* pn */
+    CuAssertTrue(tc, 0 == strncmp(buf_read, PROTOCOL_NAME, strlen(PROTOCOL_NAME)));
+    for (ii=0;ii<8;ii++)
+        CuAssertTrue(tc, 0 == bitstream_read_ubyte(&ptr));        /*  reserved */
+    bitstream_read_string(&ptr, buf_read, 20); /* ih */
+    CuAssertTrue(tc, 0 == strncmp(buf_read, __mock_infohash, 20));
+    bitstream_read_string(&ptr, buf_read, 20); /* pi */
+    CuAssertTrue(tc, 0 == strncmp(buf_read, __mock_my_peer_id, 20));
+
+    /* send bitfield */
+    /*  length */
+    CuAssertTrue(tc, 4 == bitstream_read_uint32(&ptr));
+    /*  message type */
+    CuAssertTrue(tc, PWP_MSGTYPE_BITFIELD == bitstream_read_ubyte(&ptr));
+    /* 11111111 11111111 11110000  */
+    /*  please note the mock get_piece is always returning a piece */
+    CuAssertTrue(tc, 0XFF == bitstream_read_ubyte(&ptr));
+    CuAssertTrue(tc, 0XFF == bitstream_read_ubyte(&ptr));
+    CuAssertTrue(tc, 0XF0 == bitstream_read_ubyte(&ptr));
 }
 
 

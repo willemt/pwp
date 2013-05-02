@@ -79,3 +79,14 @@ void TestPWP_unchoke_sets_as_unchoked(
     CuAssertTrue(tc, !bt_peerconn_peer_is_choked(pc));
 }
 
+void TestPWP_unchoke_setget_flag(
+    CuTest * tc
+)
+{
+    void *pc;
+
+    pc = bt_peerconn_new();
+    bt_peerconn_set_state(pc, PC_IM_CHOKING | PC_HANDSHAKE_RECEIVED);
+    CuAssertTrue(tc, bt_peerconn_flag_is_set(pc, PC_IM_CHOKING));
+}
+

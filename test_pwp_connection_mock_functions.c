@@ -184,7 +184,10 @@ int __FUNC_send(
     for (ii = 0; ii < len; ii++)
     {
         if (ii % 4 == 0 && ii != 0) printf(" ");
-        printf("%02x,", ((const unsigned char*)send_data)[ii]);
+        printf("%02x,",// %c,",
+                ((const unsigned char*)send_data)[ii]
+               //,((const unsigned char*)send_data)[ii]
+                );
     }
     printf("\n");
 #endif
@@ -206,7 +209,7 @@ int __FUNC_failing_send(
 
 void *__FUNC_sender_get_piece(
     void* s,
-    const int idx __attribute__((__unused__))
+    const unsigned int idx __attribute__((__unused__))
 )
 {
     test_sender_t * sender = s;
@@ -218,7 +221,7 @@ void *__FUNC_sender_get_piece(
 
 void* __FUNC_get_piece_never_have(
     void* s __attribute__((__unused__)),
-    const int idx __attribute__((__unused__))
+    const unsigned int idx __attribute__((__unused__))
 )
 {
     return NULL;
