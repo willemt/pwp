@@ -85,35 +85,6 @@ int __FUNC_push_block(
     return 1;
 }
 
-#if 0
-void *__reader_set(
-    test_sender_t * reader,
-    unsigned char *msg
-)
-{
-    /*  add the piece db to reader */
-    bt_block_t blk;
-    char piecedata[4] = { 0xDE, 0xAD, 0xBE, 0xEF };
-    void *dc;
-
-    reader->pos = 0;
-    reader->data = msg;
-    reader->has_disconnected = 0;
-
-    /* setup backend for data to be written to */
-    dc = bt_diskmem_new();
-    bt_diskmem_set_size(dc, 4);
-    reader->piece = mock_piece_new("00000000000000000000", 4); /* fake hash */
-    mock_piece_set_disk_blockrw(reader->piece, bt_diskmem_get_blockrw(dc), dc);
-    blk.piece_idx = 0;
-    blk.block_byte_offset = 0;
-    blk.block_len = 4;
-    mock_piece_write_block(reader->piece, NULL, &blk, piecedata);
-
-    return msg;
-}
-#endif
-
 /*----------------------------------------------------------------------------*/
 /*  Send data                                                                 */
 /*----------------------------------------------------------------------------*/

@@ -1,11 +1,5 @@
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <assert.h>
-
 #include <stdbool.h>
 #include <assert.h>
-#include <setjmp.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -15,7 +9,6 @@
 #include "pwp_connection.h"
 #include "bitstream.h"
 #include "bt_block_readwriter_i.h"
-#include "bt_diskmem.h"
 #include "mock_piece.h"
 #include "test_pwp_connection.h"
 
