@@ -1437,6 +1437,7 @@ void bt_peerconn_step(void *pco)
         return;
     }
 
+
     /* unchoke interested peer */
     if (bt_peerconn_peer_is_interested(me))
     {
