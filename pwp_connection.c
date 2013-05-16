@@ -1401,6 +1401,7 @@ void bt_peerconn_step(void *pco)
     {
         int ret;
 
+        assert(NULL != me->func);
         assert(NULL != me->func->connect);
 
         /* connect to this peer  */
