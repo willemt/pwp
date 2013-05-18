@@ -154,10 +154,12 @@ static void __log(bt_peer_connection_t * me, const char *format, ...)
 
     va_list args;
 
+    if (NULL == me->func || NULL == me->func->log)
+        return;
+
     va_start(args, format);
     (void)vsnprintf(buffer, 1000, format, args);
-    if (!(NULL != me->func && NULL != me->func->log))
-        return;
+
     me->func->log(me->caller, me->peer_udata, buffer);
 }
 
@@ -179,9 +181,9 @@ static void __disconnect(bt_peer_connection_t * me, const char *reason, ...)
 static int __read_byte_from_peer(bt_peer_connection_t * me, unsigned char * val)
 {
     unsigned char buf[1000], *ptr;
-    int len = 1;
-    int ret;
+    int len, ret;
 
+    len = 1;
     ptr = buf;
 
     assert(NULL != me->func);
@@ -240,7 +242,7 @@ static int __send_to_peer(bt_peer_connection_t * me, void *data, const int len)
 
         if (0 == ret)
         {
-            __disconnect(me, "peer dropped connection\n");
+            __disconnect(me, "peer dropped connection");
 //            bt_peerconn_set_active(me, 0);
             return 0;
         }
@@ -266,6 +268,14 @@ void *bt_peerconn_new()
     me->pendpeerreqs = llqueue_new();
     me->cfg = &__default_cfg;
     return me;
+}
+
+void bt_peerconn_release(void* pco)
+{
+    bt_peer_connection_t *me = pco;
+
+//    if (me->my_peer_id)
+//        free(me->my_peer_id);
 }
 
 void *bt_peerconn_get_peer(void *pco)
@@ -653,6 +663,8 @@ int bt_peerconn_recv_handshake(void *pco, const char *expected_info_hash)
     char peer_id[PEER_ID_LEN];
     char peer_reserved[8 + 1];
 
+    __log(me, "read,handshake");
+
     /* Name Length:
     The unsigned value of the first byte indicates the length of a character
     string containing the protocol name. In BTP/1.0 this number is 19. The
@@ -661,13 +673,13 @@ int bt_peerconn_recv_handshake(void *pco, const char *expected_info_hash)
     connection MUST be dropped. */
     if (0 == __read_byte_from_peer(me, &name_len))
     {
-        __disconnect(me, "handshake: invalid name length: '%d'\n", name_len);
+        __disconnect(me, "handshake: invalid name length: '%d'", name_len);
         return 0;
     }
 
     if (name_len != strlen(PROTOCOL_NAME))
     {
-        __disconnect(me, "handshake: invalid protocol name length: '%d'\n",
+        __disconnect(me, "handshake: invalid protocol name length: '%d'",
                      name_len);
         return FALSE;
     }
@@ -683,14 +695,14 @@ int bt_peerconn_recv_handshake(void *pco, const char *expected_info_hash)
     {
         if (0 == __read_byte_from_peer(me, (unsigned char*)&peer_pname[ii]))
         {
-            __disconnect(me, "handshake: invalid protocol name char\n");
+            __disconnect(me, "handshake: invalid protocol name char");
             return 0;
         }
     }
 //    strncpy(peer_pname, &handshake[1], name_len);
     if (strncmp(peer_pname, PROTOCOL_NAME, name_len))
     {
-        __disconnect(me, "handshake: invalid protocol name: '%s'\n",
+        __disconnect(me, "handshake: invalid protocol name: '%s'",
                      peer_pname);
         return FALSE;
     }
@@ -703,7 +715,7 @@ int bt_peerconn_recv_handshake(void *pco, const char *expected_info_hash)
         if (0 == __read_byte_from_peer(me, (unsigned char*)&peer_reserved[ii]) || 
                 peer_reserved[ii] != 0)
         {
-            __disconnect(me, "handshake: reserved bytes not empty\n");
+            __disconnect(me, "handshake: reserved bytes not empty");
             return 0;
         }
     }
@@ -723,16 +735,16 @@ int bt_peerconn_recv_handshake(void *pco, const char *expected_info_hash)
     {
         if (0 == __read_byte_from_peer(me, (unsigned char*)&peer_infohash[ii]))
         {
-            __disconnect(me, "handshake: infohash bytes not empty\n");
+            __disconnect(me, "handshake: infohash bytes not empty");
             return 0;
         }
     }
     /* check info hash matches expected */
     if (strncmp(peer_infohash, expected_info_hash, 20))
     {
-        __log(me, "handshake: invalid infohash: '%s' vs '%s'\n", peer_infohash,
+        __log(me, "handshake: invalid infohash: '%s' vs '%s'", peer_infohash,
                peer_infohash);
-        __disconnect(me, "handshake: infohash bytes not empty\n");
+        __disconnect(me, "handshake: infohash bytes not empty");
         return 0;
     }
 
@@ -746,12 +758,12 @@ int bt_peerconn_recv_handshake(void *pco, const char *expected_info_hash)
     peers own ID name, the connection MUST be dropped. Also, if any other
     peer has already identified itself to the local peer using that same peer
     ID, the connection MUST be dropped. */
-    assert(NULL != me->their_peer_id);
+    //assert(NULL != me->their_peer_id);
     for (ii = 0; ii < PEER_ID_LEN; ii++)
     {
         if (0 == __read_byte_from_peer(me, (unsigned char*)&peer_id[ii]))
         {
-            __disconnect(me, "handshake: peer_id length invalid\n");
+            __disconnect(me, "handshake: peer_id length invalid");
             return 0;
         }
     }
@@ -759,7 +771,7 @@ int bt_peerconn_recv_handshake(void *pco, const char *expected_info_hash)
     /* disconnect if peer's ID is the same as ours */
     if (!strncmp(peer_id,me->my_peer_id,20))
     {
-        __disconnect(me, "handshake: peer_id same as ours\n");
+        __disconnect(me, "handshake: peer_id same as ours");
         return 0;
     }
 
@@ -1316,7 +1328,7 @@ int bt_peerconn_process_msg(void *pco)
         bt_peerconn_recv_handshake(pco, me->infohash);
 
         /*  send handshake */
-        if (!(me->state.flags & PC_HANDSHAKE_SENT))
+        if (!bt_peerconn_flag_is_set(me->state.flags,PC_HANDSHAKE_SENT))
         {
             bt_peerconn_send_handshake(me);
         }
@@ -1385,19 +1397,11 @@ void bt_peerconn_step(void *pco)
 
     me = pco;
 
-    /* send one pending request to the peer */
-    if (0 < llqueue_count(me->pendpeerreqs))
-    {
-        bt_block_t* blk;
-
-        blk = llqueue_poll(me->pendpeerreqs);
-        bt_peerconn_send_piece(me, blk);
-        free(blk);
-    }
+    if (bt_peerconn_flag_is_set(me, PC_UNCONTACTABLE_PEER))
+        return;
 
     /*  if the peer is not connected and is contactable */
-    if (!(me->state.flags & PC_CONNECTED) &&
-        !(me->state.flags & PC_UNCONTACTABLE_PEER))
+    if (!bt_peerconn_flag_is_set(me, PC_CONNECTED))
     {
         int ret;
 
@@ -1427,17 +1431,26 @@ void bt_peerconn_step(void *pco)
             me->state.flags = PC_CONNECTED;
 
             /* send handshake */
-            if (!(me->state.flags & PC_HANDSHAKE_SENT))
+            if (!bt_peerconn_flag_is_set(me,PC_HANDSHAKE_SENT))
             {
                 bt_peerconn_send_handshake(me);
             }
 
-            bt_peerconn_recv_handshake(me, me->infohash);
+            //bt_peerconn_recv_handshake(me, me->infohash);
         }
 
         return;
     }
 
+    /* send one pending request to the peer */
+    if (0 < llqueue_count(me->pendpeerreqs))
+    {
+        bt_block_t* blk;
+
+        blk = llqueue_poll(me->pendpeerreqs);
+        bt_peerconn_send_piece(me, blk);
+        free(blk);
+    }
 
     /* unchoke interested peer */
     if (bt_peerconn_peer_is_interested(me))
@@ -1455,7 +1468,7 @@ void bt_peerconn_step(void *pco)
 
         if (bt_peerconn_im_choked(me))
         {
-            __log(me,"peer is choking us %lx\n", (long unsigned int) pco);
+            __log(me,"peer is choking us %lx", (long unsigned int) pco);
             return;
         }
 
