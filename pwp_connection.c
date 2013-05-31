@@ -609,6 +609,9 @@ void bt_peerconn_send_bitfield(void *pco)
     unsigned char data[1000], *ptr;
     uint32_t size;
 
+    if (!me->func->getpiece)
+        return;
+
     /*
      * Bitfield
      * This message has ID 5 and a variable payload length.The payload is a
@@ -771,7 +774,8 @@ int bt_peerconn_recv_handshake(void *pco, const char *expected_info_hash)
     /* disconnect if peer's ID is the same as ours */
     if (!strncmp(peer_id,me->my_peer_id,20))
     {
-        __disconnect(me, "handshake: peer_id same as ours");
+        __disconnect(me, "handshake: peer_id same as ours (us: %s them: %.*s)",
+                me->my_peer_id, 20, peer_id);
         return 0;
     }
 
@@ -1323,22 +1327,17 @@ int bt_peerconn_process_msg(void *pco)
     }
 
     /* ensure we receive the handshake next */
-    if (!(me->state.flags & PC_HANDSHAKE_RECEIVED))
+    if (!bt_peerconn_flag_is_set(me,PC_HANDSHAKE_RECEIVED))
     {
         bt_peerconn_recv_handshake(pco, me->infohash);
 
         /*  send handshake */
-        if (!bt_peerconn_flag_is_set(me->state.flags,PC_HANDSHAKE_SENT))
+        if (!bt_peerconn_flag_is_set(me,PC_HANDSHAKE_SENT))
         {
             bt_peerconn_send_handshake(me);
         }
 
-        /*  send bitfield */
-        if (me->func->getpiece)
-        {
-            bt_peerconn_send_bitfield(me);
-        //    bt_peerconn_send_statechange(me, PWP_MSGTYPE_INTERESTED);
-        }
+        bt_peerconn_send_bitfield(me);
         return 1;
     }
 
@@ -1428,7 +1427,7 @@ void bt_peerconn_step(void *pco)
         {
             __log(me, "[connected],%.*s", 20, me->their_peer_id);
 
-            me->state.flags = PC_CONNECTED;
+            me->state.flags |= PC_CONNECTED;
 
             /* send handshake */
             if (!bt_peerconn_flag_is_set(me,PC_HANDSHAKE_SENT))
