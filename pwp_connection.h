@@ -12,6 +12,8 @@ typedef void *(*func_getpiece_f)( void *udata, unsigned int piece);
 typedef void (*func_write_block_to_stream_f)(
     void* pce, bt_block_t * blk, unsigned char ** msg);
 
+#ifndef HAVE_FUNC_LOG
+#define HAVE_FUNC_LOG
 typedef void (
     *func_log_f
 )    (
@@ -21,6 +23,7 @@ typedef void (
     const char *buf,
     ...
 );
+#endif
 
 
 typedef int (
@@ -74,12 +77,16 @@ typedef int (
     void * peer
 );
 
+
+#ifndef HAVE_FUNC_GET_INT
+#define HAVE_FUNC_GET_INT
 typedef int (
     *func_get_int_f
 )   (
     void *,
     void *pr
 );
+#endif
 
 #define PC_NONE ((unsigned int)0)
 #define PC_HANDSHAKE_SENT ((unsigned int)1<<0)
