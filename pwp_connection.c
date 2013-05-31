@@ -272,8 +272,7 @@ void *bt_peerconn_new()
 
 void bt_peerconn_release(void* pco)
 {
-    bt_peer_connection_t *me = pco;
-
+//    bt_peer_connection_t *me = pco;
 //    if (me->my_peer_id)
 //        free(me->my_peer_id);
 }
