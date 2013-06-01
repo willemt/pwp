@@ -647,8 +647,7 @@ void bt_peerconn_send_bitfield(void *pco)
  *  Receive handshake from other end
  *  Disconnect on any errors
  *
- *  @return 1 on success; otherwise 0
- ******/
+ *  @return 1 on success; otherwise 0 */
 int bt_peerconn_recv_handshake(void *pco, const char *expected_info_hash)
 {
     bt_peer_connection_t *me = pco;
@@ -662,7 +661,7 @@ int bt_peerconn_recv_handshake(void *pco, const char *expected_info_hash)
     char peer_id[PEER_ID_LEN];
     char peer_reserved[8 + 1];
 
-    __log(me, "read,handshake");
+    __log(me, "got,handshake");
 
     /* Name Length:
     The unsigned value of the first byte indicates the length of a character
@@ -775,7 +774,7 @@ int bt_peerconn_recv_handshake(void *pco, const char *expected_info_hash)
         return 0;
     }
 
-
+    __log(me, "read,handshake,me:%.*s,them:%.*s", 20, me->my_peer_id, 20, peer_id);
     return TRUE;
 }
 
@@ -787,8 +786,7 @@ int bt_peerconn_recv_handshake(void *pco, const char *expected_info_hash)
  * 2. receive handshake
  * 3. show interest
  *
- * @return 0 on failure; 1 otherwise
- */
+ * @return 0 on failure; 1 otherwise */
 int bt_peerconn_send_handshake(void *pco)
 {
     bt_peer_connection_t *me = pco;
@@ -1317,7 +1315,7 @@ int bt_peerconn_process_msg(void *pco)
     bt_peer_connection_t *me = pco;
 
     /* ensure that we are connected */
-    if (!(me->state.flags & PC_CONNECTED))
+    if (!bt_peerconn_flag_is_set(me, PC_CONNECTED))
     {
         return -1;
     }
@@ -1392,6 +1390,42 @@ static void __make_request(bt_peer_connection_t * me)
     }
 }
 
+/**
+ * Tells the peerconn that the connection worked.
+ * We are now connected */
+void bt_peerconn_connected(void* pco)
+{
+    bt_peer_connection_t *me = pco;
+
+    __log(me, "[connected],%.*s", 20, me->their_peer_id);
+
+    assert(!bt_peerconn_flag_is_set(me,PC_HANDSHAKE_SENT));
+
+    me->state.flags |= PC_CONNECTED;
+
+    /* send handshake */
+    bt_peerconn_send_handshake(me);
+
+    //bt_peerconn_recv_handshake(me, me->infohash);
+}
+
+/**
+ * Tells the peerconn that the connection failed */
+void bt_peerconn_connect_failed(void *pco)
+{
+    bt_peer_connection_t *me = pco;
+
+    /* check if we haven't failed before too many times
+     * we do not want to stay in an end-less loop */
+    me->state.failed_connections += 1;
+
+    if (5 < me->state.failed_connections)
+    {
+        me->state.flags = PC_UNCONTACTABLE_PEER;
+    }
+    assert(0);
+}
+
 void bt_peerconn_step(void *pco)
 {
     bt_peer_connection_t *me;
@@ -1404,41 +1438,15 @@ void bt_peerconn_step(void *pco)
     /*  if the peer is not connected and is contactable */
     if (!bt_peerconn_flag_is_set(me, PC_CONNECTED))
     {
-        int ret;
+        //int ret;
 
         assert(NULL != me->func);
         assert(NULL != me->func->connect);
 
         /* connect to this peer  */
         __log(me, "[connecting],%.*s", 20, me->their_peer_id);
-        ret = me->func->connect(me->caller, me, me->peer_udata);
-
-        /* check if we haven't failed before too many times
-         * we do not want to stay in an end-less loop */
-        if (0 == ret)
-        {
-            me->state.failed_connections += 1;
-
-            if (5 < me->state.failed_connections)
-            {
-                me->state.flags = PC_UNCONTACTABLE_PEER;
-            }
-            assert(0);
-        }
-        else
-        {
-            __log(me, "[connected],%.*s", 20, me->their_peer_id);
-
-            me->state.flags |= PC_CONNECTED;
-
-            /* send handshake */
-            if (!bt_peerconn_flag_is_set(me,PC_HANDSHAKE_SENT))
-            {
-                bt_peerconn_send_handshake(me);
-            }
-
-            //bt_peerconn_recv_handshake(me, me->infohash);
-        }
+        me->func->connect(me->caller, me, me->peer_udata);
+        //ret = me->func->connect(me->caller, me, me->peer_udata);
 
         return;
     }

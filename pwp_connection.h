@@ -195,14 +195,18 @@ int bt_peerconn_peer_has_piece(void *pco, const int piece_idx);
 
 
 typedef struct {
-    /* send data to peer */
+    /** send data to peer */
     func_send_f send;
 
-    /* recv data from peer */
+    /** recv data from peer */
     func_recv_f recv;
 
-    /* connect to the peer
-     * In 'TCP' terms this is the actual initiation of the connection */
+    /** 
+     * Connect to the peer over the network medium.
+     * In 'TCP' terms this is the actual initiation of the connection
+     * This call should be non-blocking.
+     * System that handles this is responsible for calling:
+     *  "bt_peerconn_connected" and "bt_peerconn_connect_failed" */
     func_connect_f connect;
 
     /* drop the connect.
@@ -228,4 +232,8 @@ typedef struct {
 void bt_peerconn_set_functions(void *pco, pwp_connection_functions_t* funcs, void* caller);
 
 int bt_peerconn_flag_is_set(void *pco, const int flag);
+
+void bt_peerconn_connected(void* pco);
+
+void bt_peerconn_connect_failed(void *pco);
 
