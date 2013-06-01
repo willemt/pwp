@@ -643,14 +643,11 @@ void bt_peerconn_send_bitfield(void *pco)
 
 /*----------------------------------------------------------------------------*/
 
- /****f* bt.peerconnection/recv_handshake*
- * FUNCTION
- *  receive handshake from other end
- *  disconnect on any errors
- * RESULT
- *  1 on success;
- *  otherwise 0
+/**
+ *  Receive handshake from other end
+ *  Disconnect on any errors
  *
+ *  @return 1 on success; otherwise 0
  ******/
 int bt_peerconn_recv_handshake(void *pco, const char *expected_info_hash)
 {
@@ -778,8 +775,6 @@ int bt_peerconn_recv_handshake(void *pco, const char *expected_info_hash)
         return 0;
     }
 
-    me->state.flags |= PC_HANDSHAKE_RECEIVED;
-    __log(me, "[connection],gothandshake,%.*s", 20, me->their_peer_id);
 
     return TRUE;
 }
@@ -827,7 +822,6 @@ int bt_peerconn_send_handshake(void *pco)
     /* calculate total handshake size */
     size = 1 + strlen(protocol_name) + 8 + 20 + 20;
 
-    __log(me, "send,handshake");
 
     if (0 == __send_to_peer(me, buf, size))
     {
@@ -837,6 +831,9 @@ int bt_peerconn_send_handshake(void *pco)
     }
 
     me->state.flags |= PC_HANDSHAKE_SENT;
+
+    __log(me, "send,handshake");
+
     return 1;
 }
 
@@ -1328,16 +1325,22 @@ int bt_peerconn_process_msg(void *pco)
     /* ensure we receive the handshake next */
     if (!bt_peerconn_flag_is_set(me,PC_HANDSHAKE_RECEIVED))
     {
-        bt_peerconn_recv_handshake(pco, me->infohash);
-
-        /*  send handshake */
-        if (!bt_peerconn_flag_is_set(me,PC_HANDSHAKE_SENT))
+        if (1 == bt_peerconn_recv_handshake(pco, me->infohash))
         {
-            bt_peerconn_send_handshake(me);
-        }
+            me->state.flags |= PC_HANDSHAKE_RECEIVED;
 
-        bt_peerconn_send_bitfield(me);
-        return 1;
+            __log(me, "[connection],gothandshake,%.*s", 20, me->their_peer_id);
+
+            /*  send handshake */
+            if (!bt_peerconn_flag_is_set(me,PC_HANDSHAKE_SENT))
+            {
+                bt_peerconn_send_handshake(me);
+            }
+
+            bt_peerconn_send_bitfield(me);
+
+            return 1;
+        }
     }
 
     /* business as usual messages received below: */
@@ -1437,6 +1440,11 @@ void bt_peerconn_step(void *pco)
             //bt_peerconn_recv_handshake(me, me->infohash);
         }
 
+        return;
+    }
+    /* don't do any processing unless we have received a handshake */
+    else if (!bt_peerconn_flag_is_set(me, PC_HANDSHAKE_RECEIVED))
+    {
         return;
     }
 

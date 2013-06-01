@@ -558,3 +558,37 @@ void TestPWP_handshake_wont_send_unless_receieved_handshake(
     CuAssertTrue(tc, 0 == bt_peerconn_is_active(pc));
 }
 
+void TestPWP_handshake_stepping_wont_send_unless_receieved_handshake(
+    CuTest * tc
+)
+{
+    unsigned char msg[1000];
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_send,
+        .connect = __FUNC_connect,
+    };
+    void *pc;
+    test_sender_t sender;
+
+    __sender_set(&sender,NULL,msg);
+    pc = bt_peerconn_new();
+    bt_peerconn_set_piece_info(pc,20,20);
+    bt_peerconn_set_functions(pc, &funcs, &sender);
+    bt_peerconn_set_active(pc, 1);
+    /*  handshaking requires infohash */
+    strcpy(sender.infohash, "00000000000000000000");
+    bt_peerconn_set_infohash(pc,__mock_infohash);
+    bt_peerconn_set_my_peer_id(pc, __mock_my_peer_id);
+    bt_peerconn_send_handshake(pc);
+    CuAssertTrue(tc, 1 == sender.nsent_messages); 
+
+    /* stepping results in the client sending interested messages.
+     * Lets make sure it doesn't do that, since it hasn't received a handshake yet. */
+    bt_peerconn_step(pc);
+    CuAssertTrue(tc, 1 == sender.nsent_messages); 
+    bt_peerconn_step(pc);
+    CuAssertTrue(tc, 1 == sender.nsent_messages); 
+    bt_peerconn_step(pc);
+    CuAssertTrue(tc, 1 == sender.nsent_messages); 
+}
+

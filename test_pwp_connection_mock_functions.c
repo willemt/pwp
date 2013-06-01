@@ -47,6 +47,18 @@ int __FUNC_peercon_recv(
 
 /*----------------------------------------------------------------------------*/
 
+int __FUNC_connect(
+    /* caller */
+    void* r __attribute__((__unused__)), 
+    /* me */
+    void* me __attribute__((__unused__)),
+    void * peer __attribute__((__unused__))
+)
+{
+//    test_sender_t * sender = r;
+    return 1;
+}
+
 int __FUNC_disconnect(
     void* r,
     void * peer __attribute__((__unused__)),
@@ -165,6 +177,7 @@ int __FUNC_send(
 
     memcpy(sender->send_data + sender->send_pos, send_data, len);
     sender->send_pos += len;
+    sender->nsent_messages += 1;
     return 1;
 }
 

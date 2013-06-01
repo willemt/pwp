@@ -2,7 +2,11 @@
 typedef struct
 {
     /* send */
+    /* number of sent messages */
+    int nsent_messages;
+    /* position we are on our send buffer */
     int send_pos;
+    /* send buffer */
     char *send_data;
 
     /* read */
@@ -17,6 +21,13 @@ typedef struct
 
     int has_disconnected;
 } test_sender_t;
+
+int __FUNC_connect(
+    /* caller */
+    void* r __attribute__((__unused__)), 
+    /* me */
+    void* me __attribute__((__unused__)),
+    void * peer __attribute__((__unused__)));
 
 
 int __FUNC_peercon_recv( void* r, void * peer __attribute__((__unused__)), char *buf, int *len);
