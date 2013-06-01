@@ -195,10 +195,18 @@ int bt_peerconn_peer_has_piece(void *pco, const int piece_idx);
 
 
 typedef struct {
-    /* sendreceiver work */
+    /* send data to peer */
     func_send_f send;
+
+    /* recv data from peer */
     func_recv_f recv;
+
+    /* connect to the peer
+     * In 'TCP' terms this is the actual initiation of the connection */
     func_connect_f connect;
+
+    /* drop the connect.
+     * Most likely because we detected an error with the peer's processing */
     func_disconnect_f disconnect;
 
     /* manage piece related operations */
@@ -209,6 +217,7 @@ typedef struct {
     /* We're able to request a block from the peer now.
      * Ask our caller if they have an idea of what block they would like. */
     func_pollblock_f pollblock;
+
     /* We've just downloaded the block and want to allocate it. */
     func_pushblock_f pushblock;
 
