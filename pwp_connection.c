@@ -75,7 +75,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     PWP_MSGTYPE_PIECE == (m) ? "PIECE" :\
     PWP_MSGTYPE_CANCEL == (m) ? "CANCEL" : "none"\
 
-static const bt_pwp_cfg_t __default_cfg = {.max_pending_requests = 10 };
+//static const bt_pwp_cfg_t __default_cfg = {.max_pending_requests = 10 };
 
 /*  state */
 typedef struct
@@ -266,7 +266,7 @@ void *bt_peerconn_new()
     me->state.flags = PC_IM_CHOKING | PC_PEER_CHOKING;
     me->pendreqs = hashmap_new(__request_hash, __request_compare, 11);
     me->pendpeerreqs = llqueue_new();
-    me->cfg = &__default_cfg;
+//    me->cfg = &__default_cfg;
     return me;
 }
 
@@ -639,6 +639,7 @@ void bt_peerconn_send_bitfield(void *pco)
 
     __send_to_peer(me, data, size);
     __log(me, "send,bitfield");
+
 }
 
 /*----------------------------------------------------------------------------*/
@@ -830,7 +831,7 @@ int bt_peerconn_send_handshake(void *pco)
 
     me->state.flags |= PC_HANDSHAKE_SENT;
 
-    __log(me, "send,handshake");
+    __log(me, "send,handshake,mypeerid:%s",me->my_peer_id);
 
     return 1;
 }
@@ -1368,7 +1369,7 @@ void bt_peerconn_request_block(void * pco, bt_block_t * blk)
     bt_peer_connection_t * me = pco;
     request_t *req;
 
-    __log(me, "request block: %d %d %d\n",
+    __log(me, "request block: %d %d %d",
            blk->piece_idx, blk->block_byte_offset, blk->block_len);
 
     req = malloc(sizeof(request_t));
@@ -1438,15 +1439,12 @@ void bt_peerconn_step(void *pco)
     /*  if the peer is not connected and is contactable */
     if (!bt_peerconn_flag_is_set(me, PC_CONNECTED))
     {
-        //int ret;
-
         assert(NULL != me->func);
         assert(NULL != me->func->connect);
 
         /* connect to this peer  */
-        __log(me, "[connecting],%.*s", 20, me->their_peer_id);
+        //__log(me, "[connecting],%.*s", 20, me->their_peer_id);
         me->func->connect(me->caller, me, me->peer_udata);
-        //ret = me->func->connect(me->caller, me, me->peer_udata);
 
         return;
     }
@@ -1487,8 +1485,8 @@ void bt_peerconn_step(void *pco)
         }
 
         /*  max out pipeline */
-        end = me->cfg->max_pending_requests -
-            bt_peerconn_get_npending_requests(me);
+        end = 10 - bt_peerconn_get_npending_requests(me);
+
         for (ii = 0; ii < end; ii++)
         {
             __make_request(me);

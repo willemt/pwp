@@ -218,8 +218,11 @@ typedef struct {
     func_get_int_f piece_is_complete;
     func_getpiece_f getpiece;
 
-    /* We're able to request a block from the peer now.
-     * Ask our caller if they have an idea of what block they would like. */
+    /**
+     * Ask our caller if they have an idea of what block they would like.
+     * We're able to request a block from the peer now.
+     *
+     * @return 0 on success; otherwise -1 on failure*/
     func_pollblock_f pollblock;
 
     /* We've just downloaded the block and want to allocate it. */
