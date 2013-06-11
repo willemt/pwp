@@ -962,7 +962,7 @@ static int __recv_request(bt_peer_connection_t * me,
     }
 
     /*  ensure payload length is correct */
-    if (payload_len != 11)
+    if (payload_len != 12)
     {
         __disconnect(me, "invalid payload size for request: %d", payload_len);
         return 0;
