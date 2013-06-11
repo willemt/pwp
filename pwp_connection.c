@@ -119,13 +119,10 @@ typedef struct
     const char *their_peer_id;
     const char *infohash;
 
-    const bt_pwp_cfg_t *cfg;
-
     pwp_connection_functions_t *func;
 
     void *caller;
 } bt_peer_connection_t;
-
 
 static unsigned long __request_hash(const void *obj)
 {
@@ -266,7 +263,6 @@ void *bt_peerconn_new()
     me->state.flags = PC_IM_CHOKING | PC_PEER_CHOKING;
     me->pendreqs = hashmap_new(__request_hash, __request_compare, 11);
     me->pendpeerreqs = llqueue_new();
-//    me->cfg = &__default_cfg;
     return me;
 }
 
@@ -1040,7 +1036,8 @@ static int __recv_piece(bt_peer_connection_t * me,
     __log(me, "read,piece,pieceidx=%d offset=%d length=%d",
           request.piece_idx, request.block_byte_offset, request.block_len);
 
-    /* insert block into database */
+    /* Insert block into database.
+     * Should result in the caller having other peerconns send HAVE messages */
     me->func->pushblock(me->caller, me->peer_udata, &request, block_data);
 
     /*  there should have been a request polled */
