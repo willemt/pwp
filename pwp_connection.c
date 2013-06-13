@@ -45,10 +45,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* for varags */
 #include <stdarg.h>
 
+#include "bitfield.h"
 #include "pwp_connection.h"
 #include "linked_list_hashmap.h"
 #include "linked_list_queue.h"
-#include "bitfield.h"
 #include "bitstream.h"
 
 #define TRUE 1

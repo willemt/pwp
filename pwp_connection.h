@@ -232,6 +232,54 @@ typedef struct {
     func_log_f log;
 } pwp_connection_functions_t;
 
+
+typedef struct {
+    int pieceidx;
+    int block_byte_offset;
+    void* data;
+    int data_size;
+} msg_piece_t;
+
+typedef struct {
+    int pieceidx;
+    int block_byte_offset;
+    int block_len;
+} msg_request_t;
+
+typedef struct {
+    int pieceidx;
+    int block_byte_offset;
+    int block_len;
+} msg_cancel_t;
+
+typedef struct {
+    int pieceidx;
+} msg_have_t;
+
+typedef struct {
+   bitfield_t bf;
+} msg_bitfield_t;
+
+void pwp_conn_keepalive(void* pco);
+
+void pwp_conn_choke(void* pco);
+
+void pwp_conn_unchoke(void* pco);
+
+void pwp_conn_interested(void* pco);
+
+void pwp_conn_uninterested(void* pco);
+
+void pwp_conn_have(void* pco, msg_have_t* have);
+
+void pwp_conn_bitfield(void* pco, msg_bitfield_t* bitfield);
+
+void pwp_conn_request(void* pco, msg_request_t *request);
+
+void pwp_conn_cancel(void* pco, msg_cancel_t *cancel);
+
+void pwp_conn_piece(void* pco, msg_piece_t *piece);
+
 void pwp_conn_set_functions(void *pco, pwp_connection_functions_t* funcs, void* caller);
 
 int pwp_conn_flag_is_set(void *pco, const int flag);

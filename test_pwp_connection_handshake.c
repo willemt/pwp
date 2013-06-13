@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "CuTest.h"
 
+#include "bitfield.h"
 #include "pwp_connection.h"
 #include "bitstream.h"
 #include "bt_block_readwriter_i.h"
