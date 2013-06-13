@@ -22,9 +22,9 @@ void TestPWP_getset_peer(
     void *pc;
     char* peer = "test";
 
-    pc = bt_peerconn_new();
-    bt_peerconn_set_peer(pc,peer);
-    CuAssertTrue(tc, peer == bt_peerconn_get_peer(pc));
+    pc = pwp_conn_new();
+    pwp_conn_set_peer(pc,peer);
+    CuAssertTrue(tc, peer == pwp_conn_get_peer(pc));
 }
 
 void TestPWP_init_has_us_choked(
@@ -33,8 +33,8 @@ void TestPWP_init_has_us_choked(
 {
     void *pc;
 
-    pc = bt_peerconn_new();
-    CuAssertTrue(tc, 1 == bt_peerconn_im_choked(pc));
+    pc = pwp_conn_new();
+    CuAssertTrue(tc, 1 == pwp_conn_im_choked(pc));
 }
 
 void TestPWP_init_not_interested(
@@ -43,8 +43,8 @@ void TestPWP_init_not_interested(
 {
     void *pc;
 
-    pc = bt_peerconn_new();
-    CuAssertTrue(tc, 0 == bt_peerconn_im_interested(pc));
+    pc = pwp_conn_new();
+    CuAssertTrue(tc, 0 == pwp_conn_im_interested(pc));
 }
 
 /**
@@ -56,9 +56,9 @@ void TestPWP_choke_sets_as_choked(
 {
     void *pc;
 
-    pc = bt_peerconn_new();
-    bt_peerconn_choke(pc);
-    CuAssertTrue(tc, bt_peerconn_peer_is_choked(pc));
+    pc = pwp_conn_new();
+    pwp_conn_choke(pc);
+    CuAssertTrue(tc, pwp_conn_peer_is_choked(pc));
 }
 
 void TestPWP_unchoke_sets_as_unchoked(
@@ -67,10 +67,10 @@ void TestPWP_unchoke_sets_as_unchoked(
 {
     void *pc;
 
-    pc = bt_peerconn_new();
-    bt_peerconn_choke(pc);
-    bt_peerconn_unchoke(pc);
-    CuAssertTrue(tc, !bt_peerconn_peer_is_choked(pc));
+    pc = pwp_conn_new();
+    pwp_conn_choke(pc);
+    pwp_conn_unchoke(pc);
+    CuAssertTrue(tc, !pwp_conn_peer_is_choked(pc));
 }
 
 void TestPWP_unchoke_setget_flag(
@@ -79,8 +79,8 @@ void TestPWP_unchoke_setget_flag(
 {
     void *pc;
 
-    pc = bt_peerconn_new();
-    bt_peerconn_set_state(pc, PC_IM_CHOKING | PC_HANDSHAKE_RECEIVED);
-    CuAssertTrue(tc, bt_peerconn_flag_is_set(pc, PC_IM_CHOKING));
+    pc = pwp_conn_new();
+    pwp_conn_set_state(pc, PC_IM_CHOKING | PC_HANDSHAKE_RECEIVED);
+    CuAssertTrue(tc, pwp_conn_flag_is_set(pc, PC_IM_CHOKING));
 }
 

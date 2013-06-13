@@ -121,77 +121,77 @@ typedef struct
     int max_pending_requests;
 } bt_pwp_cfg_t;
 
-void *bt_peerconn_get_peer(void *pco);
+void *pwp_conn_get_peer(void *pco);
 
-void *bt_peerconn_new();
+void *pwp_conn_new();
 
-void bt_peerconn_set_active(void *pco, int opt);
+void pwp_conn_set_active(void *pco, int opt);
 
-int bt_peerconn_peer_is_interested(void *pco);
+int pwp_conn_peer_is_interested(void *pco);
 
-int bt_peerconn_is_active(void *pco);
+int pwp_conn_is_active(void *pco);
 
-void bt_peerconn_set_my_peer_id(void *pco, const char *peer_id);
+void pwp_conn_set_my_peer_id(void *pco, const char *peer_id);
 
-void bt_peerconn_set_their_peer_id(void *pco, const char *peer_id);
+void pwp_conn_set_their_peer_id(void *pco, const char *peer_id);
 
-void bt_peerconn_set_infohash(void *pco, const char *infohash);
+void pwp_conn_set_infohash(void *pco, const char *infohash);
 
-void bt_peerconn_set_peer(void *pco, void * peer);
+void pwp_conn_set_peer(void *pco, void * peer);
 
-int bt_peerconn_peer_is_interested(void *pco);
+int pwp_conn_peer_is_interested(void *pco);
 
-int bt_peerconn_peer_is_choked(void *pco);
+int pwp_conn_peer_is_choked(void *pco);
 
-int bt_peerconn_im_choked(void *pco);
+int pwp_conn_im_choked(void *pco);
 
-int bt_peerconn_im_interested(void *pco);
+int pwp_conn_im_interested(void *pco);
 
-void bt_peerconn_choke(void * pc);
+void pwp_conn_choke(void * pc);
 
-void bt_peerconn_unchoke(void * pco);
+void pwp_conn_unchoke(void * pco);
 
-int bt_peerconn_get_download_rate(const void * pco);
+int pwp_conn_get_download_rate(const void * pco);
 
-int bt_peerconn_get_upload_rate(const void * pco);
+int pwp_conn_get_upload_rate(const void * pco);
 
-int bt_peerconn_send_statechange(void * pco, const unsigned char msg_type);
+int pwp_conn_send_statechange(void * pco, const unsigned char msg_type);
 
-void bt_peerconn_send_piece(void *pco, bt_block_t * req);
+void pwp_conn_send_piece(void *pco, bt_block_t * req);
 
-int bt_peerconn_send_have(void *pco, const int piece_idx);
+int pwp_conn_send_have(void *pco, const int piece_idx);
 
-void bt_peerconn_send_request(void *pco, const bt_block_t * request);
+void pwp_conn_send_request(void *pco, const bt_block_t * request);
 
-void bt_peerconn_send_cancel(void *pco, bt_block_t * cancel);
+void pwp_conn_send_cancel(void *pco, bt_block_t * cancel);
 
-void bt_peerconn_send_bitfield(void *pco);
+void pwp_conn_send_bitfield(void *pco);
 
-int bt_peerconn_recv_handshake(void *pco, const char *info_hash);
+int pwp_conn_recv_handshake(void *pco, const char *info_hash);
 
-int bt_peerconn_send_handshake(void *pco);
+int pwp_conn_send_handshake(void *pco);
 
-void bt_peerconn_set_piece_info(void *pco, int num_pieces, int piece_len);
+void pwp_conn_set_piece_info(void *pco, int num_pieces, int piece_len);
 
-void bt_peerconn_set_state(void *pco, const int state);
+void pwp_conn_set_state(void *pco, const int state);
 
-int bt_peerconn_get_state(void *pco);
+int pwp_conn_get_state(void *pco);
 
-int bt_peerconn_mark_peer_has_piece(void *pco, const int piece_idx);
+int pwp_conn_mark_peer_has_piece(void *pco, const int piece_idx);
 
-int bt_peerconn_process_request(void * pco, bt_block_t * request);
+int pwp_conn_process_request(void * pco, bt_block_t * request);
 
-int bt_peerconn_process_msg(void *pco);
+int pwp_conn_process_msg(void *pco);
 
-int bt_peerconn_get_npending_requests(const void * pco);
+int pwp_conn_get_npending_requests(const void * pco);
 
-int bt_peerconn_get_npending_peer_requests(const void* pco);
+int pwp_conn_get_npending_peer_requests(const void* pco);
 
-void bt_peerconn_request_block(void * pco, bt_block_t * blk);
+void pwp_conn_request_block(void * pco, bt_block_t * blk);
 
-void bt_peerconn_step(void *pco);
+void pwp_conn_step(void *pco);
 
-int bt_peerconn_peer_has_piece(void *pco, const int piece_idx);
+int pwp_conn_peer_has_piece(void *pco, const int piece_idx);
 
 
 typedef struct {
@@ -206,7 +206,7 @@ typedef struct {
      * In 'TCP' terms this is the actual initiation of the connection
      * This call should be non-blocking.
      * System that handles this is responsible for calling:
-     *  "bt_peerconn_connected" and "bt_peerconn_connect_failed" */
+     *  "pwp_conn_connected" and "pwp_conn_connect_failed" */
     func_connect_f connect;
 
     /* drop the connect.
@@ -232,11 +232,11 @@ typedef struct {
     func_log_f log;
 } pwp_connection_functions_t;
 
-void bt_peerconn_set_functions(void *pco, pwp_connection_functions_t* funcs, void* caller);
+void pwp_conn_set_functions(void *pco, pwp_connection_functions_t* funcs, void* caller);
 
-int bt_peerconn_flag_is_set(void *pco, const int flag);
+int pwp_conn_flag_is_set(void *pco, const int flag);
 
-void bt_peerconn_connected(void* pco);
+void pwp_conn_connected(void* pco);
 
-void bt_peerconn_connect_failed(void *pco);
+void pwp_conn_connect_failed(void *pco);
 

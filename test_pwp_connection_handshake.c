@@ -33,13 +33,13 @@ void TestPWP_sending_handshake_sets_handshake_sent_state(
     };
 
     __sender_set(&sender,NULL,msg);
-    pc = bt_peerconn_new();
-    bt_peerconn_set_my_peer_id(pc, __mock_my_peer_id);
-    bt_peerconn_set_their_peer_id(pc, __mock_their_peer_id);
-    bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_set_functions(pc, &funcs, &sender);
-    bt_peerconn_send_handshake(pc);
-    CuAssertTrue(tc, (PC_HANDSHAKE_SENT & bt_peerconn_get_state(pc)));
+    pc = pwp_conn_new();
+    pwp_conn_set_my_peer_id(pc, __mock_my_peer_id);
+    pwp_conn_set_their_peer_id(pc, __mock_their_peer_id);
+    pwp_conn_set_infohash(pc,__mock_infohash);
+    pwp_conn_set_functions(pc, &funcs, &sender);
+    pwp_conn_send_handshake(pc);
+    CuAssertTrue(tc, (PC_HANDSHAKE_SENT & pwp_conn_get_state(pc)));
 }
 
 /**
@@ -57,14 +57,14 @@ void TestPWP_handshake_sent_state_not_set_when_send_failed(
     };
 
     __sender_set(&sender,NULL,msg);
-    pc = bt_peerconn_new();
-    bt_peerconn_set_functions(pc, &funcs, &sender);
+    pc = pwp_conn_new();
+    pwp_conn_set_functions(pc, &funcs, &sender);
     /*  this sending function fails on every send */
-    bt_peerconn_set_functions(pc, &funcs, &sender);
-    bt_peerconn_set_my_peer_id(pc, __mock_my_peer_id);
-    bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_send_handshake(pc);
-    CuAssertTrue(tc, 0 == (PC_HANDSHAKE_SENT & bt_peerconn_get_state(pc)));
+    pwp_conn_set_functions(pc, &funcs, &sender);
+    pwp_conn_set_my_peer_id(pc, __mock_my_peer_id);
+    pwp_conn_set_infohash(pc,__mock_infohash);
+    pwp_conn_send_handshake(pc);
+    CuAssertTrue(tc, 0 == (PC_HANDSHAKE_SENT & pwp_conn_get_state(pc)));
 }
 
 /**
@@ -89,15 +89,15 @@ void TestPWP_no_reading_without_handshake(
     bitstream_write_uint32(&ptr, 1);       /*  length = 1 */
     bitstream_write_ubyte(&ptr, 0);        /*  0 = choke */
     /*  peer connection */
-    pc = bt_peerconn_new();
-    bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_functions(pc, &funcs, &sender);
-    bt_peerconn_set_state(pc, PC_CONNECTED);
-    bt_peerconn_set_my_peer_id(pc, __mock_my_peer_id);
+    pc = pwp_conn_new();
+    pwp_conn_set_piece_info(pc,20,20);
+    pwp_conn_set_functions(pc, &funcs, &sender);
+    pwp_conn_set_state(pc, PC_CONNECTED);
+    pwp_conn_set_my_peer_id(pc, __mock_my_peer_id);
     /*  handshaking requires infohash */
     strcpy(sender.infohash, "00000000000000000000");
-    bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_process_msg(pc);
+    pwp_conn_set_infohash(pc,__mock_infohash);
+    pwp_conn_process_msg(pc);
     /* we have disconnected */
     CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
@@ -127,14 +127,14 @@ void TxestPWP_read_msg_other_than_bitfield_after_handshake_disconnects(
     bitstream_write_uint32(&ptr, 1);       /*  piece 1 */
 
     /*  peer connection */
-    pc = bt_peerconn_new();
+    pc = pwp_conn_new();
     /*  current state is with handshake just completed */
-    bt_peerconn_set_state(pc,
+    pwp_conn_set_state(pc,
                           PC_CONNECTED | PC_HANDSHAKE_SENT |
                           PC_HANDSHAKE_RECEIVED);
-    bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_functions(pc, &funcs, &sender);
-    bt_peerconn_process_msg(pc);
+    pwp_conn_set_piece_info(pc,20,20);
+    pwp_conn_set_functions(pc, &funcs, &sender);
+    pwp_conn_process_msg(pc);
 
     CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
@@ -165,11 +165,11 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_invalid_name_length(
     bitstream_write_string(&ptr, __mock_infohash, 20); /* ih */
     bitstream_write_string(&ptr, __mock_their_peer_id, 20); /* pi */
 
-    pc = bt_peerconn_new();
-    bt_peerconn_set_state(pc, PC_CONNECTED | PC_HANDSHAKE_SENT);
-    bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_functions(pc, &funcs, &sender);
-    bt_peerconn_process_msg(pc);
+    pc = pwp_conn_new();
+    pwp_conn_set_state(pc, PC_CONNECTED | PC_HANDSHAKE_SENT);
+    pwp_conn_set_piece_info(pc,20,20);
+    pwp_conn_set_functions(pc, &funcs, &sender);
+    pwp_conn_process_msg(pc);
     CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 
@@ -197,11 +197,11 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_invalid_protocol_name(
     bitstream_write_string(&ptr, __mock_infohash, 20); /* ih */
     bitstream_write_string(&ptr, __mock_their_peer_id, 20); /* pi */
 
-    pc = bt_peerconn_new();
-    bt_peerconn_set_state(pc, PC_CONNECTED | PC_HANDSHAKE_SENT);
-    bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_functions(pc, &funcs, &sender);
-    bt_peerconn_process_msg(pc);
+    pc = pwp_conn_new();
+    pwp_conn_set_state(pc, PC_CONNECTED | PC_HANDSHAKE_SENT);
+    pwp_conn_set_piece_info(pc,20,20);
+    pwp_conn_set_functions(pc, &funcs, &sender);
+    pwp_conn_process_msg(pc);
     CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 
@@ -232,13 +232,13 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_used_reserved_eight_byte
     bitstream_write_string(&ptr, __mock_infohash, 20); /* ih */
     bitstream_write_string(&ptr, __mock_their_peer_id, 20); /* pi */
 
-    pc = bt_peerconn_new();
-    bt_peerconn_set_state(pc, PC_CONNECTED | PC_HANDSHAKE_SENT);
-    bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_their_peer_id(pc,__mock_their_peer_id);
-    bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_set_functions(pc, &funcs, &sender);
-    bt_peerconn_process_msg(pc);
+    pc = pwp_conn_new();
+    pwp_conn_set_state(pc, PC_CONNECTED | PC_HANDSHAKE_SENT);
+    pwp_conn_set_piece_info(pc,20,20);
+    pwp_conn_set_their_peer_id(pc,__mock_their_peer_id);
+    pwp_conn_set_infohash(pc,__mock_infohash);
+    pwp_conn_set_functions(pc, &funcs, &sender);
+    pwp_conn_process_msg(pc);
     CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 
@@ -269,14 +269,14 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_infohash_that_is_same_as
     bitstream_write_string(&ptr, __mock_infohash, strlen(__mock_infohash)); /* ih */
     bitstream_write_string(&ptr, __mock_my_peer_id, strlen(__mock_my_peer_id)); /* pi */
 
-    pc = bt_peerconn_new();
-    bt_peerconn_set_state(pc, PC_CONNECTED | PC_HANDSHAKE_SENT);
-    bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_infohash(pc,"00000000000000000001");
-    bt_peerconn_set_my_peer_id(pc,__mock_my_peer_id);
-    bt_peerconn_set_their_peer_id(pc,__mock_my_peer_id);
-    bt_peerconn_set_functions(pc, &funcs, &sender);
-    bt_peerconn_process_msg(pc);
+    pc = pwp_conn_new();
+    pwp_conn_set_state(pc, PC_CONNECTED | PC_HANDSHAKE_SENT);
+    pwp_conn_set_piece_info(pc,20,20);
+    pwp_conn_set_infohash(pc,"00000000000000000001");
+    pwp_conn_set_my_peer_id(pc,__mock_my_peer_id);
+    pwp_conn_set_their_peer_id(pc,__mock_my_peer_id);
+    pwp_conn_set_functions(pc, &funcs, &sender);
+    pwp_conn_process_msg(pc);
     CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 
@@ -310,13 +310,13 @@ void TestPWP_handshake_read_disconnect_if_handshake_shows_a_peer_with_different_
     bitstream_write_string(&ptr, __mock_infohash, 20); /* ih */
     bitstream_write_string(&ptr, "00000000000000000000", 20); /* pi */
 
-    pc = bt_peerconn_new();
-    bt_peerconn_set_state(pc, PC_CONNECTED | PC_HANDSHAKE_SENT);
-    bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_their_peer_id(pc,__mock_their_peer_id);
-    bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_set_functions(pc, &funcs, &sender);
-    bt_peerconn_process_msg(pc);
+    pc = pwp_conn_new();
+    pwp_conn_set_state(pc, PC_CONNECTED | PC_HANDSHAKE_SENT);
+    pwp_conn_set_piece_info(pc,20,20);
+    pwp_conn_set_their_peer_id(pc,__mock_their_peer_id);
+    pwp_conn_set_infohash(pc,__mock_infohash);
+    pwp_conn_set_functions(pc, &funcs, &sender);
+    pwp_conn_process_msg(pc);
     CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 
@@ -352,15 +352,15 @@ void TestPWP_handshake_read_disconnect_if_handshake_shows_peer_with_our_peer_id(
     bitstream_write_string(&ptr, __mock_infohash, 20); /* ih */
     bitstream_write_string(&ptr, __mock_my_peer_id, 20); /* pi */
 
-    pc = bt_peerconn_new();
-    bt_peerconn_set_state(pc, PC_CONNECTED | PC_HANDSHAKE_SENT);
-    bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_set_my_peer_id(pc,__mock_my_peer_id);
-    bt_peerconn_set_their_peer_id(pc,__mock_my_peer_id);
-    bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_set_functions(pc, &funcs, &sender);
-    bt_peerconn_process_msg(pc);
+    pc = pwp_conn_new();
+    pwp_conn_set_state(pc, PC_CONNECTED | PC_HANDSHAKE_SENT);
+    pwp_conn_set_piece_info(pc,20,20);
+    pwp_conn_set_infohash(pc,__mock_infohash);
+    pwp_conn_set_my_peer_id(pc,__mock_my_peer_id);
+    pwp_conn_set_their_peer_id(pc,__mock_my_peer_id);
+    pwp_conn_set_infohash(pc,__mock_infohash);
+    pwp_conn_set_functions(pc, &funcs, &sender);
+    pwp_conn_process_msg(pc);
     CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 
@@ -400,17 +400,17 @@ void TestPWP_handshake_read_valid_handshake_results_in_state_changing_to_handsha
     bitstream_write_string(&ptr, __mock_infohash, 20); /* ih */
     bitstream_write_string(&ptr, __mock_their_peer_id, 20); /* pi */
 
-    pc = bt_peerconn_new();
-    bt_peerconn_set_state(pc, PC_CONNECTED | PC_HANDSHAKE_SENT);
-    bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_set_my_peer_id(pc,__mock_my_peer_id);
-    bt_peerconn_set_their_peer_id(pc,__mock_their_peer_id);
-    bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_set_functions(pc, &funcs, &sender);
-    bt_peerconn_process_msg(pc);
+    pc = pwp_conn_new();
+    pwp_conn_set_state(pc, PC_CONNECTED | PC_HANDSHAKE_SENT);
+    pwp_conn_set_piece_info(pc,20,20);
+    pwp_conn_set_infohash(pc,__mock_infohash);
+    pwp_conn_set_my_peer_id(pc,__mock_my_peer_id);
+    pwp_conn_set_their_peer_id(pc,__mock_their_peer_id);
+    pwp_conn_set_infohash(pc,__mock_infohash);
+    pwp_conn_set_functions(pc, &funcs, &sender);
+    pwp_conn_process_msg(pc);
     CuAssertTrue(tc, 0 == sender.has_disconnected);
-    CuAssertTrue(tc, bt_peerconn_get_state(pc) == (PC_CONNECTED | PC_HANDSHAKE_SENT | PC_HANDSHAKE_RECEIVED));
+    CuAssertTrue(tc, pwp_conn_get_state(pc) == (PC_CONNECTED | PC_HANDSHAKE_SENT | PC_HANDSHAKE_RECEIVED));
 }
 
 void TestPWP_handshake_read_valid_handshake_results_in_sending_valid_handshake_and_bitfield(
@@ -443,17 +443,17 @@ void TestPWP_handshake_read_valid_handshake_results_in_sending_valid_handshake_a
     bitstream_write_string(&ptr, __mock_infohash, 20); /* ih */
     bitstream_write_string(&ptr, __mock_their_peer_id, 20); /* pi */
 
-    pc = bt_peerconn_new();
-    bt_peerconn_set_state(pc, PC_CONNECTED);
-    bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_set_my_peer_id(pc,__mock_my_peer_id);
-    bt_peerconn_set_their_peer_id(pc,__mock_their_peer_id);
-    bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_set_functions(pc, &funcs, &sender);
-    bt_peerconn_process_msg(pc);
+    pc = pwp_conn_new();
+    pwp_conn_set_state(pc, PC_CONNECTED);
+    pwp_conn_set_piece_info(pc,20,20);
+    pwp_conn_set_infohash(pc,__mock_infohash);
+    pwp_conn_set_my_peer_id(pc,__mock_my_peer_id);
+    pwp_conn_set_their_peer_id(pc,__mock_their_peer_id);
+    pwp_conn_set_infohash(pc,__mock_infohash);
+    pwp_conn_set_functions(pc, &funcs, &sender);
+    pwp_conn_process_msg(pc);
     CuAssertTrue(tc, 0 == sender.has_disconnected);
-    CuAssertTrue(tc, bt_peerconn_get_state(pc) == (PC_CONNECTED | PC_HANDSHAKE_SENT | PC_HANDSHAKE_RECEIVED));
+    CuAssertTrue(tc, pwp_conn_get_state(pc) == (PC_CONNECTED | PC_HANDSHAKE_SENT | PC_HANDSHAKE_RECEIVED));
 
     /* send handshake */
     ptr = msg_s;
@@ -498,13 +498,13 @@ void TxestPWP_readPiece_disconnectsIfBlockTooBig(
     bitstream_write_uint32(&ptr, 1);
     bitstream_write_uint32(&ptr, 0);
     bitstream_write_ubyte(&ptr, 0xDE);
-    pc = bt_peerconn_new();
-    bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_functions(pc, &funcs, &sender);
-    bt_peerconn_set_func_disconnect(pc, (void *) __FUNC_disconnect);
-    bt_peerconn_set_func_pushblock(pc, (void *) __FUNC_push_block);
-    bt_peerconn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
-    bt_peerconn_process_msg(pc);
+    pc = pwp_conn_new();
+    pwp_conn_set_piece_info(pc,20,20);
+    pwp_conn_set_functions(pc, &funcs, &sender);
+    pwp_conn_set_func_disconnect(pc, (void *) __FUNC_disconnect);
+    pwp_conn_set_func_pushblock(pc, (void *) __FUNC_push_block);
+    pwp_conn_set_func_recv(pc, (void *) __FUNC_peercon_recv);
+    pwp_conn_process_msg(pc);
     CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 #endif
@@ -523,15 +523,15 @@ void TxestPWP_send_HandShake_is_wellformed(
 
     __sender_set(&sender);
 
-    pc = bt_peerconn_new();
-    bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_func_send(pc, __send);
-    bt_peerconn_set_functions(pc, &funcs, &sender);
+    pc = pwp_conn_new();
+    pwp_conn_set_piece_info(pc,20,20);
+    pwp_conn_set_func_send(pc, __send);
+    pwp_conn_set_functions(pc, &funcs, &sender);
     /*  handshaking requires infohash */
     strcpy(sender.infohash, "00000000000000000000");
-    bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_set_my_peer_id(pc, __mock_peer_id);
-    bt_peerconn_send_handshake(pc);
+    pwp_conn_set_infohash(pc,__mock_infohash);
+    pwp_conn_set_my_peer_id(pc, __mock_peer_id);
+    pwp_conn_send_handshake(pc);
 }
 #endif
 
@@ -546,16 +546,16 @@ void TestPWP_handshake_wont_send_unless_receieved_handshake(
     test_sender_t sender;
 
     __sender_set(&sender,NULL,NULL);
-    pc = bt_peerconn_new();
-    bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_functions(pc, &funcs, &sender);
-    bt_peerconn_set_active(pc, 1);
+    pc = pwp_conn_new();
+    pwp_conn_set_piece_info(pc,20,20);
+    pwp_conn_set_functions(pc, &funcs, &sender);
+    pwp_conn_set_active(pc, 1);
     /*  handshaking requires infohash */
     strcpy(sender.infohash, "00000000000000000000");
-    bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_set_my_peer_id(pc, __mock_my_peer_id);
-    bt_peerconn_send_handshake(pc);
-    CuAssertTrue(tc, 0 == bt_peerconn_is_active(pc));
+    pwp_conn_set_infohash(pc,__mock_infohash);
+    pwp_conn_set_my_peer_id(pc, __mock_my_peer_id);
+    pwp_conn_send_handshake(pc);
+    CuAssertTrue(tc, 0 == pwp_conn_is_active(pc));
 }
 
 void TestPWP_handshake_stepping_wont_send_unless_receieved_handshake(
@@ -571,24 +571,24 @@ void TestPWP_handshake_stepping_wont_send_unless_receieved_handshake(
     test_sender_t sender;
 
     __sender_set(&sender,NULL,msg);
-    pc = bt_peerconn_new();
-    bt_peerconn_set_piece_info(pc,20,20);
-    bt_peerconn_set_functions(pc, &funcs, &sender);
-    bt_peerconn_set_active(pc, 1);
+    pc = pwp_conn_new();
+    pwp_conn_set_piece_info(pc,20,20);
+    pwp_conn_set_functions(pc, &funcs, &sender);
+    pwp_conn_set_active(pc, 1);
     /*  handshaking requires infohash */
     strcpy(sender.infohash, "00000000000000000000");
-    bt_peerconn_set_infohash(pc,__mock_infohash);
-    bt_peerconn_set_my_peer_id(pc, __mock_my_peer_id);
-    bt_peerconn_send_handshake(pc);
+    pwp_conn_set_infohash(pc,__mock_infohash);
+    pwp_conn_set_my_peer_id(pc, __mock_my_peer_id);
+    pwp_conn_send_handshake(pc);
     CuAssertTrue(tc, 1 == sender.nsent_messages); 
 
     /* stepping results in the client sending interested messages.
      * Lets make sure it doesn't do that, since it hasn't received a handshake yet. */
-    bt_peerconn_step(pc);
+    pwp_conn_step(pc);
     CuAssertTrue(tc, 1 == sender.nsent_messages); 
-    bt_peerconn_step(pc);
+    pwp_conn_step(pc);
     CuAssertTrue(tc, 1 == sender.nsent_messages); 
-    bt_peerconn_step(pc);
+    pwp_conn_step(pc);
     CuAssertTrue(tc, 1 == sender.nsent_messages); 
 }
 
