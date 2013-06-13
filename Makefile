@@ -10,7 +10,7 @@ SHELL  = /bin/bash
 CC     = gcc
 CCFLAGS = -g -O2 -Wall -Werror -Werror=return-type -Werror=uninitialized -Wcast-align -fno-omit-frame-pointer -fno-common -fsigned-char $(GCOV_CCFLAGS) -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR)
 
-all: tests tests_pwphandler
+all: tests_connection tests_handler
 
 chashmap:
 	mkdir -p $(HASHMAP_DIR)/.git
@@ -42,20 +42,20 @@ main.c:
 	then echo have contribs; \
 	else make download-contrib; \
 	fi
-	sh make-tests.sh test_pwp_connection*.c > main.c
+	sh make-tests.sh "test_connection*.c" > main.c
 
 main_pwphandler.c:
-	sh make-tests.sh test_pwphandler.*c > main_pwphandler.c
+	sh make-tests.sh "test_msghandler.*c" > main_msghandler.c
 
-tests_pwphandler: main_pwphandler.c pwp_connection.o test_pwphandler.c CuTest.c main.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c
+tests_handler: main_msghandler.c pwp_msghandler.c test_msghandler.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c
 	$(CC) $(CCFLAGS) -o $@ $^
-	./tests
-	gcov main_pwphandler.c test_pwphandler.c pwp_msghandler.c
+	./tests_handler
+	gcov main_msghandler.c test_msghandler.c pwp_msghandler.c
 
 tests: main.c pwp_connection.o test_pwp_connection.c test_pwp_connection_handshake.c test_pwp_connection_handshake.c test_pwp_connection_send.c test_pwp_connection_mock_functions.c mock_piece.c bt_diskmem.c CuTest.c main.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c
 	$(CC) $(CCFLAGS) -o $@ $^
 	./tests
-	gcov main.c test_pwp_connection.c test_pwp_connection_send.c pwp_connection.c
+	gcov main.c test_connection.c test_connection_send.c pwp_connection.c
 
 pwp_connection.o: pwp_connection.c 
 	$(CC) $(CCFLAGS) -c -o $@ $^

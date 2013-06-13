@@ -234,26 +234,26 @@ typedef struct {
 
 
 typedef struct {
-    int pieceidx;
-    int block_byte_offset;
+    uint32_t pieceidx;
+    uint32_t block_byte_offset;
     void* data;
-    int data_size;
+    uint32_t data_size;
 } msg_piece_t;
 
 typedef struct {
-    int pieceidx;
-    int block_byte_offset;
-    int block_len;
+    uint32_t pieceidx;
+    uint32_t block_byte_offset;
+    uint32_t block_len;
 } msg_request_t;
 
 typedef struct {
-    int pieceidx;
-    int block_byte_offset;
-    int block_len;
+    uint32_t pieceidx;
+    uint32_t block_byte_offset;
+    uint32_t block_len;
 } msg_cancel_t;
 
 typedef struct {
-    int pieceidx;
+    uint32_t pieceidx;
 } msg_have_t;
 
 typedef struct {
