@@ -10,7 +10,7 @@
 #include "bitstream.h"
 #include "bt_block_readwriter_i.h"
 #include "mock_piece.h"
-#include "test_pwp_connection.h"
+#include "test_connection.h"
 
 //static char* __mock_infohash = "00000000000000000000";
 //static char* __mock_peerid = "00000000000000000000";

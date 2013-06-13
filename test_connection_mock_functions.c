@@ -18,7 +18,7 @@
 #include "bt_block_readwriter_i.h"
 #include "bt_diskmem.h"
 #include "mock_piece.h"
-#include "test_pwp_connection.h"
+#include "test_connection.h"
 
 int __FUNC_peercon_recv(
     void* r,

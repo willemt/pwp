@@ -37,14 +37,14 @@ splint: pwp_connection.c
 
 download-contrib: chashmap cbitfield cbitstream clinkedlistqueue
 
-main.c:
+main_connection.c:
 	if test -d $(HASHMAP_DIR); \
 	then echo have contribs; \
 	else make download-contrib; \
 	fi
-	sh make-tests.sh "test_connection*.c" > main.c
+	sh make-tests.sh "test_connection*.c" > main_connection.c
 
-main_pwphandler.c:
+main_msghandler.c:
 	sh make-tests.sh "test_msghandler.*c" > main_msghandler.c
 
 tests_handler: main_msghandler.c pwp_msghandler.c test_msghandler.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c
@@ -52,13 +52,13 @@ tests_handler: main_msghandler.c pwp_msghandler.c test_msghandler.c CuTest.c $(H
 	./tests_handler
 	gcov main_msghandler.c test_msghandler.c pwp_msghandler.c
 
-tests: main.c pwp_connection.o test_pwp_connection.c test_pwp_connection_handshake.c test_pwp_connection_handshake.c test_pwp_connection_send.c test_pwp_connection_mock_functions.c mock_piece.c bt_diskmem.c CuTest.c main.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c
+tests_connection: main_connection.c pwp_connection.o test_connection.c test_connection_handshake.c test_connection_handshake.c test_connection_send.c test_connection_mock_functions.c mock_piece.c bt_diskmem.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c
 	$(CC) $(CCFLAGS) -o $@ $^
-	./tests
-	gcov main.c test_connection.c test_connection_send.c pwp_connection.c
+	./tests_connection
+	gcov main_connection.c test_connection.c test_connection_send.c pwp_connection.c
 
 pwp_connection.o: pwp_connection.c 
 	$(CC) $(CCFLAGS) -c -o $@ $^
 
 clean:
-	rm -f main.c *.o tests $(GCOV_OUTPUT)
+	rm -f main_connection.c main_msghandler.c *.o tests $(GCOV_OUTPUT)
