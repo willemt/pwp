@@ -169,54 +169,6 @@ static void __disconnect(pwp_connection_t * me, const char *reason, ...)
     }
 }
 
-#if 0
-static int __read_byte_from_peer(pwp_connection_t * me, unsigned char * val)
-{
-    unsigned char buf[1000], *ptr;
-    int len, ret;
-
-    len = 1;
-    ptr = buf;
-
-    assert(NULL != me->func);
-    assert(NULL != me->func->recv);
-
-    if (0 == (ret = me->func->recv(me->caller, me->peer_udata, (char*)ptr, &len)))
-    {
-        return 0;
-    }
-
-#if 0
-    if (0 == me->isr.recv(me->isr_udata, me->peer_udata, ptr, &len))
-    {
-        assert(FALSE);
-        return 0;
-    }
-#endif
-
-    *val = bitstream_read_ubyte(&ptr);
-
-    return 1;
-}
-
-static int __read_uint32_from_peer(pwp_connection_t * me, uint32_t * val)
-{
-    unsigned char buf[1000], *ptr = buf;
-    int len = 4;
-
-    assert(NULL != me->func && NULL != me->func->recv);
-
-    if (0 == me->func->recv(me->caller, me->peer_udata, (char*)ptr, &len))
-    {
-        assert(FALSE);
-        return 0;
-    }
-
-    *val = bitstream_read_uint32(&ptr);
-    return 1;
-}
-#endif
-
 /*----------------------------------------------------------------------------*/
 void pwp_conn_set_active(void *pco, int opt)
 {
@@ -413,6 +365,7 @@ static void *__get_piece(pwp_connection_t * me, const unsigned int piece_idx)
 
 /*----------------------------------------------------------------------------*/
 
+#if 0
 int pwp_conn_get_download_rate(const void * pco __attribute__((__unused__)))
 {
 //    const pwp_connection_t *me = pco;
@@ -424,6 +377,7 @@ int pwp_conn_get_upload_rate(const void * pco __attribute__((__unused__)))
 //    const pwp_connection_t *me = pco;
     return 0;
 }
+#endif
 
 /*----------------------------------------------------------------------------*/
 
@@ -510,19 +464,6 @@ int pwp_conn_send_have(void *pco, const int piece_idx)
     pwp_connection_t *me = pco;
     unsigned char data[12], *ptr = data;
 
-/*
-
-Implementer's Note: That is the strict definition, in reality some games may be
-played. In particular because peers are extremely unlikely to download pieces
-that they already have, a peer may choose not to advertise having a piece to a
-peer that already has that piece. At a minimum "HAVE suppression" will result
-in a 50% reduction in the number of HAVE messages, this translates to around a
-25-35% reduction in protocol overhead. At the same time, it may be worthwhile
-to send a HAVE message to a peer that has that piece already since it will be
-useful in determining which piece is rare.
-
-*/
-
     bitstream_write_uint32(&ptr, 5);
     bitstream_write_ubyte(&ptr, PWP_MSGTYPE_HAVE);
     bitstream_write_uint32(&ptr, piece_idx);
@@ -602,17 +543,6 @@ void pwp_conn_send_bitfield(void *pco)
 
     if (!me->func->getpiece)
         return;
-
-    /*
-     * Bitfield
-     * This message has ID 5 and a variable payload length.The payload is a
-     * bitfield representing the pieces that the sender has successfully
-     * downloaded, with the high bit in the first byte corresponding to piece in
-     * dex 0. If a bit is cleared it is to be interpreted as a missing piece. A
-     * peer MUST send this message immediately after the handshake operation,
-     * and MAY choose not to send it if it has no pieces at all.This message
-     * MUST not be sent at any other time during the communication.
-     */
 
     ptr = data;
     size =
@@ -731,119 +661,6 @@ int pwp_conn_mark_peer_has_piece(void *pco, const int piece_idx)
 
 /*----------------------------------------------------------------------------*/
 
-
-#if 0
-/**
- * Read the bits of a bitfield and mark the peer as having those pieces */
-static int __mark_peer_as_have_from_have_payload(
-        pwp_connection_t* me,
-        int payload_len,
-        int (*fn_read_byte) (pwp_connection_t *, unsigned char *))
-{
-    int ii, piece_idx;
-
-    for (piece_idx = 0, ii = 0; ii < payload_len; ii++)
-    {
-        unsigned char cur_byte;
-        int bit;
-
-        if (0 == fn_read_byte(me, &cur_byte))
-        {
-            __disconnect(me, "bitfield, can't read expected byte");
-            return 0;
-        }
-
-        for (bit = 0; bit < 8; bit++)
-        {
-            /*  bit is ON */
-            if (((cur_byte << bit) >> 7) & 1)
-            {
-                if (me->num_pieces <= piece_idx)
-                {
-                    __disconnect(me, "bitfield has more than expected");
-                }
-
-                pwp_conn_mark_peer_has_piece(me, piece_idx);
-            }
-
-            piece_idx += 1;
-        }
-    }
-
-    return 1;
-}
-#endif
-
-/*
- *
- * -----------------------------------------
- * | Message Length | Message ID | Payload |
- * -----------------------------------------
- *
- * All integer members in PWP messages are encoded as a 4-byte big-endian
- * number. Furthermore, all index and offset members in PWP messages are zero-
- * based.
- *
- * @return 1 on sucess; 0 otherwise
- */
-#if 0
-static int __process_msg(void *pco,
-                         int (*fn_read_uint32) (pwp_connection_t *, uint32_t *),
-                         int (*fn_read_byte) (pwp_connection_t *, unsigned char *))
-{
-    pwp_connection_t *me = pco;
-    uint32_t msg_len;
-
-    assert(NULL != fn_read_uint32);
-    assert(NULL != fn_read_byte);
-
-    if (0 == fn_read_uint32(me, &msg_len))
-    {
-        return 0;
-    }
-
-    /* keep alive message */
-    if (0 == msg_len)
-    {
-        /* TODO Implement timeout function */
-        __log(me, "read,keep alive");
-    }
-    /* payload */
-    else if (1 <= msg_len)
-    {
-        unsigned char msg_id;
-        uint32_t payload_len;
-
-        payload_len = msg_len - 1;
-        if (0 == fn_read_byte(me, &msg_id))
-        {
-            return 0;
-        }
-
-#if 0 /* this has been removed as bitfields are optional */
-        /*  make sure bitfield is received after handshake */
-        if (!(me->state.flags & PC_BITFIELD_RECEIVED))
-        {
-            if (msg_id != PWP_MSGTYPE_BITFIELD)
-            {
-                __disconnect(me, "unexpected message; expected bitfield");
-            }
-            else if (0 == __recv_bitfield(me, payload_len,fn_read_byte))
-            {
-                __disconnect(me, "bad bitfield");
-                return 0;
-            }
-
-            return 1;
-        }
-#endif
-
-    }
-
-    return 1;
-}
-#endif
-
 /**
  * fit the request in the piece size so that we don't break anything */
 static void __request_fit(bt_block_t * request, const unsigned int piece_len)
@@ -854,46 +671,6 @@ static void __request_fit(bt_block_t * request, const unsigned int piece_len)
             request->block_byte_offset + request->block_len - piece_len;
     }
 }
-
-/**
- * read current message from receiving end
- * @return 1 on sucess; 0 otherwise */
-#if 0
-int pwp_conn_process_msg(void *pco)
-{
-    pwp_connection_t *me = pco;
-
-    /* ensure that we are connected */
-    if (!pwp_conn_flag_is_set(me, PC_CONNECTED))
-    {
-        return -1;
-    }
-
-    /* ensure we receive the handshake next */
-    if (!pwp_conn_flag_is_set(me,PC_HANDSHAKE_RECEIVED))
-    {
-        if (1 == pwp_conn_recv_handshake(pco, me->infohash))
-        {
-            me->state.flags |= PC_HANDSHAKE_RECEIVED;
-
-            __log(me, "[connection],gothandshake,%.*s", 20, me->their_peer_id);
-
-            /*  send handshake */
-            if (!pwp_conn_flag_is_set(me,PC_HANDSHAKE_SENT))
-            {
-                pwp_conn_send_handshake(me);
-            }
-
-            pwp_conn_send_bitfield(me);
-
-            return 1;
-        }
-    }
-
-    /* business as usual messages received below: */
-//    return __process_msg(pco, __read_uint32_from_peer, __read_byte_from_peer);
-}
-#endif
 
 /**
  * @return number of requests we required from the peer */
@@ -954,7 +731,7 @@ void pwp_conn_connected(void* pco)
     me->state.flags |= PC_CONNECTED;
 
     /* send handshake */
-    pwp_conn_send_handshake(me);
+    //pwp_conn_send_handshake(me);
 
     //pwp_conn_recv_handshake(me, me->infohash);
 }
@@ -1258,20 +1035,6 @@ void pwp_conn_cancel(void* pco, bt_block_t *cancel)
 //  queue_remove(peer->request_queue);
 }
 
-/*
-6.3.10 Piece
-
-This message has ID 7 and a variable length payload. The payload holds 2
-integers indicating from which piece and with what offset the block data in the
-3rd member is derived. Note, the data length is implicit and can be calculated
-by subtracting 9 from the total message length.
-
-The payload has the following structure:
-
--------------------------------------------
-| Piece Index | Block Offset | Block Data |
--------------------------------------------
-*/
 int pwp_conn_piece(void* pco, msg_piece_t *piece)
 {
     pwp_connection_t* me = pco;
@@ -1288,10 +1051,6 @@ int pwp_conn_piece(void* pco, msg_piece_t *piece)
         return 0;
     }
 
-    /* read block data */
-    //block_data = malloc(sizeof(char) * request.block_len);
-    //memcpy(block_data, piece->data, request.block_len);
-
     __log(me, "read,piece,piece_idx=%d offset=%d length=%d",
           piece->block.piece_idx,
           piece->block.block_byte_offset,
@@ -1307,6 +1066,5 @@ int pwp_conn_piece(void* pco, msg_piece_t *piece)
     /*  there should have been a request polled */
     assert(NULL != req_removed);
     free(req_removed);
-    //free(block_data);
     return 1;
 }
