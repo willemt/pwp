@@ -19,8 +19,8 @@ typedef struct {
     union {
         msg_have_t have;
         msg_bitfield_t bitfield;
-        msg_request_t request;
-        msg_cancel_t cancel;
+        bt_block_t request;
+        bt_block_t cancel;
         msg_piece_t piece;
     };
 
@@ -31,42 +31,36 @@ void pwp_conn_keepalive(void* pco)
 {
     fake_pc_t* pc = pco;
     pc->mtype = -1;
-//    printf("KEEPALIVE\n");
 }
 
 void pwp_conn_choke(void* pco)
 {
     fake_pc_t* pc = pco;
     pc->mtype = PWP_MSGTYPE_CHOKE;
-//    printf("CHOKE\n");
 }
 
 void pwp_conn_unchoke(void* pco)
 {
     fake_pc_t* pc = pco;
     pc->mtype = PWP_MSGTYPE_UNCHOKE;
-//    printf("UNCHOKE\n");
 }
 
 void pwp_conn_interested(void* pco)
 {
     fake_pc_t* pc = pco;
     pc->mtype = PWP_MSGTYPE_INTERESTED;
-//    printf("INTERESTED\n");
 }
 
 void pwp_conn_uninterested(void* pco)
 {
     fake_pc_t* pc = pco;
     pc->mtype = PWP_MSGTYPE_UNINTERESTED;
-//    printf("UNINTERESTED\n");
 }
 
 void pwp_conn_have(void* pco, msg_have_t* have)
 {
     fake_pc_t* pc = pco;
     pc->mtype = PWP_MSGTYPE_HAVE;
-//    printf("HAVE %d\n", have->pieceidx);
     memcpy(&pc->have,have,sizeof(msg_have_t));
 }
 
@@ -74,40 +68,30 @@ void pwp_conn_bitfield(void* pco, msg_bitfield_t* bitfield)
 {
     fake_pc_t* pc = pco;
     pc->mtype = PWP_MSGTYPE_BITFIELD;
-//    printf("BITFIELD %s\n", bitfield_str(&bitfield->bf));
     memcpy(&pc->bitfield,bitfield,sizeof(msg_bitfield_t));
 }
 
-void pwp_conn_request(void* pco,
-    msg_request_t *request)
+int pwp_conn_request(void* pco, bt_block_t *request)
 {
     fake_pc_t* pc = pco;
     pc->mtype = PWP_MSGTYPE_REQUEST;
-//    printf("REQUEST %d %d %d\n",
-//            request->pieceidx,
-//            request->block_byte_offset,
-//            request->block_len);
-    memcpy(&pc->request,request,sizeof(msg_request_t));
+    memcpy(&pc->request,request,sizeof(bt_block_t));
+    return 1;
 }
 
-void pwp_conn_cancel(void* pco,
-    msg_cancel_t *cancel)
+void pwp_conn_cancel(void* pco, bt_block_t *cancel)
 {
     fake_pc_t* pc = pco;
     pc->mtype = PWP_MSGTYPE_CANCEL;
-//    printf("CANCEL %d %d %d\n",
-//            cancel->pieceidx,
-//            cancel->block_byte_offset,
-//            cancel->block_len);
-    memcpy(&pc->cancel,cancel,sizeof(msg_cancel_t));
+    memcpy(&pc->cancel,cancel,sizeof(bt_block_t));
 }
 
-void pwp_conn_piece(void* pco,
-    msg_piece_t *piece)
+int pwp_conn_piece(void* pco, msg_piece_t *piece)
 {
     fake_pc_t* pc = pco;
     pc->mtype = PWP_MSGTYPE_PIECE;
     memcpy(&pc->piece,piece,sizeof(msg_piece_t));
+    return 1;
 }
 
 void TestPWP_keepalive(
@@ -216,7 +200,7 @@ void TestPWP_have(
     bitstream_write_uint32(&ptr,999);
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1 + 4);
     CuAssertTrue(tc, PWP_MSGTYPE_HAVE == pc.mtype);
-    CuAssertTrue(tc, 999 == pc.have.pieceidx);
+    CuAssertTrue(tc, 999 == pc.have.piece_idx);
 }
 
 void TestPWP_request(
@@ -238,7 +222,7 @@ void TestPWP_request(
     bitstream_write_uint32(&ptr,789);
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1 + 4 + 4 + 4);
     CuAssertTrue(tc, PWP_MSGTYPE_REQUEST == pc.mtype);
-    CuAssertTrue(tc, 123 == pc.request.pieceidx);
+    CuAssertTrue(tc, 123 == pc.request.piece_idx);
     CuAssertTrue(tc, 456 == pc.request.block_byte_offset);
     CuAssertTrue(tc, 789 == pc.request.block_len);
 }
@@ -262,7 +246,7 @@ void TestPWP_cancel(
     bitstream_write_uint32(&ptr,789);
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1 + 4 + 4 + 4);
     CuAssertTrue(tc, PWP_MSGTYPE_CANCEL == pc.mtype);
-    CuAssertTrue(tc, 123 == pc.cancel.pieceidx);
+    CuAssertTrue(tc, 123 == pc.cancel.piece_idx);
     CuAssertTrue(tc, 456 == pc.cancel.block_byte_offset);
     CuAssertTrue(tc, 789 == pc.cancel.block_len);
 }
@@ -315,7 +299,7 @@ void TestPWP_piece(
     bitstream_write_ubyte(&ptr,'\0');
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1 + 4 + 4 + 10);
     CuAssertTrue(tc, PWP_MSGTYPE_PIECE == pc.mtype);
-    CuAssertTrue(tc, 1 == pc.piece.pieceidx);
+    CuAssertTrue(tc, 1 == pc.piece.piece_idx);
     CuAssertTrue(tc, 2 == pc.piece.block_byte_offset);
     CuAssertTrue(tc, 5 == pc.piece.data_size);
     CuAssertTrue(tc, 0 == strncmp("test ",pc.piece.data,pc.piece.data_size));
@@ -350,14 +334,14 @@ void TestPWP_piece_halfread(
     /* read the first 5 bytes of data payload */
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1 + 4 + 4 + 5);
     CuAssertTrue(tc, PWP_MSGTYPE_PIECE == pc.mtype);
-    CuAssertTrue(tc, 1 == pc.piece.pieceidx);
+    CuAssertTrue(tc, 1 == pc.piece.piece_idx);
     CuAssertTrue(tc, 2 == pc.piece.block_byte_offset);
     CuAssertTrue(tc, 5 == pc.piece.data_size);
     CuAssertTrue(tc, 0 == strncmp("test msg2",pc.piece.data,pc.piece.data_size));
     /* read the last 5 bytes of data payload */
     pwp_msghandler_dispatch_from_buffer(mh, data + 4 + 1 + 4 + 4 + 5 , 5);
     CuAssertTrue(tc, PWP_MSGTYPE_PIECE == pc.mtype);
-    CuAssertTrue(tc, 1 == pc.piece.pieceidx);
+    CuAssertTrue(tc, 1 == pc.piece.piece_idx);
     CuAssertTrue(tc, 7 == pc.piece.block_byte_offset);
     CuAssertTrue(tc, 5 == pc.piece.data_size);
     CuAssertTrue(tc, 0 == strncmp("msg2",pc.piece.data,pc.piece.data_size));

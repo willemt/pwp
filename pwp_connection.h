@@ -2,9 +2,9 @@
 /*  bt block */
 typedef struct
 {
-    unsigned int piece_idx;
-    unsigned int block_byte_offset;
-    unsigned int block_len;
+    uint32_t piece_idx;
+    uint32_t block_byte_offset;
+    uint32_t block_len;
 } bt_block_t;
 
 typedef void *(*func_getpiece_f)( void *udata, unsigned int piece);
@@ -234,31 +234,21 @@ typedef struct {
 
 
 typedef struct {
-    uint32_t pieceidx;
-    uint32_t block_byte_offset;
+    bt_block_t block;
     void* data;
-    uint32_t data_size;
 } msg_piece_t;
 
 typedef struct {
-    uint32_t pieceidx;
-    uint32_t block_byte_offset;
-    uint32_t block_len;
-} msg_request_t;
-
-typedef struct {
-    uint32_t pieceidx;
-    uint32_t block_byte_offset;
-    uint32_t block_len;
-} msg_cancel_t;
-
-typedef struct {
-    uint32_t pieceidx;
+    uint32_t piece_idx;
 } msg_have_t;
 
 typedef struct {
    bitfield_t bf;
 } msg_bitfield_t;
+
+void pwp_conn_choke_peer(void * pco);
+
+void pwp_conn_unchoke_peer(void * pco);
 
 void pwp_conn_keepalive(void* pco);
 
@@ -274,11 +264,11 @@ void pwp_conn_have(void* pco, msg_have_t* have);
 
 void pwp_conn_bitfield(void* pco, msg_bitfield_t* bitfield);
 
-void pwp_conn_request(void* pco, msg_request_t *request);
+int pwp_conn_request(void* pco, bt_block_t *request);
 
-void pwp_conn_cancel(void* pco, msg_cancel_t *cancel);
+void pwp_conn_cancel(void* pco, bt_block_t *cancel);
 
-void pwp_conn_piece(void* pco, msg_piece_t *piece);
+int pwp_conn_piece(void* pco, msg_piece_t *piece);
 
 void pwp_conn_set_functions(void *pco, pwp_connection_functions_t* funcs, void* caller);
 

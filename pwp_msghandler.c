@@ -20,8 +20,9 @@ typedef struct {
     union {
         msg_have_t have;
         msg_bitfield_t bitfield;
-        msg_request_t request;
-        msg_cancel_t cancel;
+        bt_block_t block;
+//        msg_request_t request;
+//        msg_cancel_t cancel;
         msg_piece_t piece;
     };
 } msg_t;
@@ -33,8 +34,6 @@ typedef struct {
     /* peer connection */
     void* pc;
 } bt_peer_connection_event_handler_t;
-
-
 
 static void __endmsg(msg_t* msg)
 {
@@ -107,8 +106,6 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, unsigned char* buf, unsigned 
 
     while (0 < len)
     {
-//        printf("len: %d\n", len);
-
         /* read length of message (int) */
         if (msg->bytes_read < 4)
         {
@@ -166,9 +163,9 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, unsigned char* buf, unsigned 
                     unsigned char val;
                     unsigned int ii;
 
-                    if (msg->bytes_read == 5)
+                    if (msg->bytes_read == 1 + 4)
                     {
-                         bitfield_init(&msg->bitfield.bf,(msg->len - 1) * 8);
+                         bitfield_init(&msg->bitfield.bf, (msg->len - 1) * 8);
                     }
 
                     __read_byte(&val, &msg->bytes_read,&buf,&len);
@@ -194,51 +191,51 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, unsigned char* buf, unsigned 
 
 
             case PWP_MSGTYPE_REQUEST:
-                if (msg->bytes_read < 5 + 4)
+                if (msg->bytes_read < 1 + 4 + 4)
                 {
-                    __read_uint32(&msg->request.pieceidx,
+                    __read_uint32(&msg->block.piece_idx,
                             &me->msg, &buf,&len);
                 }
-                else if (msg->bytes_read < 9 + 4)
+                else if (msg->bytes_read < 1 + 4 + 4 + 4)
                 {
-                    __read_uint32(&msg->request.block_byte_offset,
+                    __read_uint32(&msg->block.block_byte_offset,
                             &me->msg,&buf,&len);
                 }
-                else if (1 == __read_uint32(&msg->request.block_len,
+                else if (1 == __read_uint32(&msg->block.block_len,
                             &me->msg, &buf,&len))
                 {
-                    pwp_conn_request(me->pc, &msg->request);
+                    pwp_conn_request(me->pc, &msg->block);
                     __endmsg(&me->msg);
                 }
 
                 break;
             case PWP_MSGTYPE_CANCEL:
-                if (msg->bytes_read < 5 + 4)
+                if (msg->bytes_read < 1 + 4 + 4)
                 {
-                    __read_uint32(&msg->cancel.pieceidx,
+                    __read_uint32(&msg->block.piece_idx,
                             &me->msg, &buf,&len);
                 }
-                else if (msg->bytes_read < 9 + 4)
+                else if (msg->bytes_read < 1 + 4 + 4 + 4)
                 {
-                    __read_uint32(&msg->cancel.block_byte_offset,
+                    __read_uint32(&msg->block.block_byte_offset,
                             &me->msg,&buf,&len);
                 }
-                else if (1 == __read_uint32(&msg->cancel.block_len,
+                else if (1 == __read_uint32(&msg->block.block_len,
                             &me->msg, &buf,&len))
                 {
-                    pwp_conn_cancel(me->pc, &msg->cancel);
+                    pwp_conn_cancel(me->pc, &msg->block);
                     __endmsg(&me->msg);
                 }
                 break;
             case PWP_MSGTYPE_PIECE:
-                if (msg->bytes_read < 5 + 4)
+                if (msg->bytes_read < 1 + 4 + 4)
                 {
-                    __read_uint32(&msg->piece.pieceidx,
+                    __read_uint32(&msg->piece.block.piece_idx,
                             &me->msg, &buf,&len);
                 }
                 else if (msg->bytes_read < 9 + 4)
                 {
-                    __read_uint32(&msg->piece.block_byte_offset,
+                    __read_uint32(&msg->piece.block.block_byte_offset,
                             &me->msg,&buf,&len);
                 }
                 else
@@ -255,14 +252,14 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, unsigned char* buf, unsigned 
                     }
 
                     msg->piece.data = buf;
-                    msg->piece.data_size = size;
+                    msg->piece.block.block_len = size;
                     pwp_conn_piece(me->pc, &msg->piece);
 
                     /* if we haven't received the full piece, why don't we
                      * just split it virtually? */
                     /* shorten the message */
                     msg->len -= size;
-                    msg->piece.block_byte_offset += size;
+                    msg->piece.block.block_byte_offset += size;
 
                     /* if we received the whole message we're done */
                     if (msg->len == 9)

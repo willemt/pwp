@@ -47,6 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "bitfield.h"
 #include "pwp_connection.h"
+#include "pwp_local.h"
 #include "linked_list_hashmap.h"
 #include "linked_list_queue.h"
 #include "bitstream.h"
@@ -54,13 +55,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define TRUE 1
 #define FALSE 0
 
-#define PROTOCOL_NAME "BitTorrent protocol"
-#define INFOKEY_LEN 20
-#define BLOCK_SIZE 1 << 14      // 16kb
-#define PWP_HANDSHAKE_RESERVERD "\0\0\0\0\0\0\0\0"
-#define VERSION_NUM 1000
-#define PEER_ID_LEN 20
-#define INFO_HASH_LEN 20
 
 
 // f_f_lywA ==(m€kb€kb (m) ?€ü "pa€kb" :0f=df,xj0
@@ -175,6 +169,7 @@ static void __disconnect(pwp_connection_t * me, const char *reason, ...)
     }
 }
 
+#if 0
 static int __read_byte_from_peer(pwp_connection_t * me, unsigned char * val)
 {
     unsigned char buf[1000], *ptr;
@@ -220,6 +215,7 @@ static int __read_uint32_from_peer(pwp_connection_t * me, uint32_t * val)
     *val = bitstream_read_uint32(&ptr);
     return 1;
 }
+#endif
 
 /*----------------------------------------------------------------------------*/
 void pwp_conn_set_active(void *pco, int opt)
@@ -384,7 +380,7 @@ void pwp_conn_set_im_interested(void * pco)
     }
 }
 
-void pwp_conn_choke(void * pco)
+void pwp_conn_choke_peer(void * pco)
 {
     pwp_connection_t *me = pco;
 
@@ -399,7 +395,7 @@ void pwp_conn_choke(void * pco)
     pwp_conn_send_statechange(me, PWP_MSGTYPE_CHOKE);
 }
 
-void pwp_conn_unchoke(void * pco)
+void pwp_conn_unchoke_peer(void * pco)
 {
     pwp_connection_t *me = pco;
 
@@ -641,141 +637,6 @@ void pwp_conn_send_bitfield(void *pco)
 /*----------------------------------------------------------------------------*/
 
 /**
- *  Receive handshake from other end
- *  Disconnect on any errors
- *
- *  @return 1 on success; otherwise 0 */
-int pwp_conn_recv_handshake(void *pco, const char *expected_info_hash)
-{
-    pwp_connection_t *me = pco;
-
-    int ii;
-    unsigned char name_len;
-
-    /* other peers name protocol name */
-    char peer_pname[strlen(PROTOCOL_NAME)];
-    char peer_infohash[INFO_HASH_LEN];
-    char peer_id[PEER_ID_LEN];
-    char peer_reserved[8 + 1];
-
-    __log(me, "got,handshake");
-
-    /* Name Length:
-    The unsigned value of the first byte indicates the length of a character
-    string containing the protocol name. In BTP/1.0 this number is 19. The
-    local peer knows its own protocol name and hence also the length of it.
-    If this length is different than the value of this first byte, then the
-    connection MUST be dropped. */
-    if (0 == __read_byte_from_peer(me, &name_len))
-    {
-        __disconnect(me, "handshake: invalid name length: '%d'", name_len);
-        return 0;
-    }
-
-    if (name_len != strlen(PROTOCOL_NAME))
-    {
-        __disconnect(me, "handshake: invalid protocol name length: '%d'",
-                     name_len);
-        return FALSE;
-    }
-
-    /* Protocol Name:
-    This is a character string which MUST contain the exact name of the 
-    protocol in ASCII and have the same length as given in the Name Length
-    field. The protocol name is used to identify to the local peer which
-    version of BTP the remote peer uses.
-    If this string is different from the local peers own protocol name, then
-    the connection is to be dropped. */
-    for (ii = 0; ii < name_len; ii++)
-    {
-        if (0 == __read_byte_from_peer(me, (unsigned char*)&peer_pname[ii]))
-        {
-            __disconnect(me, "handshake: invalid protocol name char");
-            return 0;
-        }
-    }
-//    strncpy(peer_pname, &handshake[1], name_len);
-    if (strncmp(peer_pname, PROTOCOL_NAME, name_len))
-    {
-        __disconnect(me, "handshake: invalid protocol name: '%s'",
-                     peer_pname);
-        return FALSE;
-    }
-
-    /* Reserved:
-    The next 8 bytes in the string are reserved for future extensions and
-    should be read without interpretation. */
-    for (ii = 0; ii < 8; ii++)
-    {
-        if (0 == __read_byte_from_peer(me, (unsigned char*)&peer_reserved[ii]) || 
-                peer_reserved[ii] != 0)
-        {
-            __disconnect(me, "handshake: reserved bytes not empty");
-            return 0;
-        }
-    }
-
-    /* Info Hash:
-    The next 20 bytes in the string are to be interpreted as a 20-byte SHA1
-    of the info key in the metainfo file. Presumably, since both the local
-    and the remote peer contacted the tracker as a result of reading in the
-    same .torrent file, the local peer will recognize the info hash value and
-    will be able to serve the remote peer. If this is not the case, then the
-    connection MUST be dropped. This situation can arise if the local peer
-    decides to no longer serve the file in question for some reason. The info
-    hash may be used to enable the client to serve multiple torrents on the
-    same port. */
-    assert(NULL != expected_info_hash);
-    for (ii = 0; ii < INFO_HASH_LEN; ii++)
-    {
-        if (0 == __read_byte_from_peer(me, (unsigned char*)&peer_infohash[ii]))
-        {
-            __disconnect(me, "handshake: infohash bytes not empty");
-            return 0;
-        }
-    }
-    /* check info hash matches expected */
-    if (strncmp(peer_infohash, expected_info_hash, 20))
-    {
-        __log(me, "handshake: invalid infohash: '%s' vs '%s'", peer_infohash,
-               peer_infohash);
-        __disconnect(me, "handshake: infohash bytes not empty");
-        return 0;
-    }
-
-    /* At this stage, if the connection has not been dropped, then the local
-    peer MUST send its own handshake back, which includes the last step: */
-
-    /* Peer ID:
-    The last 20 bytes of the handshake are to be interpreted as the
-    self-designated name of the peer. The local peer must use this name to id
-    entify the connection hereafter. Thus, if this name matches the local
-    peers own ID name, the connection MUST be dropped. Also, if any other
-    peer has already identified itself to the local peer using that same peer
-    ID, the connection MUST be dropped. */
-    //assert(NULL != me->their_peer_id);
-    for (ii = 0; ii < PEER_ID_LEN; ii++)
-    {
-        if (0 == __read_byte_from_peer(me, (unsigned char*)&peer_id[ii]))
-        {
-            __disconnect(me, "handshake: peer_id length invalid");
-            return 0;
-        }
-    }
-
-    /* disconnect if peer's ID is the same as ours */
-    if (!strncmp(peer_id,me->my_peer_id,20))
-    {
-        __disconnect(me, "handshake: peer_id same as ours (us: %s them: %.*s)",
-                me->my_peer_id, 20, peer_id);
-        return 0;
-    }
-
-    __log(me, "read,handshake,me:%.*s,them:%.*s", 20, me->my_peer_id, 20, peer_id);
-    return TRUE;
-}
-
-/**
  * Send the handshake
  *
  * Steps taken:
@@ -870,184 +731,8 @@ int pwp_conn_mark_peer_has_piece(void *pco, const int piece_idx)
 
 /*----------------------------------------------------------------------------*/
 
-/**
- * Respond to a peer's request for a block
- * @return 0 on error, 1 otherwise */
-int pwp_conn_process_request(void * pco, bt_block_t * request)
-{
-    pwp_connection_t *me = pco;
-    void *pce;
 
-    /* We're choking - we aren't obligated to respond to this request */
-    if (pwp_conn_peer_is_choked(me))
-    {
-        return 0;
-    }
-
-    /*  ensure we have correct piece_idx */
-    if (me->num_pieces < request->piece_idx)
-    {
-        __disconnect(me, "requested piece %d has invalid idx",
-                     request->piece_idx);
-        return 0;
-    }
-
-    /*  ensure that we have this piece */
-    if (!(pce = __get_piece(me, request->piece_idx)))
-    {
-        __disconnect(me, "requested piece %d is not available",
-                     request->piece_idx);
-        return 0;
-    }
-
-    /* ensure that the peer needs this piece
-     * If the peer doesn't need the piece then that means the peer is
-     * potentially invalid */
-    if (pwp_conn_peer_has_piece(me, request->piece_idx))
-    {
-        __disconnect(me, "peer requested pce%d which they confirmed they had",
-                     request->piece_idx);
-        return 0;
-    }
-
-    /* ensure that block request length is valid  */
-    if (request->block_len == 0 || me->piece_len < request->block_byte_offset + request->block_len)
-    {
-        __disconnect(me, "invalid block request"); 
-        return 0;
-    }
-
-    /* ensure that we have completed this piece.
-     * The peer should know if we have completed this piece or not, so
-     * asking for it is an indicator of a invalid peer. */
-    assert(NULL != me->func->piece_is_complete);
-    if (0 == me->func->piece_is_complete(me, pce))
-    {
-        __disconnect(me, "requested piece %d is not completed",
-                     request->piece_idx);
-        return 0;
-    }
-
-    /* append block to our pending request queue */
-    /* don't append the block twice */
-    if (!llqueue_get_item_via_cmpfunction(
-                me->pendpeerreqs,request,(void*)__request_compare))
-    {
-        bt_block_t* blk;
-
-        blk = malloc(sizeof(bt_block_t));
-        memcpy(blk,request, sizeof(bt_block_t));
-        llqueue_offer(me->pendpeerreqs,blk);
-    }
-
-    return 1;
-}
-
-static int __recv_request(pwp_connection_t * me,
-                  const int payload_len,
-//                  int (*fn_read_byte) (pwp_connection_t *, unsigned char *),
-                  int (*fn_read_uint32) (pwp_connection_t *, uint32_t *))
-{
-    bt_block_t request;
-
-    /* check that the client doesn't request when they are choked */
-    if (pwp_conn_peer_is_choked(me))
-    {
-        __disconnect(me, "peer requested when they were choked");
-        return 0;
-    }
-
-    /*  ensure payload length is correct */
-    if (payload_len != 12)
-    {
-        __disconnect(me, "invalid payload size for request: %d", payload_len);
-        return 0;
-    }
-
-    /* ensure request indices are valid */
-    if (0 == fn_read_uint32(me, (uint32_t*)&request.piece_idx) ||
-        0 == fn_read_uint32(me, (uint32_t*)&request.block_byte_offset) ||
-        0 == fn_read_uint32(me, (uint32_t*)&request.block_len))
-    {
-        return 0;
-    }
-
-    __log(me, "read,request,pieceidx=%d offset=%d length=%d",
-          request.piece_idx, request.block_byte_offset, request.block_len);
-
-    return pwp_conn_process_request(me, &request);
-}
-
-/*
-6.3.10 Piece
-
-This message has ID 7 and a variable length payload. The payload holds 2
-integers indicating from which piece and with what offset the block data in the
-3rd member is derived. Note, the data length is implicit and can be calculated
-by subtracting 9 from the total message length.
-
-The payload has the following structure:
-
--------------------------------------------
-| Piece Index | Block Offset | Block Data |
--------------------------------------------
-*/
-static int __recv_piece(pwp_connection_t * me,
-                        const int msg_len,
-                        int (*fn_read_byte) (pwp_connection_t *,
-                                             unsigned char *),
-                        int (*fn_read_uint32) (pwp_connection_t *,
-                                               uint32_t *))
-{
-    int ii;
-    unsigned char *block_data;
-    bt_block_t request;
-    request_t *req;
-
-    if (0 == fn_read_uint32(me, (uint32_t*)&request.piece_idx))
-        return 0;
-    if (0 == fn_read_uint32(me, (uint32_t*)&request.block_byte_offset))
-        return 0;
-
-    /* compensate for request header length */
-    request.block_len = msg_len - 9;
-    
-    /* remove pending request */
-    req = hashmap_remove(me->pendreqs, &request);
-
-    /* ensure that the peer is sending us a piece we requested */
-    if (!req)
-    {
-        __disconnect(me,
-                     "err: received a block we did not request: %d %d %d\n",
-                     request.piece_idx, request.block_byte_offset,
-                     request.block_len);
-        return 0;
-    }
-
-    /* read block data */
-    block_data = malloc(sizeof(char) * request.block_len);
-    for (ii = 0; ii < request.block_len; ii++)
-    {
-        if (0 == fn_read_byte(me, &block_data[ii]))
-            return 0;
-    }
-
-    __log(me, "read,piece,pieceidx=%d offset=%d length=%d",
-          request.piece_idx, request.block_byte_offset, request.block_len);
-
-    /* Insert block into database.
-     * Should result in the caller having other peerconns send HAVE messages */
-    me->func->pushblock(me->caller, me->peer_udata, &request, block_data);
-
-    /*  there should have been a request polled */
-    assert(NULL != req);
-    free(req);
-    free(block_data);
-
-    return 1;
-}
-
+#if 0
 /**
  * Read the bits of a bitfield and mark the peer as having those pieces */
 static int __mark_peer_as_have_from_have_payload(
@@ -1087,31 +772,7 @@ static int __mark_peer_as_have_from_have_payload(
 
     return 1;
 }
-
-static int __recv_bitfield(pwp_connection_t * me, int payload_len,
-                          int (*fn_read_byte) (pwp_connection_t *, unsigned char *))
-{
-    char *str;
-
-    if (payload_len * 8 < me->num_pieces)
-    {
-        __disconnect(me, "payload length less than npieces");
-        return 0;
-    }
-
-    if (0 == __mark_peer_as_have_from_have_payload(me,payload_len,fn_read_byte))
-    {
-        return 0;
-    }
-
-    str = bitfield_str(&me->state.have_bitfield);
-    __log(me, "read,bitfield,%s", str);
-    free(str);
-
-    me->state.flags |= PC_BITFIELD_RECEIVED;
-
-    return 1;
-}
+#endif
 
 /*
  *
@@ -1125,6 +786,7 @@ static int __recv_bitfield(pwp_connection_t * me, int payload_len,
  *
  * @return 1 on sucess; 0 otherwise
  */
+#if 0
 static int __process_msg(void *pco,
                          int (*fn_read_uint32) (pwp_connection_t *, uint32_t *),
                          int (*fn_read_byte) (pwp_connection_t *, unsigned char *))
@@ -1176,123 +838,11 @@ static int __process_msg(void *pco,
         }
 #endif
 
-        switch (msg_id)
-        {
-        case PWP_MSGTYPE_CHOKE:
-            {
-                request_t *req;
-                hashmap_iterator_t iter;
-
-                me->state.flags |= PC_PEER_CHOKING;
-                __log(me, "read,choke");
-
-
-                /*  clear pending requests */
-                for (hashmap_iterator(me->pendreqs, &iter);
-                     (req = hashmap_iterator_next(me->pendreqs, &iter));)
-                {
-                    req = hashmap_remove(me->pendreqs, req);
-                    free(req);
-                }
-            }
-            break;
-        case PWP_MSGTYPE_UNCHOKE:
-            me->state.flags &= ~PC_PEER_CHOKING;
-            __log(me, "read,unchoke");
-            break;
-        case PWP_MSGTYPE_INTERESTED:
-            me->state.flags |= PC_PEER_INTERESTED;
-#if 0
-            if (pwp_conn_peer_is_choked(me))
-            {
-                pwp_conn_unchoke(me);
-            }
-#endif
-            __log(me, "read,interested");
-            break;
-        case PWP_MSGTYPE_UNINTERESTED:
-            me->state.flags &= ~PC_PEER_INTERESTED;
-            __log(me, "read,uninterested");
-            break;
-        case PWP_MSGTYPE_HAVE:
-            {
-                uint32_t piece_idx;
-
-                assert(payload_len == 4);
-
-                if (0 == fn_read_uint32(me, &piece_idx))
-                {
-                    return 0;
-                }
-
-                if (1 == pwp_conn_mark_peer_has_piece(me, piece_idx))
-                {
-//                    assert(pwp_conn_peer_has_piece(me, piece_idx));
-                }
-
-//                bitfield_mark(&me->state.have_bitfield, piece_idx);
-                __log(me, "read,have,pieceidx=%d", piece_idx);
-
-                /* tell the peer we are intested if we don't have this piece */
-                if (!__get_piece(me, piece_idx))
-                {
-                    pwp_conn_set_im_interested(me);
-                }
-                
-            }
-            break;
-        case PWP_MSGTYPE_BITFIELD:
-            /* A peer MUST send this message immediately after the handshake
-             * operation, and MAY choose not to send it if it has no pieces at
-             * all. This message MUST not be sent at any other time during the
-             * communication. */
-            if (0 == __recv_bitfield(me, payload_len,fn_read_byte))
-            {
-                __disconnect(me, "bad bitfield");
-                return 0;
-            }
-            break;
-        case PWP_MSGTYPE_REQUEST:
-            return __recv_request(me, payload_len, fn_read_uint32);
-        case PWP_MSGTYPE_PIECE:
-            return __recv_piece(me, msg_len, fn_read_byte, fn_read_uint32);
-        case PWP_MSGTYPE_CANCEL:
-            /* ---------------------------------------------
-             * | Piece Index | Block Offset | Block Length |
-             * ---------------------------------------------*/
-            {
-                bt_block_t request;
-                bt_block_t *removed;
-
-                assert(payload_len == 12);
-
-                /* check request is valid */
-                if (0 == fn_read_uint32(me, (uint32_t*)&request.piece_idx))
-                    return 0;
-                if (0 == fn_read_uint32(me, (uint32_t*)&request.block_byte_offset))
-                    return 0;
-                if (0 == fn_read_uint32(me, (uint32_t*)&request.block_len))
-                    return 0;
-
-                __log(me, "read,cancel,pieceidx=%d offset=%d length=%d",
-                      request.piece_idx, request.block_byte_offset,
-                      request.block_len);
-
-                /* remove from linked list queue */
-                removed = llqueue_remove_item_via_cmpfunction(
-                        me->pendpeerreqs, &request, (void*)__request_compare);
-
-                free(removed);
-
-//                FIXME_STUB;
-//                queue_remove(peer->request_queue);
-            }
-            break;
-        }
     }
 
     return 1;
 }
+#endif
 
 /**
  * fit the request in the piece size so that we don't break anything */
@@ -1308,6 +858,7 @@ static void __request_fit(bt_block_t * request, const unsigned int piece_len)
 /**
  * read current message from receiving end
  * @return 1 on sucess; 0 otherwise */
+#if 0
 int pwp_conn_process_msg(void *pco)
 {
     pwp_connection_t *me = pco;
@@ -1340,8 +891,9 @@ int pwp_conn_process_msg(void *pco)
     }
 
     /* business as usual messages received below: */
-    return __process_msg(pco, __read_uint32_from_peer, __read_byte_from_peer);
+//    return __process_msg(pco, __read_uint32_from_peer, __read_byte_from_peer);
 }
+#endif
 
 /**
  * @return number of requests we required from the peer */
@@ -1502,4 +1054,259 @@ int pwp_conn_peer_has_piece(void *pco, const int piece_idx)
     pwp_connection_t *me = pco;
 
     return bitfield_is_marked(&me->state.have_bitfield, piece_idx);
+}
+
+void pwp_conn_keepalive(void* pco __attribute__((__unused__)))
+{
+
+}
+
+void pwp_conn_choke(void* pco)
+{
+    pwp_connection_t* me = pco;
+
+    request_t *req;
+    hashmap_iterator_t iter;
+
+    me->state.flags |= PC_PEER_CHOKING;
+    __log(me, "read,choke");
+
+    /*  clear pending requests */
+    for (hashmap_iterator(me->pendreqs, &iter);
+         (req = hashmap_iterator_next(me->pendreqs, &iter));)
+    {
+        req = hashmap_remove(me->pendreqs, req);
+        free(req);
+    }
+}
+
+void pwp_conn_unchoke(void* pco)
+{
+    pwp_connection_t* me = pco;
+
+    me->state.flags &= ~PC_PEER_CHOKING;
+    __log(me, "read,unchoke");
+}
+
+void pwp_conn_interested(void* pco)
+{
+    pwp_connection_t* me = pco;
+
+    me->state.flags |= PC_PEER_INTERESTED;
+#if 0
+    if (pwp_conn_peer_is_choked(me))
+    {
+        pwp_conn_unchoke(me);
+    }
+#endif
+    __log(me, "read,interested");
+}
+
+void pwp_conn_uninterested(void* pco)
+{
+    pwp_connection_t* me = pco;
+
+    me->state.flags &= ~PC_PEER_INTERESTED;
+            __log(me, "read,uninterested");
+}
+
+void pwp_conn_have(void* pco, msg_have_t* have)
+{
+    pwp_connection_t* me = pco;
+
+//    assert(payload_len == 4);
+
+    if (1 == pwp_conn_mark_peer_has_piece(me, have->pieceidx))
+    {
+//                    assert(pwp_conn_peer_has_piece(me, piece_idx));
+    }
+
+//  bitfield_mark(&me->state.have_bitfield, piece_idx);
+
+    __log(me, "read,have,pieceidx=%d", have->pieceidx);
+
+    /* tell the peer we are intested if we don't have this piece */
+    if (!__get_piece(me, have->pieceidx))
+    {
+        pwp_conn_set_im_interested(me);
+    }
+}
+
+void pwp_conn_bitfield(void* pco, msg_bitfield_t* bitfield)
+{
+    pwp_connection_t* me = pco;
+    char *str;
+
+     /* A peer MUST send this message immediately after the handshake
+     * operation, and MAY choose not to send it if it has no pieces at
+     * all. This message MUST not be sent at any other time during the
+     * communication. */
+
+    int ii;
+
+
+    for (ii = 0; ii < me->num_pieces; ii++)
+    {
+        if (bitfield_is_marked(&bitfield->bf,ii))
+        {
+            pwp_conn_mark_peer_has_piece(me, ii);
+        }
+    }
+
+    str = bitfield_str(&me->state.have_bitfield);
+    __log(me, "read,bitfield,%s", str);
+    free(str);
+
+    me->state.flags |= PC_BITFIELD_RECEIVED;
+}
+
+/**
+ * Respond to a peer's request for a block
+ * @return 0 on error, 1 otherwise */
+int pwp_conn_request(void* pco, bt_block_t *request)
+{
+    pwp_connection_t* me = pco;
+    void *pce;
+
+    /* check that the client doesn't request when they are choked */
+    if (pwp_conn_peer_is_choked(me))
+    {
+        __disconnect(me, "peer requested when they were choked");
+        return 0;
+    }
+
+    /* We're choking - we aren't obligated to respond to this request */
+    if (pwp_conn_peer_is_choked(me))
+    {
+        return 0;
+    }
+
+    /*  ensure we have correct piece_idx */
+    if (me->num_pieces < request->piece_idx)
+    {
+        __disconnect(me, "requested piece %d has invalid idx",
+                     request->piece_idx);
+        return 0;
+    }
+
+    /*  ensure that we have this piece */
+    if (!(pce = __get_piece(me, request->piece_idx)))
+    {
+        __disconnect(me, "requested piece %d is not available",
+                     request->piece_idx);
+        return 0;
+    }
+
+    /* ensure that the peer needs this piece
+     * If the peer doesn't need the piece then that means the peer is
+     * potentially invalid */
+    if (pwp_conn_peer_has_piece(me, request->piece_idx))
+    {
+        __disconnect(me, "peer requested pce%d which they confirmed they had",
+                     request->piece_idx);
+        return 0;
+    }
+
+    /* ensure that block request length is valid  */
+    if (request->block_len == 0 || me->piece_len < request->block_byte_offset + request->block_len)
+    {
+        __disconnect(me, "invalid block request"); 
+        return 0;
+    }
+
+    /* ensure that we have completed this piece.
+     * The peer should know if we have completed this piece or not, so
+     * asking for it is an indicator of a invalid peer. */
+    assert(NULL != me->func->piece_is_complete);
+    if (0 == me->func->piece_is_complete(me, pce))
+    {
+        __disconnect(me, "requested piece %d is not completed",
+                     request->piece_idx);
+        return 0;
+    }
+
+    /* append block to our pending request queue */
+    /* don't append the block twice */
+    if (!llqueue_get_item_via_cmpfunction(
+                me->pendpeerreqs,request,(void*)__request_compare))
+    {
+        bt_block_t* blk;
+
+        blk = malloc(sizeof(bt_block_t));
+        memcpy(blk,request, sizeof(bt_block_t));
+        llqueue_offer(me->pendpeerreqs,blk);
+    }
+
+    return 1;
+}
+
+void pwp_conn_cancel(void* pco, bt_block_t *cancel)
+{
+    pwp_connection_t* me = pco;
+    bt_block_t *removed;
+
+    __log(me, "read,cancel,pieceidx=%d offset=%d length=%d",
+          cancel->piece_idx, cancel->block_byte_offset,
+          cancel->block_len);
+
+    /* remove from linked list queue */
+    removed = llqueue_remove_item_via_cmpfunction(
+            me->pendpeerreqs, cancel, (void*)__request_compare);
+
+    free(removed);
+
+//  queue_remove(peer->request_queue);
+}
+
+/*
+6.3.10 Piece
+
+This message has ID 7 and a variable length payload. The payload holds 2
+integers indicating from which piece and with what offset the block data in the
+3rd member is derived. Note, the data length is implicit and can be calculated
+by subtracting 9 from the total message length.
+
+The payload has the following structure:
+
+-------------------------------------------
+| Piece Index | Block Offset | Block Data |
+-------------------------------------------
+*/
+int pwp_conn_piece(void* pco, msg_piece_t *piece)
+{
+    pwp_connection_t* me = pco;
+    request_t *req_removed;
+
+    /* remove pending request */
+    if (!(req_removed = hashmap_remove(me->pendreqs, &piece->block)))
+    {
+        /* ensure that the peer is sending us a piece we requested */
+        __disconnect(me, "err: received a block we did not request: %d %d %d\n",
+                     piece->block.piece_idx,
+                     piece->block.block_byte_offset,
+                     piece->block.block_len);
+        return 0;
+    }
+
+    /* read block data */
+    //block_data = malloc(sizeof(char) * request.block_len);
+    //memcpy(block_data, piece->data, request.block_len);
+
+    __log(me, "read,piece,pieceidx=%d offset=%d length=%d",
+          piece->block.piece_idx,
+          piece->block.block_byte_offset,
+          piece->block.block_len);
+
+    /* Insert block into database.
+     * Should result in the caller having other peerconns send HAVE messages */
+    me->func->pushblock(me->caller,
+            me->peer_udata,
+            &piece->block,
+            piece->data);
+
+    /*  there should have been a request polled */
+    assert(NULL != req_removed);
+    free(req_removed);
+    //free(block_data);
+    return 1;
 }

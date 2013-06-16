@@ -58,7 +58,7 @@ void TestPWP_choke_sets_as_choked(
     void *pc;
 
     pc = pwp_conn_new();
-    pwp_conn_choke(pc);
+    pwp_conn_choke_peer(pc);
     CuAssertTrue(tc, pwp_conn_peer_is_choked(pc));
 }
 
@@ -69,8 +69,8 @@ void TestPWP_unchoke_sets_as_unchoked(
     void *pc;
 
     pc = pwp_conn_new();
-    pwp_conn_choke(pc);
-    pwp_conn_unchoke(pc);
+    pwp_conn_choke_peer(pc);
+    pwp_conn_unchoke_peer(pc);
     CuAssertTrue(tc, !pwp_conn_peer_is_choked(pc));
 }
 
