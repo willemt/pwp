@@ -74,7 +74,9 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_invalid_name_length(
     bitstream_write_string(&ptr, __mock_their_peer_id, 20); /* pi */
 
     /* setup */
-    hs = pwp_handshaker_new(__mock_infohash, __mock_my_peer_id);
+    hs = pwp_handshaker_new((unsigned char*)__mock_infohash, (unsigned char*)__mock_my_peer_id);
+
+    assert(hs);
 
     /* receive */
     ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + 8 + 20 + 20);
@@ -98,7 +100,7 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_invalid_protocol_name(
     bitstream_write_string(&ptr, __mock_their_peer_id, 20); /* pi */
 
     /* setup */
-    hs = pwp_handshaker_new(__mock_infohash, __mock_my_peer_id);
+    hs = pwp_handshaker_new((unsigned char*)__mock_infohash, (unsigned char*)__mock_my_peer_id);
 
     /* receive */
     ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + 
@@ -126,7 +128,7 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_used_reserved_eight_byte
     bitstream_write_string(&ptr, __mock_their_peer_id, 20); /* pi */
 
     /* setup */
-    hs = pwp_handshaker_new(__mock_infohash, __mock_my_peer_id);
+    hs = pwp_handshaker_new((unsigned char*)__mock_infohash, (unsigned char*)__mock_my_peer_id);
     
     /* receive */
     ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + 8 + 20 + 20);
@@ -150,10 +152,10 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_infohash_that_is_same_as
     for (ii=0;ii<7;ii++)
         bitstream_write_ubyte(&ptr, 0);        /*  reserved */
     bitstream_write_string(&ptr, __mock_infohash, strlen(__mock_infohash)); /* ih */
-    bitstream_write_string(&ptr, __mock_my_peer_id, strlen(__mock_my_peer_id)); /* pi */
+    bitstream_write_string(&ptr, (char*)__mock_my_peer_id, strlen(__mock_my_peer_id)); /* pi */
 
     /* setup */
-    hs = pwp_handshaker_new(__mock_infohash, __mock_my_peer_id);
+    hs = pwp_handshaker_new((unsigned char*)__mock_infohash, (unsigned char*)__mock_my_peer_id);
 
     /* receive */
     ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + 8 + 20 + 20);
@@ -183,7 +185,7 @@ void TestPWP_handshake_read_disconnect_if_handshake_shows_a_peer_with_different_
     bitstream_write_string(&ptr, "00000000000000000000", 20); /* pi */
 
     /* setup */
-    hs = pwp_handshaker_new(__mock_infohash, __mock_my_peer_id);
+    hs = pwp_handshaker_new((unsigned char*)__mock_infohash, (unsigned char*)__mock_my_peer_id);
     
     /* receive */
     ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + 8 + 20 + 20);
@@ -212,10 +214,11 @@ void TestPWP_handshake_read_disconnect_if_handshake_shows_peer_with_our_peer_id(
     for (ii=0;ii<7;ii++)
         bitstream_write_ubyte(&ptr, 0);        /*  reserved */
     bitstream_write_string(&ptr, __mock_infohash, 20); /* ih */
-    bitstream_write_string(&ptr, __mock_my_peer_id, 20); /* pi */
+    bitstream_write_string(&ptr, (char*)__mock_my_peer_id, 20); /* pi */
 
     /* setup */
-    hs = pwp_handshaker_new(__mock_infohash, __mock_my_peer_id);
+    hs = pwp_handshaker_new((unsigned char*)__mock_infohash,
+            (unsigned char*)__mock_my_peer_id);
 
     /* receive */
     ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + 8 + 20 + 20);

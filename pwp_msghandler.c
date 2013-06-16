@@ -149,7 +149,7 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, unsigned char* buf, unsigned 
             switch (msg->id)
             {
             case PWP_MSGTYPE_HAVE:
-                if (1 == __read_uint32(&msg->have.pieceidx,
+                if (1 == __read_uint32(&msg->have.piece_idx,
                             &me->msg, &buf,&len))
                 {
                     pwp_conn_have(me->pc,&msg->have);

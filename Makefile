@@ -10,7 +10,7 @@ SHELL  = /bin/bash
 CC     = gcc
 CCFLAGS = -g -O2 -Wall -Werror -Werror=return-type -Werror=uninitialized -Wcast-align -fno-omit-frame-pointer -fno-common -fsigned-char $(GCOV_CCFLAGS) -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR)
 
-all: tests_connection tests_handler test_handshaker
+all: tests_connection tests_handler tests_handshaker
 
 chashmap:
 	mkdir -p $(HASHMAP_DIR)/.git
@@ -47,15 +47,18 @@ main_connection.c:
 main_msghandler.c:
 	sh make-tests.sh "test_msghandler.c" > main_msghandler.c
 
+main_handshaker.c:
+	sh make-tests.sh "test_handshaker.c" > main_handshaker.c
+
 tests_handler: main_msghandler.c pwp_msghandler.c test_msghandler.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c
 	$(CC) $(CCFLAGS) -o $@ $^
 	./tests_handler
 	gcov main_msghandler.c test_msghandler.c pwp_msghandler.c
 
-tests_handshaker: main_handshaker.c pwp_handshaker.c test_handshaker.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c
+tests_handshaker: main_handshaker.c pwp_handshaker.c test_handshaker.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c 
 	$(CC) $(CCFLAGS) -o $@ $^
-	./tests_handler
-	gcov main_msghandler.c test_msghandler.c pwp_msghandler.c
+	./tests_handshaker
+	gcov main_handshaker.c test_handshaker.c pwp_handshaker.c
 
 
 tests_connection: main_connection.c pwp_connection.o pwp_msghandler.c test_connection.c test_connection_send.c test_connection_mock_functions.c mock_piece.c bt_diskmem.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c

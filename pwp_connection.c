@@ -496,7 +496,7 @@ void pwp_conn_send_piece(void *pco, bt_block_t * req)
     }
 #endif
 
-    __log(me, "send,piece,pieceidx=%d block_byte_offset=%d block_len=%d",
+    __log(me, "send,piece,piece_idx=%d block_byte_offset=%d block_len=%d",
           req->piece_idx, req->block_byte_offset, req->block_len);
 
     free(data);
@@ -527,7 +527,7 @@ useful in determining which piece is rare.
     bitstream_write_ubyte(&ptr, PWP_MSGTYPE_HAVE);
     bitstream_write_uint32(&ptr, piece_idx);
     __send_to_peer(me, data, 9);
-    __log(me, "send,have,pieceidx=%d", piece_idx);
+    __log(me, "send,have,piece_idx=%d", piece_idx);
     return 1;
 }
 
@@ -545,7 +545,7 @@ void pwp_conn_send_request(void *pco, const bt_block_t * request)
     bitstream_write_uint32(&ptr, request->block_byte_offset);
     bitstream_write_uint32(&ptr, request->block_len);
     __send_to_peer(me, data, 17);
-    __log(me, "send,request,pieceidx=%d block_byte_offset=%d block_len=%d",
+    __log(me, "send,request,piece_idx=%d block_byte_offset=%d block_len=%d",
           request->piece_idx, request->block_byte_offset, request->block_len);
 }
 
@@ -563,7 +563,7 @@ void pwp_conn_send_cancel(void *pco, bt_block_t * cancel)
     bitstream_write_uint32(&ptr, cancel->block_byte_offset);
     bitstream_write_uint32(&ptr, cancel->block_len);
     __send_to_peer(me, data, 17);
-    __log(me, "send,cancel,pieceidx=%d block_byte_offset=%d block_len=%d",
+    __log(me, "send,cancel,piece_idx=%d block_byte_offset=%d block_len=%d",
           cancel->piece_idx, cancel->block_byte_offset, cancel->block_len);
 }
 
@@ -1116,17 +1116,17 @@ void pwp_conn_have(void* pco, msg_have_t* have)
 
 //    assert(payload_len == 4);
 
-    if (1 == pwp_conn_mark_peer_has_piece(me, have->pieceidx))
+    if (1 == pwp_conn_mark_peer_has_piece(me, have->piece_idx))
     {
 //                    assert(pwp_conn_peer_has_piece(me, piece_idx));
     }
 
 //  bitfield_mark(&me->state.have_bitfield, piece_idx);
 
-    __log(me, "read,have,pieceidx=%d", have->pieceidx);
+    __log(me, "read,have,piece_idx=%d", have->piece_idx);
 
     /* tell the peer we are intested if we don't have this piece */
-    if (!__get_piece(me, have->pieceidx))
+    if (!__get_piece(me, have->piece_idx))
     {
         pwp_conn_set_im_interested(me);
     }
@@ -1245,7 +1245,7 @@ void pwp_conn_cancel(void* pco, bt_block_t *cancel)
     pwp_connection_t* me = pco;
     bt_block_t *removed;
 
-    __log(me, "read,cancel,pieceidx=%d offset=%d length=%d",
+    __log(me, "read,cancel,piece_idx=%d offset=%d length=%d",
           cancel->piece_idx, cancel->block_byte_offset,
           cancel->block_len);
 
@@ -1292,7 +1292,7 @@ int pwp_conn_piece(void* pco, msg_piece_t *piece)
     //block_data = malloc(sizeof(char) * request.block_len);
     //memcpy(block_data, piece->data, request.block_len);
 
-    __log(me, "read,piece,pieceidx=%d offset=%d length=%d",
+    __log(me, "read,piece,piece_idx=%d offset=%d length=%d",
           piece->block.piece_idx,
           piece->block.block_byte_offset,
           piece->block.block_len);

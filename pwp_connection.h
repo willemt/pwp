@@ -25,7 +25,6 @@ typedef void (
 );
 #endif
 
-
 typedef int (
     *func_pollblock_f
 )   (
@@ -193,7 +192,6 @@ void pwp_conn_step(void *pco);
 
 int pwp_conn_peer_has_piece(void *pco, const int piece_idx);
 
-
 typedef struct {
     /** send data to peer */
     func_send_f send;
@@ -231,7 +229,6 @@ typedef struct {
     /* logging */
     func_log_f log;
 } pwp_connection_functions_t;
-
 
 typedef struct {
     bt_block_t block;

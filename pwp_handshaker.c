@@ -1,3 +1,4 @@
+
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -12,10 +13,10 @@
 
 typedef struct {
     pwp_handshake_t hs;
-    int bytes_read;
+    unsigned int bytes_read;
 
-    char* cur;
-    char* curr_value;
+    unsigned char* cur;
+    unsigned char* curr_value;
 
     /* expected infohash */
     unsigned char* expected_ih;
@@ -40,7 +41,7 @@ pwp_handshake_t* pwp_handshaker_get_handshake(void* me_)
     return &me->hs;
 }
 
-unsigned char __readbyte(unsigned int* bytes_read, unsigned char **buf, unsigned int* len)
+unsigned char __readbyte(unsigned int* bytes_read, const unsigned char **buf, unsigned int* len)
 {
     unsigned char val;
 
@@ -56,9 +57,9 @@ unsigned char __readbyte(unsigned int* bytes_read, unsigned char **buf, unsigned
  *  Disconnect on any errors
  *
  *  @return 1 on succesful handshake; otherwise 0; -1 on failed handshake */
-int pwp_handshaker_dispatch_from_buffer(void* meo, unsigned char* buf, unsigned int len)
+int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char* buf, unsigned int len)
 {
-    pwp_handshaker_t* me = me;
+    pwp_handshaker_t* me = me_;
     pwp_handshake_t* hs = &me->hs;
 
     while (0 < len)
@@ -77,8 +78,9 @@ int pwp_handshaker_dispatch_from_buffer(void* meo, unsigned char* buf, unsigned 
             /* invalid length */
             if (0 == hs->pn_len)
             {
-                return 0;
+                return -1;
             }
+
             me->cur = me->curr_value = hs->pn = malloc(hs->pn_len);
         }
     /* protocol name
@@ -91,18 +93,17 @@ int pwp_handshaker_dispatch_from_buffer(void* meo, unsigned char* buf, unsigned 
         else if (me->curr_value == hs->pn)
         {
             *me->cur = __readbyte(&me->bytes_read, &buf, &len);
-//            printf("%c\n", *me->cur);
 //            printf("string %.*s\n", me->cur - me->curr_value, hs->pn);
             me->cur++;
 
             /* validate */
             if (me->cur - me->curr_value == hs->pn_len)
             {
-                if (0 != strncmp(hs->pn, PROTOCOL_NAME,
+                if (0 != strncmp((char*)hs->pn, PROTOCOL_NAME,
                     hs->pn_len < strlen(PROTOCOL_NAME) ?
                         hs->pn_len : strlen(PROTOCOL_NAME)))
                 {
-                    return 0;
+                    return -1;
                 }
 
                 me->cur = me->curr_value = hs->reserved = malloc(8);
@@ -114,6 +115,13 @@ int pwp_handshaker_dispatch_from_buffer(void* meo, unsigned char* buf, unsigned 
         else if (me->curr_value == hs->reserved)
         {
             *(me->cur++) = __readbyte(&me->bytes_read, &buf, &len);
+
+            /* don't know what to do with set reserved bytes */
+            if (*(me->cur) != 0)
+            {
+                return -1;
+            }
+
             if (me->cur - me->curr_value == 8)
             {
                 me->cur = me->curr_value = hs->infohash = malloc(20);
@@ -137,7 +145,9 @@ int pwp_handshaker_dispatch_from_buffer(void* meo, unsigned char* buf, unsigned 
             if (me->cur - me->curr_value == 20)
             {
                 /* check info hash matches expected */
-                if (0 != strncmp(hs->infohash, me->expected_ih, 20))
+                if (0 != strncmp(
+                            (char*)hs->infohash,
+                            (char*)me->expected_ih, 20))
                 {
 //                    __log(me, "handshake: invalid infohash: '%s' vs '%s'",
 //                            hs->peerid, me->expected_info_hash);
@@ -231,7 +241,7 @@ void other()
 }
 #endif
 
-#if 1
+#if 0
 void main()
 {
     void* hss;

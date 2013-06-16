@@ -299,10 +299,10 @@ void TestPWP_piece(
     bitstream_write_ubyte(&ptr,'\0');
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1 + 4 + 4 + 10);
     CuAssertTrue(tc, PWP_MSGTYPE_PIECE == pc.mtype);
-    CuAssertTrue(tc, 1 == pc.piece.piece_idx);
-    CuAssertTrue(tc, 2 == pc.piece.block_byte_offset);
-    CuAssertTrue(tc, 5 == pc.piece.data_size);
-    CuAssertTrue(tc, 0 == strncmp("test ",pc.piece.data,pc.piece.data_size));
+    CuAssertTrue(tc, 1 == pc.piece.block.piece_idx);
+    CuAssertTrue(tc, 2 == pc.piece.block.block_byte_offset);
+    CuAssertTrue(tc, 5 == pc.piece.block.block_len);
+    CuAssertTrue(tc, 0 == strncmp("test ",pc.piece.data,pc.piece.block.block_len));
 }
 
 void TestPWP_piece_halfread(
@@ -334,16 +334,18 @@ void TestPWP_piece_halfread(
     /* read the first 5 bytes of data payload */
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1 + 4 + 4 + 5);
     CuAssertTrue(tc, PWP_MSGTYPE_PIECE == pc.mtype);
-    CuAssertTrue(tc, 1 == pc.piece.piece_idx);
-    CuAssertTrue(tc, 2 == pc.piece.block_byte_offset);
-    CuAssertTrue(tc, 5 == pc.piece.data_size);
-    CuAssertTrue(tc, 0 == strncmp("test msg2",pc.piece.data,pc.piece.data_size));
+    CuAssertTrue(tc, 1 == pc.piece.block.piece_idx);
+    CuAssertTrue(tc, 2 == pc.piece.block.block_byte_offset);
+    CuAssertTrue(tc, 5 == pc.piece.block.block_len);
+    CuAssertTrue(tc, 0 ==
+            strncmp("test msg2",pc.piece.data,pc.piece.block.block_len));
     /* read the last 5 bytes of data payload */
     pwp_msghandler_dispatch_from_buffer(mh, data + 4 + 1 + 4 + 4 + 5 , 5);
     CuAssertTrue(tc, PWP_MSGTYPE_PIECE == pc.mtype);
-    CuAssertTrue(tc, 1 == pc.piece.piece_idx);
-    CuAssertTrue(tc, 7 == pc.piece.block_byte_offset);
-    CuAssertTrue(tc, 5 == pc.piece.data_size);
-    CuAssertTrue(tc, 0 == strncmp("msg2",pc.piece.data,pc.piece.data_size));
+    CuAssertTrue(tc, 1 == pc.piece.block.piece_idx);
+    CuAssertTrue(tc, 7 == pc.piece.block.block_byte_offset);
+    CuAssertTrue(tc, 5 == pc.piece.block.block_len);
+    CuAssertTrue(tc, 0 ==
+            strncmp("msg2",pc.piece.data,pc.piece.block.block_len));
 }
 
