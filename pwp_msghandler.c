@@ -99,7 +99,7 @@ void* pwp_msghandler_new(void *pc)
 
 /**
  * Receive this much data on this step. */
-void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, unsigned int len);
+void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, unsigned int len)
 {
     bt_peer_connection_event_handler_t* me = mh;
     msg_t* msg = &me->msg;
