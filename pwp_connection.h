@@ -39,7 +39,7 @@ typedef int (
     void *udata,
     void * peer,
     bt_block_t * block,
-    void *data
+    const void *data
 );
 
 typedef int (

@@ -36,9 +36,9 @@ void *__FUNC_reader_get_piece( void * r, const int idx __attribute__((__unused__
 
 int __FUNC_disconnect( void* r, void * peer __attribute__((__unused__)), char *reason __attribute__((__unused__)));
 
-int __FUNC_MOCK_push_block( void * reader __attribute__((__unused__)), void * peer  __attribute__((__unused__)), bt_block_t * block __attribute__((__unused__)), void *data __attribute__((__unused__)));
+int __FUNC_MOCK_push_block( void * reader __attribute__((__unused__)), void * peer  __attribute__((__unused__)), bt_block_t * block __attribute__((__unused__)), const void *data __attribute__((__unused__)));
 
-int __FUNC_push_block( void* r, void * peer __attribute__((__unused__)), bt_block_t * block, void *data);
+int __FUNC_push_block( void* r, void * peer __attribute__((__unused__)), bt_block_t * block, const void *data);
 
 unsigned char *__sender_set(
     test_sender_t * sender,

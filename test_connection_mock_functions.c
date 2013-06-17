@@ -76,7 +76,7 @@ int __FUNC_MOCK_push_block(
     void * sender __attribute__((__unused__)), 
     void * peer  __attribute__((__unused__)),
     bt_block_t * block __attribute__((__unused__)),
-    void *data __attribute__((__unused__))
+    const void *data __attribute__((__unused__))
 )
 {
     return 1;
@@ -87,7 +87,7 @@ int __FUNC_push_block(
         void* r,
     void * peer __attribute__((__unused__)),
     bt_block_t * block,
-    void *data
+    const void *data
 )
 {
     test_sender_t * sender = r;
