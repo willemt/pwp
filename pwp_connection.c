@@ -196,6 +196,20 @@ static int __send_to_peer(pwp_connection_t * me, void *data, const int len)
     return 1;
 }
 
+void *pwp_conn_get_peer(void *pco)
+{
+    pwp_connection_t *me = pco;
+
+    return me->peer_udata;
+}
+
+void pwp_conn_set_peer(void *pco, void * peer)
+{
+    pwp_connection_t *me = pco;
+
+    me->peer_udata = peer;
+}
+
 /*----------------------------------------------------------------------------*/
 
 void *pwp_conn_new()
