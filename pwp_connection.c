@@ -221,12 +221,14 @@ void pwp_conn_release(void* pco)
 //        free(me->my_peer_id);
 }
 
+#if 0
 void *pwp_conn_get_peer(void *pco)
 {
     pwp_connection_t *me = pco;
 
     return me->peer_udata;
 }
+#endif
 
 /**
  * Let the caller know if this peerconnection is working. */
@@ -272,12 +274,14 @@ void pwp_conn_set_functions(void *pco, pwp_connection_functions_t* funcs, void* 
     me->caller = caller;
 }
 
+#if 0
 void pwp_conn_set_peer(void *pco, void * peer)
 {
     pwp_connection_t *me = pco;
 
     me->peer_udata = peer;
 }
+#endif
 
 /*----------------------------------------------------------------------------*/
 int pwp_conn_peer_is_interested(void *pco)

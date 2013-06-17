@@ -16,18 +16,6 @@
 //static char* __mock_infohash = "00000000000000000000";
 //static char* __mock_peerid = "00000000000000000000";
 
-void TestPWP_getset_peer(
-    CuTest * tc
-)
-{
-    void *pc;
-    char* peer = "test";
-
-    pc = pwp_conn_new();
-    pwp_conn_set_peer(pc,peer);
-    CuAssertTrue(tc, peer == pwp_conn_get_peer(pc));
-}
-
 void TestPWP_init_has_us_choked(
     CuTest * tc
 )
