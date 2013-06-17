@@ -232,7 +232,7 @@ typedef struct {
 
 typedef struct {
     bt_block_t block;
-    void* data;
+    const void* data;
 } msg_piece_t;
 
 typedef struct {

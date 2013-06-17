@@ -43,7 +43,7 @@ static void __endmsg(msg_t* msg)
 static int __read_uint32(
         uint32_t* in,
         msg_t *msg,
-        unsigned char** buf,
+        const unsigned char** buf,
         unsigned int *len)
 {
     while (1)
@@ -73,7 +73,7 @@ static int __read_uint32(
 static int __read_byte(
         unsigned char* in,
         unsigned int *tot_bytes_read,
-        unsigned char** buf,
+        const unsigned char** buf,
         unsigned int *len)
 {
     if (*len == 0)
