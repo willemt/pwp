@@ -1,1 +1,1 @@
-script: "make contrib && make"
+script: "make"
