@@ -60,14 +60,13 @@ void TestPWP_send_request_spawns_wellformed_piece_response(
 
     /*  piece */
     __sender_set(&sender,NULL,msg);
-#if 1
-    bitstream_write_uint32(&ptr, 12);
-    bitstream_write_ubyte(&ptr, 6);        /* request */
-    bitstream_write_uint32(&ptr, 1);       /*  piece one */
-    bitstream_write_uint32(&ptr, 0);       /*  block offset 0 */
-    bitstream_write_uint32(&ptr, 2);       /*  block length 2 */
-#endif
+    bitstream_write_uint32(&ptr, 13);   /* msg size */
+    bitstream_write_ubyte(&ptr, 6);     /* request */
+    bitstream_write_uint32(&ptr, 1);    /*  piece one */
+    bitstream_write_uint32(&ptr, 0);    /*  block offset 0 */
+    bitstream_write_uint32(&ptr, 2);    /*  block length 2 */
 
+    /* setup */
     pc = pwp_conn_new();
     mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc,
