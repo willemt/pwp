@@ -38,7 +38,6 @@ void T_estPWP_send_request_spawns_wellformed_piece_response(
 {
     pwp_connection_functions_t funcs = {
         .send = __FUNC_send,
-        .recv = __FUNC_peercon_recv,
         .disconnect = __FUNC_disconnect,
         .pushblock = __FUNC_push_block,
         .write_block_to_stream = mock_piece_write_block_to_stream,
@@ -359,7 +358,6 @@ void TestPWP_read_havemsg_marks_peer_as_having_piece(
 )
 {
     pwp_connection_functions_t funcs = {
-        .recv = __FUNC_peercon_recv,
         .disconnect = __disconnect_msg,
         .getpiece = __FUNC_sender_get_piece,
     };
@@ -394,7 +392,6 @@ void TestPWP_read_havemsg_disconnects_with_piece_idx_out_of_bounds(
 )
 {
     pwp_connection_functions_t funcs = {
-        .recv = __FUNC_peercon_recv,
         .disconnect = __FUNC_disconnect,
         .getpiece = __FUNC_sender_get_piece,
     };
@@ -431,7 +428,6 @@ void TestPWP_send_interested_if_lacking_piece_from_have_msg(
 {
     pwp_connection_functions_t funcs = {
         .send = __FUNC_send,
-        .recv = __FUNC_peercon_recv,
         .disconnect = __disconnect_msg,
         .getpiece = __FUNC_get_piece_never_have
     };
@@ -467,7 +463,6 @@ void TestPWP_read_chokemsg_marks_us_as_choked(
 )
 {
     pwp_connection_functions_t funcs = {
-        .recv = __FUNC_peercon_recv,
         .disconnect = __disconnect_msg,
     };
     void *pc, *mh;
@@ -497,7 +492,6 @@ void TestPWP_read_chokemsg_empties_our_pending_requests(
 {
     pwp_connection_functions_t funcs = {
         .send = __FUNC_MOCK_send,
-        .recv = __FUNC_peercon_recv,
     };
     void *pc, *mh;
     test_sender_t sender;
@@ -535,7 +529,6 @@ void TestPWP_read_unchokemsg_marks_us_as_unchoked(
 )
 {
     pwp_connection_functions_t funcs = {
-        .recv = __FUNC_peercon_recv,
     };
     void *pc, *mh;
     test_sender_t sender;
@@ -576,7 +569,6 @@ void TestPWP_read_request_msg_disconnects_if_peer_is_choked(
 )
 {
     pwp_connection_functions_t funcs = {
-        .recv = __FUNC_peercon_recv,
         .disconnect = __FUNC_disconnect,
     };
     void *pc, *mh;
@@ -614,7 +606,6 @@ void TestPWP_read_peerisinterested_marks_peer_as_interested(
 {
     pwp_connection_functions_t funcs = {
         .send = __FUNC_MOCK_send,
-        .recv = __FUNC_peercon_recv,
     };
     void *pc, *mh;
     test_sender_t sender;
@@ -646,7 +637,6 @@ void TestPWP_read_peerisuninterested_marks_peer_as_uninterested(
 {
     pwp_connection_functions_t funcs = {
         .send = __FUNC_MOCK_send,
-        .recv = __FUNC_peercon_recv,
     };
     void *pc, *mh;
     test_sender_t sender;
@@ -687,7 +677,6 @@ void TestPWP_read_bitfield_marks_peers_pieces_as_haved_by_peer(
 )
 {
     pwp_connection_functions_t funcs = {
-        .recv = __FUNC_peercon_recv,
     };
     void *pc, *mh;
     test_sender_t sender;
@@ -725,7 +714,6 @@ void TestPWP_read_disconnect_if_bitfield_received_more_than_once(
 )
 {
     pwp_connection_functions_t funcs = {
-        .recv = __FUNC_peercon_recv,
         .disconnect = __FUNC_disconnect,
     };
     void *pc, *mh;
@@ -760,7 +748,6 @@ void TestPWP_read_bitfield_greaterthan_npieces_results_in_disconnect(
 )
 {
     pwp_connection_functions_t funcs = {
-        .recv = __FUNC_peercon_recv,
         .disconnect = __FUNC_disconnect,
     };
     void *pc, *mh;
@@ -849,7 +836,6 @@ void TestPWP_read_request_of_piece_not_completed_disconnects_peer(
     bitstream_write_uint32(&ptr, 2);       /*  block length */
 
     pwp_connection_functions_t funcs = {
-        .recv = __FUNC_peercon_recv,
         .disconnect = __FUNC_disconnect,
         .piece_is_complete = __FUNC_pieceiscomplete_fail,
         .getpiece = __FUNC_sender_get_piece
@@ -877,7 +863,6 @@ void TestPWP_read_request_with_invalid_piece_idx_disconnects_peer(
 )
 {
     pwp_connection_functions_t funcs = {
-        .recv = __FUNC_peercon_recv,
         .disconnect = __FUNC_disconnect,
         .piece_is_complete = __FUNC_pieceiscomplete,
         .getpiece = __FUNC_sender_get_piece
@@ -920,7 +905,6 @@ void TestPWP_read_request_with_invalid_block_length_disconnects_peer(
 )
 {
     pwp_connection_functions_t funcs = {
-        .recv = __FUNC_peercon_recv,
         .disconnect = __FUNC_disconnect,
         .piece_is_complete = __FUNC_pieceiscomplete,
         .getpiece = __FUNC_sender_get_piece
@@ -960,7 +944,6 @@ void TestPWP_read_request_of_piece_which_client_has_results_in_disconnect(
 )
 {
     pwp_connection_functions_t funcs = {
-        .recv = __FUNC_peercon_recv,
         .disconnect = __FUNC_disconnect,
         .getpiece = __FUNC_sender_get_piece,
 //        .write_block_to_stream = mock_piece_write_block_to_stream,
@@ -1010,7 +993,6 @@ void TestPWP_read_piece_results_in_disconnect_if_we_havent_requested_this_piece(
 )
 {
     pwp_connection_functions_t funcs = {
-        .recv = __FUNC_peercon_recv,
         .disconnect = __FUNC_disconnect,
         .pushblock = __FUNC_push_block,
     };
@@ -1044,7 +1026,6 @@ void TestPWP_read_piece_results_in_correct_receivable(
 )
 {
     pwp_connection_functions_t funcs = {
-        .recv = __FUNC_peercon_recv,
         .disconnect = __FUNC_disconnect,
         .pushblock = __FUNC_push_block,
     };
@@ -1139,7 +1120,6 @@ void TestPWP_read_request_doesnt_duplicate_within_pending_queue(
 {
     pwp_connection_functions_t funcs = {
         .send = __FUNC_send,
-        .recv = __FUNC_peercon_recv,
         .disconnect = __FUNC_disconnect,
         .pushblock = __FUNC_push_block,
         .write_block_to_stream = mock_piece_write_block_to_stream,
@@ -1198,7 +1178,6 @@ void TestPWP_read_piece_decreases_pending_requests(
 {
     pwp_connection_functions_t funcs = {
         .send = __FUNC_MOCK_send,
-        .recv = __FUNC_peercon_recv,
         .pushblock = __FUNC_MOCK_push_block,
         .disconnect = __disconnect_msg,
     };
@@ -1246,7 +1225,6 @@ void TestPWP_read_cancelmsg_cancels_last_request(
 {
     pwp_connection_functions_t funcs = {
         .send = __FUNC_send,
-        .recv = __FUNC_peercon_recv,
         .disconnect = __FUNC_disconnect,
         .pushblock = __FUNC_push_block,
         .write_block_to_stream = mock_piece_write_block_to_stream,
@@ -1299,7 +1277,6 @@ void TestPWP_request_queue_dropped_when_peer_is_choked(
 {
     pwp_connection_functions_t funcs = {
         .send = __FUNC_send,
-        .recv = __FUNC_peercon_recv,
         .disconnect = __FUNC_disconnect,
         .pushblock = __FUNC_push_block,
         .write_block_to_stream = mock_piece_write_block_to_stream,

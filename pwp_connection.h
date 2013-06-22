@@ -1,5 +1,4 @@
 
-/*  bt block */
 typedef struct
 {
     uint32_t piece_idx;
@@ -52,30 +51,12 @@ typedef int (
 );
 
 typedef int (
-    *func_recv_f
-)   (
-    void *udata,
-    void * peer,
-    char *buf,
-    int *len
-);
-
-typedef int (
     *func_disconnect_f
 )   (
     void *udata,
     void * peer,
     char *reason
 );
-
-typedef int (
-    *func_connect_f
-)   (
-    void *bto,
-    void *pc,
-    void * peer
-);
-
 
 #ifndef HAVE_FUNC_GET_INT
 #define HAVE_FUNC_GET_INT
@@ -195,17 +176,6 @@ int pwp_conn_peer_has_piece(void *pco, const int piece_idx);
 typedef struct {
     /** send data to peer */
     func_send_f send;
-
-    /** recv data from peer */
-    func_recv_f recv;
-
-    /** 
-     * Connect to the peer over the network medium.
-     * In 'TCP' terms this is the actual initiation of the connection
-     * This call should be non-blocking.
-     * System that handles this is responsible for calling:
-     *  "pwp_conn_connected" and "pwp_conn_connect_failed" */
-    func_connect_f connect;
 
     /* drop the connect.
      * Most likely because we detected an error with the peer's processing */

@@ -654,8 +654,6 @@ int pwp_conn_mark_peer_has_piece(void *pco, const int piece_idx)
     return 1;
 }
 
-/*----------------------------------------------------------------------------*/
-
 /**
  * fit the request in the piece size so that we don't break anything */
 static void __request_fit(bt_block_t * request, const unsigned int piece_len)
@@ -727,7 +725,6 @@ void pwp_conn_connected(void* pco)
 
     /* send handshake */
     //pwp_conn_send_handshake(me);
-
     //pwp_conn_recv_handshake(me, me->infohash);
 }
 
@@ -756,26 +753,6 @@ void pwp_conn_step(void *pco)
 
     if (pwp_conn_flag_is_set(me, PC_UNCONTACTABLE_PEER))
         return;
-
-#if 0
-    /*  if the peer is not connected and is contactable */
-    if (!pwp_conn_flag_is_set(me, PC_CONNECTED))
-    {
-        assert(NULL != me->func);
-        assert(NULL != me->func->connect);
-
-        /* connect to this peer  */
-        //__log(me, "[connecting],%.*s", 20, me->their_peer_id);
-        me->func->connect(me->caller, me, me->peer_udata);
-
-        return;
-    }
-    /* don't do any processing unless we have received a handshake */
-    else if (!pwp_conn_flag_is_set(me, PC_HANDSHAKE_RECEIVED))
-    {
-        return;
-    }
-#endif
 
     /* send one pending request to the peer */
     if (0 < llqueue_count(me->pendpeerreqs))
@@ -867,12 +844,14 @@ void pwp_conn_interested(void* pco)
     pwp_connection_t* me = pco;
 
     me->state.flags |= PC_PEER_INTERESTED;
+
 #if 0
     if (pwp_conn_peer_is_choked(me))
     {
         pwp_conn_unchoke(me);
     }
 #endif
+
     __log(me, "read,interested");
 }
 
