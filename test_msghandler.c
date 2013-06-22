@@ -267,8 +267,10 @@ void TestPWP_bitfield(
     bitstream_write_ubyte(&ptr,PWP_MSGTYPE_BITFIELD);
     bitstream_write_ubyte(&ptr,0x4e);
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1 + 1);
+
+    /* read */
     CuAssertTrue(tc, PWP_MSGTYPE_BITFIELD == pc.mtype);
-    CuAssertTrue(tc, 0 == strncmp("01011110",bitfield_str(&pc.bitfield.bf),8));
+    CuAssertTrue(tc, 0 == strncmp("01001110",bitfield_str(&pc.bitfield.bf),8));
 }
 
 void TestPWP_piece(
@@ -301,8 +303,8 @@ void TestPWP_piece(
     CuAssertTrue(tc, PWP_MSGTYPE_PIECE == pc.mtype);
     CuAssertTrue(tc, 1 == pc.piece.block.piece_idx);
     CuAssertTrue(tc, 2 == pc.piece.block.block_byte_offset);
-    CuAssertTrue(tc, 5 == pc.piece.block.block_len);
-    CuAssertTrue(tc, 0 == strncmp("test ",pc.piece.data,pc.piece.block.block_len));
+    CuAssertTrue(tc, 10 == pc.piece.block.block_len);
+    CuAssertTrue(tc, 0 == strncmp("test msg1",pc.piece.data,pc.piece.block.block_len));
 }
 
 void TestPWP_piece_halfread(

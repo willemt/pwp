@@ -21,8 +21,6 @@ typedef struct {
         msg_have_t have;
         msg_bitfield_t bitfield;
         bt_block_t block;
-//        msg_request_t request;
-//        msg_cancel_t cancel;
         msg_piece_t piece;
     };
 } msg_t;
@@ -48,7 +46,6 @@ static int __read_uint32(
 {
     while (1)
     {
-
         if (msg->tok_bytes_read == 4)
         {
             msg->tok_bytes_read = 0;
@@ -60,13 +57,11 @@ static int __read_uint32(
         }
 
         *((unsigned char*)in + msg->tok_bytes_read) = **buf;
-
-//        printf("%x\n", **buf);
-
         msg->tok_bytes_read += 1;
         msg->bytes_read += 1;
         *buf += 1;
         *len -= 1;
+//        printf("%x\n", **buf);
     }
 }
 
