@@ -462,7 +462,7 @@ int pwp_conn_send_have(void *pco, const int piece_idx)
     bitstream_write_uint32(&ptr, 5);
     bitstream_write_ubyte(&ptr, PWP_MSGTYPE_HAVE);
     bitstream_write_uint32(&ptr, piece_idx);
-    __send_to_peer(me, data, 9);
+    __send_to_peer(me, data, 5+4);
     __log(me, "send,have,piece_idx=%d", piece_idx);
     return 1;
 }
@@ -480,7 +480,7 @@ void pwp_conn_send_request(void *pco, const bt_block_t * request)
     bitstream_write_uint32(&ptr, request->piece_idx);
     bitstream_write_uint32(&ptr, request->block_byte_offset);
     bitstream_write_uint32(&ptr, request->block_len);
-    __send_to_peer(me, data, 17);
+    __send_to_peer(me, data, 13+4);
     __log(me, "send,request,piece_idx=%d block_byte_offset=%d block_len=%d",
           request->piece_idx, request->block_byte_offset, request->block_len);
 }

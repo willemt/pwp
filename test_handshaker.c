@@ -63,8 +63,8 @@ void TestPWP_handshake_disconnect_if_handshake_has_invalid_name_length(
 )
 {
     void *hs;
-    unsigned char msg[1000], *ptr = msg;
-    int ii, ret;
+    unsigned char msg[1000], *ptr = msg, *m = msg;
+    unsigned int ii, ret, len;
 
     /* handshake */
     bitstream_write_ubyte(&ptr, 0); /* pn len */
@@ -76,10 +76,9 @@ void TestPWP_handshake_disconnect_if_handshake_has_invalid_name_length(
     /* setup */
     hs = pwp_handshaker_new((unsigned char*)__mock_infohash, (unsigned char*)__mock_my_peer_id);
 
-    assert(hs);
-
     /* receive */
-    ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + 8 + 20 + 20);
+    len = 1 + 8 + 20 + 20;
+    ret = pwp_handshaker_dispatch_from_buffer(hs, (const unsigned char**)&m, &len);
     CuAssertTrue(tc, -1 == ret);
 }
 
@@ -88,8 +87,8 @@ void TestPWP_handshake_disconnect_if_handshake_has_invalid_protocol_name(
 )
 {
     void *hs;
-    unsigned char msg[1000], *ptr = msg;
-    int ii, ret;
+    unsigned char msg[1000], *ptr = msg, *m = msg;
+    unsigned int ii, ret, len;
 
     /* handshake */
     bitstream_write_ubyte(&ptr, strlen("Garbage Protocol")); /* pn len */
@@ -103,8 +102,8 @@ void TestPWP_handshake_disconnect_if_handshake_has_invalid_protocol_name(
     hs = pwp_handshaker_new((unsigned char*)__mock_infohash, (unsigned char*)__mock_my_peer_id);
 
     /* receive */
-    ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + 
-            strlen("Garbage Protocol") + 8 + 20 + 20);
+    len = 1 + strlen("Garbage Protocol") + 8 + 20 + 20;
+    ret = pwp_handshaker_dispatch_from_buffer(hs, (const unsigned char**)&m, &len);
     CuAssertTrue(tc, -1 == ret);
 }
 
@@ -113,10 +112,8 @@ void TestPWP_handshake_disconnect_if_handshake_has_used_reserved_eight_bytes(
 )
 {
     void *hs;
-    unsigned char msg[1000], *ptr;
-    int ii, ret;
-
-    ptr = msg;
+    unsigned char msg[1000], *ptr = msg, *m = msg;
+    unsigned int ii, ret, len;
 
     /* handshake */
     bitstream_write_ubyte(&ptr, strlen(PROTOCOL_NAME)); /* pn len */
@@ -131,7 +128,8 @@ void TestPWP_handshake_disconnect_if_handshake_has_used_reserved_eight_bytes(
     hs = pwp_handshaker_new((unsigned char*)__mock_infohash, (unsigned char*)__mock_my_peer_id);
     
     /* receive */
-    ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + strlen(PROTOCOL_NAME) + 8 + 20 + 20);
+    len = 1 + strlen(PROTOCOL_NAME) + 8 + 20 + 20;
+    ret = pwp_handshaker_dispatch_from_buffer(hs, (const unsigned char**)&m, &len);
     CuAssertTrue(tc, -1 == ret);
 }
 
@@ -140,10 +138,8 @@ void TestPWP_handshake_disconnect_if_handshake_has_infohash_that_is_not_same_as_
 )
 {
     void *hs;
-    unsigned char msg[1000], *ptr;
-    int ii, ret;
-
-    ptr = msg;
+    unsigned char msg[1000], *ptr = msg, *m = msg;
+    unsigned int ii, ret, len;
 
     /* handshake */
     bitstream_write_ubyte(&ptr, strlen(PROTOCOL_NAME)); /* pn len */
@@ -157,7 +153,8 @@ void TestPWP_handshake_disconnect_if_handshake_has_infohash_that_is_not_same_as_
     hs = pwp_handshaker_new((unsigned char*)__mock_infohash, (unsigned char*)__mock_my_peer_id);
 
     /* receive */
-    ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + strlen(PROTOCOL_NAME) + 8 + 20 + 20);
+    len = 1 + strlen(PROTOCOL_NAME) + 8 + 20 + 20;
+    ret = pwp_handshaker_dispatch_from_buffer(hs, (const unsigned char**)&m, &len);
     CuAssertTrue(tc, -1 == ret);
 }
 
@@ -169,10 +166,8 @@ void TestPWP_handshake_disconnect_if_handshake_shows_a_peer_with_different_peer_
 )
 {
     void *hs;
-    unsigned char msg[1000], *ptr;
-    int ii, ret;
-
-    ptr = msg;
+    unsigned char msg[1000], *ptr = msg, *m = msg;
+    unsigned int ii, ret, len;
 
     /* handshake */
     bitstream_write_ubyte(&ptr, strlen(PROTOCOL_NAME)); /* pn len */
@@ -187,7 +182,8 @@ void TestPWP_handshake_disconnect_if_handshake_shows_a_peer_with_different_peer_
     hs = pwp_handshaker_new((unsigned char*)__mock_infohash, (unsigned char*)__mock_my_peer_id);
     
     /* receive */
-    ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + strlen(PROTOCOL_NAME) + 8 + 20 + 20);
+    len = 1 + strlen(PROTOCOL_NAME) + 8 + 20 + 20;
+    ret = pwp_handshaker_dispatch_from_buffer(hs, (const unsigned char**)&m, &len);
     CuAssertTrue(tc, -1 == ret);
 }
 
@@ -243,10 +239,8 @@ void TestPWP_handshake_success_from_good_handshake(
 )
 {
     void *hs;
-    unsigned char msg[1000], *ptr;
-    int ii, ret;
-
-    ptr = msg;
+    unsigned char msg[1000], *ptr = msg, *m = msg;
+    unsigned int ii, ret, len;
 
     /* handshake */
     bitstream_write_ubyte(&ptr, strlen(PROTOCOL_NAME)); /* pn len */
@@ -261,7 +255,8 @@ void TestPWP_handshake_success_from_good_handshake(
             (unsigned char*)__mock_my_peer_id);
 
     /* receive */
-    ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + strlen(PROTOCOL_NAME) + 8 + 20 + 20);
+    len = 1 + strlen(PROTOCOL_NAME) + 8 + 20 + 20;
+    ret = pwp_handshaker_dispatch_from_buffer(hs, (const unsigned char**)&m, &len);
     CuAssertTrue(tc, 1 == ret);
 }
 

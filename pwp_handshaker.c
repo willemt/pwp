@@ -23,6 +23,9 @@ typedef struct {
 
     /* my peer id */
     unsigned char* my_pi;
+
+    /* 1 is handshake is done; 0 otherwise */
+//    int status;
 } pwp_handshaker_t;
 
 void* pwp_handshaker_new(unsigned char* expected_info_hash, unsigned char* mypeerid)
@@ -42,10 +45,18 @@ void pwp_handshaker_release(void* hs)
     free(me);
 }
 
+/**
+ * @return null if handshake was successful */
 pwp_handshake_t* pwp_handshaker_get_handshake(void* me_)
 {
     pwp_handshaker_t* me = me_;
-    return &me->hs;
+
+#if 0
+    if (me->status == 1)
+        return &me->hs;
+    return NULL;
+#endif
+        return &me->hs;
 }
 
 unsigned char __readbyte(unsigned int* bytes_read, const unsigned char **buf, unsigned int* len)
@@ -64,12 +75,12 @@ unsigned char __readbyte(unsigned int* bytes_read, const unsigned char **buf, un
  *  Disconnect on any errors
  *
  *  @return 1 on succesful handshake; otherwise 0; -1 on failed handshake */
-int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char* buf, unsigned int len)
+int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char** buf, unsigned int* len)
 {
     pwp_handshaker_t* me = me_;
     pwp_handshake_t* hs = &me->hs;
 
-    while (0 < len)
+    while (0 < *len)
     {
 
     /* protcol name length
@@ -80,7 +91,7 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char* buf, uns
      * first byte, then the connection MUST be dropped. */
         if (me->curr_value == NULL)
         {
-            hs->pn_len = __readbyte(&me->bytes_read, &buf, &len);
+            hs->pn_len = __readbyte(&me->bytes_read, buf, len);
 
             /* invalid length */
             if (0 == hs->pn_len)
@@ -99,7 +110,7 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char* buf, uns
     dropped. */
         else if (me->curr_value == hs->pn)
         {
-            *me->cur = __readbyte(&me->bytes_read, &buf, &len);
+            *me->cur = __readbyte(&me->bytes_read, buf, len);
             me->cur++;
 
             /* validate */
@@ -120,7 +131,7 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char* buf, uns
     should be read without interpretation. */
         else if (me->curr_value == hs->reserved)
         {
-            *(me->cur++) = __readbyte(&me->bytes_read, &buf, &len);
+            *(me->cur++) = __readbyte(&me->bytes_read, buf, len);
 
             /* don't know what to do with set reserved bytes */
             if (*(me->cur-1) != 0)
@@ -145,7 +156,7 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char* buf, uns
     same port. */
         else if (me->curr_value == hs->infohash)
         {
-            *(me->cur++) = __readbyte(&me->bytes_read, &buf, &len);
+            *(me->cur++) = __readbyte(&me->bytes_read, buf, len);
 
             /* validate */
             if (me->cur - me->curr_value == 20)
@@ -172,7 +183,7 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char* buf, uns
     ID, the connection MUST be dropped. */
         else if (me->curr_value == hs->peerid)
         {
-            *(me->cur++) = __readbyte(&me->bytes_read, &buf, &len);
+            *(me->cur++) = __readbyte(&me->bytes_read, buf, len);
 
             if (me->cur - me->curr_value == 20)
             {
@@ -185,8 +196,8 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char* buf, uns
                     return 0;
                 }
 #endif
-
-                return 1;
+//                me->status = 1;
+                return 1;//me->bytes_read;
             }
         }
         else
@@ -195,7 +206,7 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char* buf, uns
         }
     }
 
-    return 0;
+    return 0;//me->bytes_read;
 }
 
 #if 0
