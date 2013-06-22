@@ -35,6 +35,13 @@ void* pwp_handshaker_new(unsigned char* expected_info_hash, unsigned char* mypee
     return me;
 }
 
+void pwp_handshaker_release(void* hs)
+{
+    pwp_handshaker_t* me = hs;
+
+    free(me);
+}
+
 pwp_handshake_t* pwp_handshaker_get_handshake(void* me_)
 {
     pwp_handshaker_t* me = me_;

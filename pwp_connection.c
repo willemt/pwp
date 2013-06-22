@@ -546,6 +546,7 @@ void pwp_conn_send_bitfield(void *pco)
     bitstream_write_uint32(&ptr, size - sizeof(uint32_t));
     bitstream_write_ubyte(&ptr, PWP_MSGTYPE_BITFIELD);
     __write_bitfield_to_stream_from_getpiece_func(me, &ptr);
+
 #if 0
     /*  ensure padding */
     if (ii % 8 != 0)
@@ -898,10 +899,12 @@ void pwp_conn_bitfield(void* pco, msg_bitfield_t* bitfield)
      * all. This message MUST not be sent at any other time during the
      * communication. */
 
+#if 0
     if (me->num_pieces < bitfield_get_length(&bitfield->bf))
     {
         __disconnect(me, "too many pieces within bitfield");
     }
+#endif
 
     if (pwp_conn_flag_is_set(me,PC_BITFIELD_RECEIVED))
     {

@@ -743,7 +743,8 @@ void TestPWP_read_disconnect_if_bitfield_received_more_than_once(
     CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
 
-void TestPWP_read_bitfield_greaterthan_npieces_results_in_disconnect(
+#if 0
+void T_estPWP_read_bitfield_greaterthan_npieces_results_in_disconnect(
     CuTest * tc
 )
 {
@@ -778,6 +779,7 @@ void TestPWP_read_bitfield_greaterthan_npieces_results_in_disconnect(
     /* results in disconnection */
     CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
+#endif
 
 #if 0
 void T_estPWP_readBitfieldLessThanNPieces(
