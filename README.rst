@@ -1,6 +1,6 @@
 PWP Connection
 ==========
-"!https://travis-ci.org/willemt/CBTPWPConnection.png!":https://travis-ci.org/willemt/CBTPWPConnection
+.. image: https://travis-ci.org/willemt/CBTPWPConnection.png
 
 What?
 -----
