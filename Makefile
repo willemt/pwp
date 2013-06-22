@@ -70,4 +70,4 @@ pwp_connection.o: pwp_connection.c
 	$(CC) $(CCFLAGS) -c -o $@ $^
 
 clean:
-	rm -f main_connection.c main_msghandler.c *.o tests $(GCOV_OUTPUT)
+	rm -f main_connection.c main_msghandler.c main_handshaker.c *.o tests $(GCOV_OUTPUT)

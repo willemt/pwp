@@ -26,7 +26,7 @@ static char* __mock_my_peer_id = "00000000000000000001";
  * If bitfield not first message sent after handshake, then disconnect
  */
 #if 0
-void T_estPWP_read_msg_other_than_bitfield_after_handshake_disconnects(
+void T_estPWP_msg_other_than_bitfield_after_handshake_disconnects(
     CuTest * tc
 )
 {
@@ -58,7 +58,7 @@ void T_estPWP_read_msg_other_than_bitfield_after_handshake_disconnects(
 }
 #endif
 
-void TestPWP_handshake_read_disconnect_if_handshake_has_invalid_name_length(
+void TestPWP_handshake_disconnect_if_handshake_has_invalid_name_length(
     CuTest * tc
 )
 {
@@ -83,7 +83,7 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_invalid_name_length(
     CuAssertTrue(tc, -1 == ret);
 }
 
-void TestPWP_handshake_read_disconnect_if_handshake_has_invalid_protocol_name(
+void TestPWP_handshake_disconnect_if_handshake_has_invalid_protocol_name(
     CuTest * tc
 )
 {
@@ -108,7 +108,7 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_invalid_protocol_name(
     CuAssertTrue(tc, -1 == ret);
 }
 
-void TestPWP_handshake_read_disconnect_if_handshake_has_used_reserved_eight_bytes(
+void TestPWP_handshake_disconnect_if_handshake_has_used_reserved_eight_bytes(
     CuTest * tc
 )
 {
@@ -131,11 +131,11 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_used_reserved_eight_byte
     hs = pwp_handshaker_new((unsigned char*)__mock_infohash, (unsigned char*)__mock_my_peer_id);
     
     /* receive */
-    ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + 8 + 20 + 20);
+    ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + strlen(PROTOCOL_NAME) + 8 + 20 + 20);
     CuAssertTrue(tc, -1 == ret);
 }
 
-void TestPWP_handshake_read_disconnect_if_handshake_has_infohash_that_is_same_as_ours(
+void TestPWP_handshake_disconnect_if_handshake_has_infohash_that_is_not_same_as_ours(
     CuTest * tc
 )
 {
@@ -148,24 +148,23 @@ void TestPWP_handshake_read_disconnect_if_handshake_has_infohash_that_is_same_as
     /* handshake */
     bitstream_write_ubyte(&ptr, strlen(PROTOCOL_NAME)); /* pn len */
     bitstream_write_string(&ptr, PROTOCOL_NAME, strlen(PROTOCOL_NAME)); /* pn */
-    bitstream_write_ubyte(&ptr, 1);        /*  reserved */
-    for (ii=0;ii<7;ii++)
+    for (ii=0;ii<8;ii++)
         bitstream_write_ubyte(&ptr, 0);        /*  reserved */
-    bitstream_write_string(&ptr, __mock_infohash, strlen(__mock_infohash)); /* ih */
+    bitstream_write_string(&ptr, "abcdef12345678900001", 20); /* ih */
     bitstream_write_string(&ptr, (char*)__mock_my_peer_id, strlen(__mock_my_peer_id)); /* pi */
 
     /* setup */
     hs = pwp_handshaker_new((unsigned char*)__mock_infohash, (unsigned char*)__mock_my_peer_id);
 
     /* receive */
-    ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + 8 + 20 + 20);
+    ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + strlen(PROTOCOL_NAME) + 8 + 20 + 20);
     CuAssertTrue(tc, -1 == ret);
 }
 
 /**
  * we obtain the Peer ID from a third party. The Peer ID as per the PWP connection must match.
  */
-void TestPWP_handshake_read_disconnect_if_handshake_shows_a_peer_with_different_peer_id_than_expected(
+void TestPWP_handshake_disconnect_if_handshake_shows_a_peer_with_different_peer_id_than_expected(
     CuTest * tc
 )
 {
@@ -188,7 +187,7 @@ void TestPWP_handshake_read_disconnect_if_handshake_shows_a_peer_with_different_
     hs = pwp_handshaker_new((unsigned char*)__mock_infohash, (unsigned char*)__mock_my_peer_id);
     
     /* receive */
-    ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + 8 + 20 + 20);
+    ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + strlen(PROTOCOL_NAME) + 8 + 20 + 20);
     CuAssertTrue(tc, -1 == ret);
 }
 
@@ -197,7 +196,8 @@ void TestPWP_handshake_read_disconnect_if_handshake_shows_a_peer_with_different_
  *
  * Note: some clients don't seem to have peer IDs
  */
-void TestPWP_handshake_read_disconnect_if_handshake_shows_peer_with_our_peer_id(
+#if 0
+void T_estPWP_handshake_disconnect_if_handshake_shows_peer_with_our_peer_id(
     CuTest * tc
 )
 {
@@ -210,8 +210,7 @@ void TestPWP_handshake_read_disconnect_if_handshake_shows_peer_with_our_peer_id(
     /* handshake */
     bitstream_write_ubyte(&ptr, strlen(PROTOCOL_NAME)); /* pn len */
     bitstream_write_string(&ptr, PROTOCOL_NAME, strlen(PROTOCOL_NAME)); /* pn */
-    bitstream_write_ubyte(&ptr, 1);        /*  reserved */
-    for (ii=0;ii<7;ii++)
+    for (ii=0;ii<8;ii++)
         bitstream_write_ubyte(&ptr, 0);        /*  reserved */
     bitstream_write_string(&ptr, __mock_infohash, 20); /* ih */
     bitstream_write_string(&ptr, (char*)__mock_my_peer_id, 20); /* pi */
@@ -221,20 +220,48 @@ void TestPWP_handshake_read_disconnect_if_handshake_shows_peer_with_our_peer_id(
             (unsigned char*)__mock_my_peer_id);
 
     /* receive */
-    ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + 8 + 20 + 20);
+    ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + strlen(PROTOCOL_NAME) + 8 + 20 + 20);
     CuAssertTrue(tc, -1 == ret);
 }
+#endif
 
 #if 0
 /*&
  * If any other peer has already identified itself to the local peer using the same peer ID then:
  * NOTE: The connection MUST be dropped
  */
-void T_estPWP_handshake_read_disconnect_if_handshake_shows_a_peer_with_same_peer_id_as_other(
+void T_estPWP_handshake_disconnect_if_handshake_shows_a_peer_with_same_peer_id_as_other(
     CuTest * tc
 )
 {
     CuAssertTrue(tc, 0);
 }
 #endif
+
+void TestPWP_handshake_success_from_good_handshake(
+    CuTest * tc
+)
+{
+    void *hs;
+    unsigned char msg[1000], *ptr;
+    int ii, ret;
+
+    ptr = msg;
+
+    /* handshake */
+    bitstream_write_ubyte(&ptr, strlen(PROTOCOL_NAME)); /* pn len */
+    bitstream_write_string(&ptr, PROTOCOL_NAME, strlen(PROTOCOL_NAME)); /* pn */
+    for (ii=0;ii<8;ii++)
+        bitstream_write_ubyte(&ptr, 0);        /*  reserved */
+    bitstream_write_string(&ptr, __mock_infohash, 20); /* ih */
+    bitstream_write_string(&ptr, (char*)__mock_their_peer_id, 20); /* pi */
+
+    /* setup */
+    hs = pwp_handshaker_new((unsigned char*)__mock_infohash,
+            (unsigned char*)__mock_my_peer_id);
+
+    /* receive */
+    ret = pwp_handshaker_dispatch_from_buffer(hs, msg, 1 + strlen(PROTOCOL_NAME) + 8 + 20 + 20);
+    CuAssertTrue(tc, 1 == ret);
+}
 

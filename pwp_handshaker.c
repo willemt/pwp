@@ -100,7 +100,6 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char* buf, uns
         else if (me->curr_value == hs->pn)
         {
             *me->cur = __readbyte(&me->bytes_read, &buf, &len);
-//            printf("string %.*s\n", me->cur - me->curr_value, hs->pn);
             me->cur++;
 
             /* validate */
@@ -124,7 +123,7 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char* buf, uns
             *(me->cur++) = __readbyte(&me->bytes_read, &buf, &len);
 
             /* don't know what to do with set reserved bytes */
-            if (*(me->cur) != 0)
+            if (*(me->cur-1) != 0)
             {
                 return -1;
             }
@@ -156,9 +155,9 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char* buf, uns
                             (char*)hs->infohash,
                             (char*)me->expected_ih, 20))
                 {
-//                    __log(me, "handshake: invalid infohash: '%s' vs '%s'",
-//                            hs->peerid, me->expected_info_hash);
-                    return 0;
+//                    printf( "handshake: invalid infohash: '%s' vs '%s'\n",
+//                            hs->infohash, me->expected_ih);
+                    return -1;
                 }
 
                 me->cur = me->curr_value = hs->peerid = malloc(20);
@@ -174,6 +173,7 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char* buf, uns
         else if (me->curr_value == hs->peerid)
         {
             *(me->cur++) = __readbyte(&me->bytes_read, &buf, &len);
+
             if (me->cur - me->curr_value == 20)
             {
 #if 0
