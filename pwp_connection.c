@@ -412,8 +412,6 @@ void pwp_conn_send_piece(void *pco, bt_block_t * req)
     assert(NULL != me);
     assert(NULL != me->func->write_block_to_stream);
 
-    printf("sending block %d\n", req->block_len);
-
     /*  get data to send */
     pce = __get_piece(me, req->piece_idx);
 
@@ -432,8 +430,6 @@ void pwp_conn_send_piece(void *pco, bt_block_t * req)
     bitstream_write_uint32(&ptr, req->block_byte_offset);
     me->func->write_block_to_stream(pce,req,(unsigned char**)&ptr);
     __send_to_peer(me, data, size);
-
-    printf("%d\n", size - 4);
 
 #if 0
     #define BYTES_SENT 1
