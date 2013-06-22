@@ -36,6 +36,9 @@ typedef struct {
 static void __endmsg(msg_t* msg)
 {
     msg->bytes_read = 0;
+    msg->id = 0;
+    msg->tok_bytes_read = 0;
+    msg->len = 0;
 }
 
 static int __read_uint32(
@@ -61,7 +64,6 @@ static int __read_uint32(
         msg->bytes_read += 1;
         *buf += 1;
         *len -= 1;
-//        printf("%x\n", **buf);
     }
 }
 
@@ -183,8 +185,6 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, uns
                     }
                 }
                 break;
-
-
             case PWP_MSGTYPE_REQUEST:
                 if (msg->bytes_read < 1 + 4 + 4)
                 {
@@ -243,7 +243,7 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, uns
                      * us we should be expecting */
                     if (size > msg->len - 1 - 4 - 4)
                     {
-                        size = msg->len;
+                        size = msg->len - 1 - 4 - 4;
                     }
 
                     msg->piece.data = buf;
@@ -261,7 +261,7 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, uns
                         __endmsg(&me->msg);
 
                     len -= size;
-                    buf += len;
+                    buf += size;
                 }
                 break;
             default:

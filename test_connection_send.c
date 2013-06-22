@@ -512,7 +512,7 @@ void TestPWP_read_chokemsg_empties_our_pending_requests(
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_functions(pc, &funcs, &sender);
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
-    pwp_conn_request_block(pc, &blk);
+    pwp_conn_request_block_from_peer(pc, &blk);
     CuAssertTrue(tc, 1 == pwp_conn_get_npending_requests(pc));
 
     /* receive */
@@ -1060,7 +1060,7 @@ void TestPWP_read_piece_results_in_correct_receivable(
     blk.piece_idx = 1;
     blk.block_byte_offset = 0;
     blk.block_len = 2;
-    pwp_conn_request_block(pc, &blk);
+    pwp_conn_request_block_from_peer(pc, &blk);
 
     /* receive */
     pwp_msghandler_dispatch_from_buffer(mh, msg, 4 + 1 + 4 + 4 + 1 + 1);
@@ -1105,7 +1105,7 @@ void TestPWP_send_request_is_wellformed_even_when_request_len_was_outside_piece_
     pwp_conn_set_functions(pc, &funcs, &sender);
 
     /* request block */
-    pwp_conn_request_block(pc, &request);
+    pwp_conn_request_block_from_peer(pc, &request);
 
     /* check sie is valid */
     CuAssertTrue(tc, 13 == bitstream_read_uint32(&ptr));
@@ -1170,7 +1170,7 @@ void TestPWP_requesting_block_increments_pending_requests(
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_functions(pc, &funcs, NULL);
     CuAssertTrue(tc, 0 == pwp_conn_get_npending_requests(pc));
-    pwp_conn_request_block(pc, &blk);
+    pwp_conn_request_block_from_peer(pc, &blk);
     CuAssertTrue(tc, 1 == pwp_conn_get_npending_requests(pc));
 }
 
@@ -1199,7 +1199,7 @@ void TestPWP_read_piece_decreases_pending_requests(
     memset(&blk, 0, sizeof(bt_block_t));
     blk.piece_idx = 0;
     blk.block_len = 1;
-    pwp_conn_request_block(pc, &blk);
+    pwp_conn_request_block_from_peer(pc, &blk);
     CuAssertTrue(tc, 1 == pwp_conn_get_npending_requests(pc));
 
     /*  piece msg */

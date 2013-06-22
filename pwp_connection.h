@@ -167,7 +167,7 @@ int pwp_conn_get_npending_requests(const void * pco);
 
 int pwp_conn_get_npending_peer_requests(const void* pco);
 
-void pwp_conn_request_block(void * pco, bt_block_t * blk);
+void pwp_conn_request_block_from_peer(void * pco, bt_block_t * blk);
 
 void pwp_conn_step(void *pco);
 

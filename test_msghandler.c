@@ -351,3 +351,53 @@ void TestPWP_piece_halfread(
             strncmp("msg2",pc.piece.data,pc.piece.block.block_len));
 }
 
+void TestPWP_two_pieces(
+    CuTest * tc
+)
+{
+    fake_pc_t pc;
+    unsigned char data[100];
+    unsigned char* ptr;
+    void* mh;
+
+    /* piece */
+    ptr = data;
+    mh = pwp_msghandler_new(&pc);
+    /* piece 1 */
+    bitstream_write_uint32(&ptr,9 + 10);
+    bitstream_write_ubyte(&ptr,PWP_MSGTYPE_PIECE);
+    bitstream_write_uint32(&ptr,1);
+    bitstream_write_uint32(&ptr,2);
+    bitstream_write_ubyte(&ptr,'t');
+    bitstream_write_ubyte(&ptr,'e');
+    bitstream_write_ubyte(&ptr,'s');
+    bitstream_write_ubyte(&ptr,'t');
+    bitstream_write_ubyte(&ptr,' ');
+    bitstream_write_ubyte(&ptr,'m');
+    bitstream_write_ubyte(&ptr,'s');
+    bitstream_write_ubyte(&ptr,'g');
+    bitstream_write_ubyte(&ptr,'1');
+    bitstream_write_ubyte(&ptr,'\0');
+    /* piece 2 */
+    bitstream_write_uint32(&ptr,9 + 10);
+    bitstream_write_ubyte(&ptr,PWP_MSGTYPE_PIECE);
+    bitstream_write_uint32(&ptr,2);
+    bitstream_write_uint32(&ptr,2);
+    bitstream_write_ubyte(&ptr,'t');
+    bitstream_write_ubyte(&ptr,'e');
+    bitstream_write_ubyte(&ptr,'s');
+    bitstream_write_ubyte(&ptr,'t');
+    bitstream_write_ubyte(&ptr,' ');
+    bitstream_write_ubyte(&ptr,'m');
+    bitstream_write_ubyte(&ptr,'s');
+    bitstream_write_ubyte(&ptr,'g');
+    bitstream_write_ubyte(&ptr,'2');
+    bitstream_write_ubyte(&ptr,'\0');
+    pwp_msghandler_dispatch_from_buffer(mh, data, (4 + 1 + 4 + 4 + 10) * 2);
+    CuAssertTrue(tc, PWP_MSGTYPE_PIECE == pc.mtype);
+    CuAssertTrue(tc, 2 == pc.piece.block.piece_idx);
+    CuAssertTrue(tc, 2 == pc.piece.block.block_byte_offset);
+    CuAssertTrue(tc, 10 == pc.piece.block.block_len);
+    CuAssertTrue(tc, 0 == strncmp("test msg2",pc.piece.data,pc.piece.block.block_len));
+}
+

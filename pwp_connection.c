@@ -412,11 +412,14 @@ void pwp_conn_send_piece(void *pco, bt_block_t * req)
     assert(NULL != me);
     assert(NULL != me->func->write_block_to_stream);
 
-    /* TODO use a circular buffer for sending */
+    printf("sending block %d\n", req->block_len);
+
     /*  get data to send */
     pce = __get_piece(me, req->piece_idx);
-    size = 4 * 3 + 1 + req->block_len;
-    if (!(data = malloc(sizeof(char)*size)))
+
+    /* prepare buf */
+    size = 4 + 1 + 4 + 4 + req->block_len;
+    if (!(data = malloc(size)))
     {
         perror("out of memory");
         exit(0);
@@ -429,6 +432,8 @@ void pwp_conn_send_piece(void *pco, bt_block_t * req)
     bitstream_write_uint32(&ptr, req->block_byte_offset);
     me->func->write_block_to_stream(pce,req,(unsigned char**)&ptr);
     __send_to_peer(me, data, size);
+
+    printf("%d\n", size - 4);
 
 #if 0
     #define BYTES_SENT 1
@@ -684,7 +689,7 @@ int pwp_conn_get_npending_peer_requests(const void* pco)
 
 /**
  * pend a block request */
-void pwp_conn_request_block(void * pco, bt_block_t * blk)
+void pwp_conn_request_block_from_peer(void * pco, bt_block_t * blk)
 {
     pwp_connection_t * me = pco;
     request_t *req;
@@ -707,7 +712,7 @@ static void __make_request(pwp_connection_t * me)
 
     if (0 == me->func->pollblock(me->caller, &me->state.have_bitfield, &blk))
     {
-        pwp_conn_request_block(me, &blk);
+        pwp_conn_request_block_from_peer(me, &blk);
     }
 }
 
@@ -1029,6 +1034,11 @@ int pwp_conn_piece(void* pco, msg_piece_t *piece)
     pwp_connection_t* me = pco;
     request_t *req_removed;
 
+    __log(me, "read,piece,piece_idx=%d offset=%d length=%d",
+          piece->block.piece_idx,
+          piece->block.block_byte_offset,
+          piece->block.block_len);
+
     /* remove pending request */
     if (!(req_removed = hashmap_remove(me->pendreqs, &piece->block)))
     {
@@ -1039,11 +1049,6 @@ int pwp_conn_piece(void* pco, msg_piece_t *piece)
                      piece->block.block_len);
         return 0;
     }
-
-    __log(me, "read,piece,piece_idx=%d offset=%d length=%d",
-          piece->block.piece_idx,
-          piece->block.block_byte_offset,
-          piece->block.block_len);
 
     /* Insert block into database.
      * Should result in the caller having other peerconns send HAVE messages */
