@@ -1,7 +1,7 @@
-CONTRIB_DIR = ..
+CONTRIB_DIR = .
 HASHMAP_DIR = $(CONTRIB_DIR)/CHashMapViaLinkedList
 BITFIELD_DIR = $(CONTRIB_DIR)/CBitfield
-BITSTREAM_DIR = $(CONTRIB_DIR)/CBitstream
+BITSTREAM_DIR = $(CONTRIB_DIR)/CSimpleBitstream
 LLQUEUE_DIR = $(CONTRIB_DIR)/CLinkedListQueue
 
 GCOV_OUTPUT = *.gcda *.gcno *.gcov 
@@ -25,7 +25,7 @@ cbitfield:
 cbitstream:
 	mkdir -p $(BITSTREAM_DIR)/.git
 	git --git-dir=$(BITSTREAM_DIR)/.git init 
-	pushd $(BITSTREAM_DIR); git pull git@github.com:willemt/CBitstream.git; popd
+	pushd $(BITSTREAM_DIR); git pull git@github.com:willemt/CSimpleBitstream.git; popd
 
 clinkedlistqueue:
 	mkdir -p $(LLQUEUE_DIR)/.git
