@@ -55,9 +55,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define TRUE 1
 #define FALSE 0
 
-
-
-// f_f_lywA ==(m€kb€kb (m) ?€ü "pa€kb" :0f=df,xj0
 #define pwp_msgtype_to_string(m)\
     PWP_MSGTYPE_CHOKE == (m) ? "CHOKE" :\
     PWP_MSGTYPE_UNCHOKE == (m) ? "UNCHOKE" :\
@@ -68,8 +65,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     PWP_MSGTYPE_REQUEST == (m) ? "REQUEST" :\
     PWP_MSGTYPE_PIECE == (m) ? "PIECE" :\
     PWP_MSGTYPE_CANCEL == (m) ? "CANCEL" : "none"\
-
-//static const pwp_pwp_cfg_t __default_cfg = {.max_pending_requests = 10 };
 
 /*  state */
 typedef struct
@@ -698,12 +693,12 @@ void pwp_conn_request_block(void * pco, bt_block_t * blk)
     __log(me, "request block: %d %d %d",
            blk->piece_idx, blk->block_byte_offset, blk->block_len);
 
-    req = malloc(sizeof(request_t));
     __request_fit(blk, me->piece_len);
     pwp_conn_send_request(me, blk);
-    memcpy(&req->blk, blk, sizeof(bt_block_t));
 
     /* remember that we requested it */
+    req = malloc(sizeof(request_t));
+    memcpy(&req->blk, blk, sizeof(bt_block_t));
     hashmap_put(me->pendreqs, &req->blk, req);
 }
 
@@ -911,18 +906,28 @@ void pwp_conn_have(void* pco, msg_have_t* have)
     }
 }
 
+/**
+ * Receive a bitfield */
 void pwp_conn_bitfield(void* pco, msg_bitfield_t* bitfield)
 {
     pwp_connection_t* me = pco;
     char *str;
+    int ii;
 
      /* A peer MUST send this message immediately after the handshake
      * operation, and MAY choose not to send it if it has no pieces at
      * all. This message MUST not be sent at any other time during the
      * communication. */
 
-    int ii;
+    if (me->num_pieces < bitfield_get_length(&bitfield->bf))
+    {
+        __disconnect(me, "too many pieces within bitfield");
+    }
 
+    if (pwp_conn_flag_is_set(me,PC_BITFIELD_RECEIVED))
+    {
+        __disconnect(me, "peer sent bitfield twice");
+    }
 
     for (ii = 0; ii < me->num_pieces; ii++)
     {
@@ -960,7 +965,7 @@ int pwp_conn_request(void* pco, bt_block_t *request)
         return 0;
     }
 
-    /*  ensure we have correct piece_idx */
+    /* Ensure we have correct piece_idx */
     if (me->num_pieces < request->piece_idx)
     {
         __disconnect(me, "requested piece %d has invalid idx",
@@ -968,7 +973,7 @@ int pwp_conn_request(void* pco, bt_block_t *request)
         return 0;
     }
 
-    /*  ensure that we have this piece */
+    /* Ensure that we have this piece */
     if (!(pce = __get_piece(me, request->piece_idx)))
     {
         __disconnect(me, "requested piece %d is not available",
@@ -976,7 +981,7 @@ int pwp_conn_request(void* pco, bt_block_t *request)
         return 0;
     }
 
-    /* ensure that the peer needs this piece
+    /* Ensure that the peer needs this piece.
      * If the peer doesn't need the piece then that means the peer is
      * potentially invalid */
     if (pwp_conn_peer_has_piece(me, request->piece_idx))
@@ -986,14 +991,14 @@ int pwp_conn_request(void* pco, bt_block_t *request)
         return 0;
     }
 
-    /* ensure that block request length is valid  */
+    /* Ensure that block request length is valid  */
     if (request->block_len == 0 || me->piece_len < request->block_byte_offset + request->block_len)
     {
         __disconnect(me, "invalid block request"); 
         return 0;
     }
 
-    /* ensure that we have completed this piece.
+    /* Ensure that we have completed this piece.
      * The peer should know if we have completed this piece or not, so
      * asking for it is an indicator of a invalid peer. */
     assert(NULL != me->func->piece_is_complete);
@@ -1004,8 +1009,8 @@ int pwp_conn_request(void* pco, bt_block_t *request)
         return 0;
     }
 
-    /* append block to our pending request queue */
-    /* don't append the block twice */
+    /* Append block to our pending request queue. */
+    /* Don't append the block twice. */
     if (!llqueue_get_item_via_cmpfunction(
                 me->pendpeerreqs,request,(void*)__request_compare))
     {
