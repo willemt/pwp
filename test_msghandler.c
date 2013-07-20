@@ -109,6 +109,7 @@ void TestPWP_keepalive(
     bitstream_write_uint32(&ptr,0);
     pwp_msghandler_dispatch_from_buffer(mh, data, 4);
     CuAssertTrue(tc, -1 == pc.mtype);
+    pwp_msghandler_release(mh);
 }
 
 void TestPWP_choke(
@@ -127,6 +128,7 @@ void TestPWP_choke(
     bitstream_write_ubyte(&ptr,PWP_MSGTYPE_CHOKE);
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1);
     CuAssertTrue(tc, PWP_MSGTYPE_CHOKE == pc.mtype);
+    pwp_msghandler_release(mh);
 }
 
 void TestPWP_unchoke(
@@ -145,6 +147,7 @@ void TestPWP_unchoke(
     bitstream_write_ubyte(&ptr,PWP_MSGTYPE_UNCHOKE);
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1);
     CuAssertTrue(tc, PWP_MSGTYPE_UNCHOKE == pc.mtype);
+    pwp_msghandler_release(mh);
 }
 
 void TestPWP_interested(
@@ -163,6 +166,7 @@ void TestPWP_interested(
     bitstream_write_ubyte(&ptr,PWP_MSGTYPE_INTERESTED);
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1);
     CuAssertTrue(tc, PWP_MSGTYPE_INTERESTED == pc.mtype);
+    pwp_msghandler_release(mh);
 }
 
 void TestPWP_uninterested(
@@ -181,6 +185,7 @@ void TestPWP_uninterested(
     bitstream_write_ubyte(&ptr,PWP_MSGTYPE_UNINTERESTED);
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1);
     CuAssertTrue(tc, PWP_MSGTYPE_UNINTERESTED == pc.mtype);
+    pwp_msghandler_release(mh);
 }
 
 void TestPWP_have(
@@ -201,6 +206,7 @@ void TestPWP_have(
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1 + 4);
     CuAssertTrue(tc, PWP_MSGTYPE_HAVE == pc.mtype);
     CuAssertTrue(tc, 999 == pc.have.piece_idx);
+    pwp_msghandler_release(mh);
 }
 
 void TestPWP_request(
@@ -225,6 +231,7 @@ void TestPWP_request(
     CuAssertTrue(tc, 123 == pc.request.piece_idx);
     CuAssertTrue(tc, 456 == pc.request.block_byte_offset);
     CuAssertTrue(tc, 789 == pc.request.block_len);
+    pwp_msghandler_release(mh);
 }
 
 void TestPWP_cancel(
@@ -249,6 +256,7 @@ void TestPWP_cancel(
     CuAssertTrue(tc, 123 == pc.cancel.piece_idx);
     CuAssertTrue(tc, 456 == pc.cancel.block_byte_offset);
     CuAssertTrue(tc, 789 == pc.cancel.block_len);
+    pwp_msghandler_release(mh);
 }
 
 void TestPWP_bitfield(
@@ -271,6 +279,7 @@ void TestPWP_bitfield(
     /* read */
     CuAssertTrue(tc, PWP_MSGTYPE_BITFIELD == pc.mtype);
     CuAssertTrue(tc, 0 == strncmp("01001110",bitfield_str(&pc.bitfield.bf),8));
+    pwp_msghandler_release(mh);
 }
 
 void TestPWP_piece(
@@ -305,6 +314,7 @@ void TestPWP_piece(
     CuAssertTrue(tc, 2 == pc.piece.block.block_byte_offset);
     CuAssertTrue(tc, 10 == pc.piece.block.block_len);
     CuAssertTrue(tc, 0 == strncmp("test msg1",pc.piece.data,pc.piece.block.block_len));
+    pwp_msghandler_release(mh);
 }
 
 void TestPWP_piece_halfread(
@@ -349,6 +359,7 @@ void TestPWP_piece_halfread(
     CuAssertTrue(tc, 5 == pc.piece.block.block_len);
     CuAssertTrue(tc, 0 ==
             strncmp("msg2",pc.piece.data,pc.piece.block.block_len));
+    pwp_msghandler_release(mh);
 }
 
 void TestPWP_two_pieces(
@@ -399,5 +410,6 @@ void TestPWP_two_pieces(
     CuAssertTrue(tc, 2 == pc.piece.block.block_byte_offset);
     CuAssertTrue(tc, 10 == pc.piece.block.block_len);
     CuAssertTrue(tc, 0 == strncmp("test msg2",pc.piece.data,pc.piece.block.block_len));
+    pwp_msghandler_release(mh);
 }
 
