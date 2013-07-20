@@ -104,6 +104,7 @@ typedef struct
 void *pwp_conn_get_peer(void *pco);
 
 void *pwp_conn_new();
+void pwp_conn_release(void*);
 
 void pwp_conn_set_active(void *pco, int opt);
 
