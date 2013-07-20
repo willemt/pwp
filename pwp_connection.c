@@ -223,11 +223,36 @@ void *pwp_conn_new()
     return me;
 }
 
+static void __expunge_their_pending_reqs(pwp_connection_t* me)
+{
+    while (0 < llqueue_count(me->pendpeerreqs))
+    {
+        free(llqueue_poll(me->pendpeerreqs));
+    }
+}
+
+static void __expunge_my_pending_reqs(pwp_connection_t* me)
+{
+    request_t *req;
+    hashmap_iterator_t iter;
+
+    for (hashmap_iterator(me->pendreqs, &iter);
+         (req = hashmap_iterator_next(me->pendreqs, &iter));)
+    {
+        req = hashmap_remove(me->pendreqs, req);
+        free(req);
+    }
+}
+
 void pwp_conn_release(void* pco)
 {
-//    pwp_connection_t *me = pco;
-//    if (me->my_peer_id)
-//        free(me->my_peer_id);
+    pwp_connection_t *me = pco;
+
+    __expunge_their_pending_reqs(me);
+    __expunge_my_pending_reqs(me);
+    hashmap_free(me->pendreqs);
+    llqueue_free(me->pendpeerreqs);
+    free(pco);
 }
 
 /**
@@ -332,11 +357,7 @@ void pwp_conn_choke_peer(void * pco)
 
     me->state.flags |= PC_IM_CHOKING;
 
-    /* expunge requests */
-    while (0 < llqueue_count(me->pendpeerreqs))
-    {
-        free(llqueue_poll(me->pendpeerreqs));
-    }
+    __expunge_their_pending_reqs(me);
 
     pwp_conn_send_statechange(me, PWP_MSGTYPE_CHOKE);
 }
@@ -817,19 +838,9 @@ void pwp_conn_choke(void* pco)
 {
     pwp_connection_t* me = pco;
 
-    request_t *req;
-    hashmap_iterator_t iter;
-
     me->state.flags |= PC_PEER_CHOKING;
     __log(me, "read,choke");
-
-    /*  clear pending requests */
-    for (hashmap_iterator(me->pendreqs, &iter);
-         (req = hashmap_iterator_next(me->pendreqs, &iter));)
-    {
-        req = hashmap_remove(me->pendreqs, req);
-        free(req);
-    }
+    __expunge_my_pending_reqs(me);
 }
 
 void pwp_conn_unchoke(void* pco)

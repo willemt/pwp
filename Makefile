@@ -1,7 +1,7 @@
-CONTRIB_DIR = ..
+CONTRIB_DIR = .
 HASHMAP_DIR = $(CONTRIB_DIR)/CHashMapViaLinkedList
 BITFIELD_DIR = $(CONTRIB_DIR)/CBitfield
-BITSTREAM_DIR = $(CONTRIB_DIR)/CBitstream
+BITSTREAM_DIR = $(CONTRIB_DIR)/CSimpleBitstream
 LLQUEUE_DIR = $(CONTRIB_DIR)/CLinkedListQueue
 
 GCOV_OUTPUT = *.gcda *.gcno *.gcov 
@@ -15,22 +15,22 @@ all: tests_connection tests_handler tests_handshaker
 chashmap:
 	mkdir -p $(HASHMAP_DIR)/.git
 	git --git-dir=$(HASHMAP_DIR)/.git init 
-	pushd $(HASHMAP_DIR); git pull git@github.com:willemt/CHashMapViaLinkedList.git; popd
+	pushd $(HASHMAP_DIR); git pull http://github.com/willemt/CHashMapViaLinkedList; popd
 
 cbitfield:
 	mkdir -p $(BITFIELD_DIR)/.git
 	git --git-dir=$(BITFIELD_DIR)/.git init 
-	pushd $(BITFIELD_DIR); git pull git@github.com:willemt/CBitfield.git; popd
+	pushd $(BITFIELD_DIR); git pull http://github.com/willemt/CBitfield; popd
 
 cbitstream:
 	mkdir -p $(BITSTREAM_DIR)/.git
 	git --git-dir=$(BITSTREAM_DIR)/.git init 
-	pushd $(BITSTREAM_DIR); git pull git@github.com:willemt/CBitstream.git; popd
+	pushd $(BITSTREAM_DIR); git pull http://github.com/willemt/CSimpleBitstream; popd
 
 clinkedlistqueue:
 	mkdir -p $(LLQUEUE_DIR)/.git
 	git --git-dir=$(LLQUEUE_DIR)/.git init 
-	pushd $(LLQUEUE_DIR); git pull git@github.com:willemt/CLinkedListQueue.git; popd
+	pushd $(LLQUEUE_DIR); git pull http://github.com/willemt/CLinkedListQueue; popd
 
 splint: pwp_connection.c
 	splint pwp_connection.c $@ -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR) +boolint -mustfreeonly -immediatetrans -temptrans -exportlocal -onlytrans -paramuse +charint
