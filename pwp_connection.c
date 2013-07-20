@@ -289,7 +289,6 @@ int pwp_conn_peer_is_choked(void *pco)
     return 0 != (me->state.flags & PC_IM_CHOKING);
 }
 
-
 /**
  *
  */
