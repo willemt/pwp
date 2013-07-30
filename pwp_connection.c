@@ -132,8 +132,6 @@ static long __request_compare(const void *obj, const void *other)
     return 1;
 }
 
-/*----------------------------------------------------------------------------*/
-
 static void __log(pwp_connection_t * me, const char *format, ...)
 {
     char buffer[1000];
@@ -149,7 +147,6 @@ static void __log(pwp_connection_t * me, const char *format, ...)
     me->func->log(me->caller, me->peer_udata, buffer);
 }
 
-/*----------------------------------------------------------------------------*/
 static void __disconnect(pwp_connection_t * me, const char *reason, ...)
 {
     char buffer[128];
@@ -164,7 +161,6 @@ static void __disconnect(pwp_connection_t * me, const char *reason, ...)
     }
 }
 
-/*----------------------------------------------------------------------------*/
 void pwp_conn_set_active(void *pco, int opt)
 {
     pwp_connection_t *me = pco;
@@ -204,8 +200,6 @@ void pwp_conn_set_peer(void *pco, void * peer)
 
     me->peer_udata = peer;
 }
-
-/*----------------------------------------------------------------------------*/
 
 void *pwp_conn_new()
 {
@@ -299,7 +293,6 @@ void pwp_conn_set_functions(void *pco, pwp_connection_functions_t* funcs, void* 
     me->caller = caller;
 }
 
-/*----------------------------------------------------------------------------*/
 int pwp_conn_peer_is_interested(void *pco)
 {
     pwp_connection_t *me = pco;
@@ -370,15 +363,11 @@ void pwp_conn_unchoke_peer(void * pco)
     pwp_conn_send_statechange(me, PWP_MSGTYPE_UNCHOKE);
 }
 
-/*----------------------------------------------------------------------------*/
-
 static void *__get_piece(pwp_connection_t * me, const unsigned int piece_idx)
 {
     assert(NULL != me->func->getpiece);
     return me->func->getpiece(me->caller, piece_idx);
 }
-
-/*----------------------------------------------------------------------------*/
 
 #if 0
 int pwp_conn_get_download_rate(const void * pco __attribute__((__unused__)))
@@ -393,8 +382,6 @@ int pwp_conn_get_upload_rate(const void * pco __attribute__((__unused__)))
     return 0;
 }
 #endif
-
-/*----------------------------------------------------------------------------*/
 
 /**
  * unchoke, choke, interested, uninterested,
@@ -580,8 +567,6 @@ void pwp_conn_send_bitfield(void *pco)
     __log(me, "send,bitfield");
 
 }
-
-/*----------------------------------------------------------------------------*/
 
 /**
  * Send the handshake
@@ -1017,6 +1002,9 @@ int pwp_conn_request(void* pco, bt_block_t *request)
     return 1;
 }
 
+/**
+ * Receive a cancel message
+ */
 void pwp_conn_cancel(void* pco, bt_block_t *cancel)
 {
     pwp_connection_t* me = pco;
@@ -1035,6 +1023,9 @@ void pwp_conn_cancel(void* pco, bt_block_t *cancel)
 //  queue_remove(peer->request_queue);
 }
 
+/**
+ * Receive a piece message
+ * @return 1; otherwise 0 on failure */
 int pwp_conn_piece(void* pco, msg_piece_t *piece)
 {
     pwp_connection_t* me = pco;
