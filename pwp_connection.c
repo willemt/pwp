@@ -526,7 +526,7 @@ static void __write_bitfield_to_stream_from_getpiece_func(pwp_connection_t* me,
         void *pce;
 
         pce = me->func->getpiece(me->caller, ii);
-        bits |= me->func->piece_is_complete(me, pce) << (7 - (ii % 8));
+        bits |= me->func->piece_is_complete(me->caller, pce) << (7 - (ii % 8));
         /* ...up to eight bits, write to byte */
         if (((ii + 1) % 8 == 0) || me->num_pieces - 1 == ii)
         {
@@ -717,6 +717,7 @@ static void __make_request(pwp_connection_t * me)
     }
 }
 
+#if 0
 /**
  * Tells the peerconn that the connection worked.
  * We are now connected */
@@ -734,6 +735,7 @@ void pwp_conn_connected(void* pco)
     //pwp_conn_send_handshake(me);
     //pwp_conn_recv_handshake(me, me->infohash);
 }
+#endif
 
 /**
  * Tells the peerconn that the connection failed */
@@ -980,7 +982,7 @@ int pwp_conn_request(void* pco, bt_block_t *request)
      * The peer should know if we have completed this piece or not, so
      * asking for it is an indicator of a invalid peer. */
     assert(NULL != me->func->piece_is_complete);
-    if (0 == me->func->piece_is_complete(me, pce))
+    if (0 == me->func->piece_is_complete(me->caller, pce))
     {
         __disconnect(me, "requested piece %d is not completed",
                      request->piece_idx);
@@ -1049,7 +1051,8 @@ int pwp_conn_piece(void* pco, msg_piece_t *piece)
 
     /* Insert block into database.
      * Should result in the caller having other peerconns send HAVE messages */
-    me->func->pushblock(me->caller,
+    me->func->pushblock(
+            me->caller,
             me->peer_udata,
             &piece->block,
             piece->data);

@@ -35,13 +35,10 @@ clinkedlistqueue:
 splint: pwp_connection.c
 	splint pwp_connection.c $@ -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR) +boolint -mustfreeonly -immediatetrans -temptrans -exportlocal -onlytrans -paramuse +charint
 
-download-contrib: chashmap cbitfield cbitstream clinkedlistqueue
+downloadcontrib: chashmap cbitfield cbitstream clinkedlistqueue
 
 main_connection.c:
-	if test -d $(HASHMAP_DIR); \
-	then echo have contribs; \
-	else make download-contrib; \
-	fi
+	if test -d $(HASHMAP_DIR); then echo have; else make downloadcontrib; fi
 	sh make-tests.sh "test_connection*.c" > main_connection.c
 
 main_msghandler.c:
