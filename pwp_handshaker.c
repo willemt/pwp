@@ -74,7 +74,7 @@ unsigned char __readbyte(unsigned int* bytes_read, const unsigned char **buf, un
  *  Receive handshake from other end
  *  Disconnect on any errors
  *
- *  @return 1 on succesful handshake; otherwise 0; -1 on failed handshake */
+ *  @return 1 on succesful handshake; 0 on unfinished reading; -1 on failed handshake */
 int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char** buf, unsigned int* len)
 {
     pwp_handshaker_t* me = me_;
@@ -96,6 +96,7 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char** buf, un
             /* invalid length */
             if (0 == hs->pn_len)
             {
+                printf("ERROR: invalid length\n");
                 return -1;
             }
 
@@ -120,6 +121,7 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char** buf, un
                     hs->pn_len < strlen(PROTOCOL_NAME) ?
                         hs->pn_len : strlen(PROTOCOL_NAME)))
                 {
+                    printf("ERROR: incorrect protocol name\n");
                     return -1;
                 }
 
@@ -136,7 +138,8 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char** buf, un
             /* don't know what to do with set reserved bytes */
             if (*(me->cur-1) != 0)
             {
-                return -1;
+                printf("ERROR: unreserved bytes used\n");
+//                return -1;
             }
 
             if (me->cur - me->curr_value == 8)
@@ -166,8 +169,8 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char** buf, un
                             (char*)hs->infohash,
                             (char*)me->expected_ih, 20))
                 {
-//                    printf( "handshake: invalid infohash: '%s' vs '%s'\n",
-//                            hs->infohash, me->expected_ih);
+                    printf("ERROR invalid infohash: '%s' vs '%s'\n",
+                            hs->infohash, me->expected_ih);
                     return -1;
                 }
 
@@ -202,6 +205,7 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char** buf, un
         }
         else
         {
+            printf("ERROR: invalid handshake\n");
             return -1;
         }
     }
@@ -209,87 +213,3 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char** buf, un
     return 0;//me->bytes_read;
 }
 
-#if 0
-void other()
-{
-    pwp_connection_t *me = pco;
-
-    int ii;
-    unsigned char name_len;
-
-    /* other peers name prot name */
-    char peer_pname[strlen(pn)];
-    char peer_infohash[INFO_HASH_LEN];
-    char peer_id[PEER_ID_LEN];
-    char peer_reserved[8 + 1];
-
-    __log(me, "got,handshake");
-
-    for (ii = 0; ii < name_len; ii++)
-    {
-        if (0 == __read_byte_from_peer(me, (unsigned char*)&peer_pname[ii]))
-        {
-            __disconnect(me, "handshake: invalid prot name char");
-            return 0;
-        }
-    }
-//    strncpy(peer_pname, &handshake[1], name_len);
-    if (strncmp(peer_pname, pn, name_len))
-    {
-        __disconnect(me, "handshake: invalid prot name: '%s'",
-                     peer_pname);
-        return FALSE;
-    }
-
-    /* Reserved:
-    The next 8 bytes in the string are reserved for future extensions and
-    should be read without interpretation. */
-    for (ii = 0; ii < 8; ii++)
-    {
-        if (0 == __read_byte_from_peer(me, (unsigned char*)&peer_reserved[ii]) || 
-                peer_reserved[ii] != 0)
-        {
-            __disconnect(me, "handshake: reserved bytes not empty");
-            return 0;
-        }
-    }
-
-    __log(me, "read,handshake,me:%.*s,them:%.*s", 20, me->my_peer_id, 20, peer_id);
-    return TRUE;
-}
-#endif
-
-#if 0
-void main()
-{
-    void* hss;
-    int ii;
-    unsigned char msg[1000], *ptr;
-
-    ptr = msg;
-
-    bitstream_write_ubyte(&ptr, strlen(PROTOCOL_NAME)); /* pn len */
-    bitstream_write_string(&ptr, PROTOCOL_NAME, strlen(PROTOCOL_NAME)); /* pn */
-    for (ii=0;ii<8;ii++)
-        bitstream_write_ubyte(&ptr, 0);        /*  reserved */
-    bitstream_write_string(&ptr, "00000000000000000000", 20); /* ih */
-    bitstream_write_string(&ptr, "00000000000000000000", 20); /* pi */
-
-    hss = pwp_handshaker_new("00000000000000000000", "00000000000000000000");
-
-    pwp_handshake_t* hs;
-
-    pwp_handshaker_dispatch_from_buffer(hss, msg, ptr - msg);
-    hs = pwp_handshaker_get_handshake(hss);
-
-    printf("done: \n"
-            "%.*s\n"
-            "%.*s\n"
-            "%.*s\n"
-            "%.*s\n",
-            hs->pn_len, hs->pn,
-            8, hs->reserved,
-            20, hs->infohash,
-            20, hs->peerid);
-}
-#endif

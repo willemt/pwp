@@ -113,6 +113,23 @@ typedef struct
     void *caller;
 } pwp_connection_t;
 
+/**
+ * Flip endianess
+ **/
+static uint32_t fe(uint32_t i)
+{
+    uint32_t o;
+    unsigned char *c = (unsigned char *)&i;
+    unsigned char *p = (unsigned char *)&o;
+
+    p[0] = c[3];
+    p[1] = c[2];
+    p[2] = c[1];
+    p[3] = c[0];
+
+    return o;
+}
+
 static unsigned long __request_hash(const void *obj)
 {
     const bt_block_t *req = obj;
@@ -391,7 +408,7 @@ int pwp_conn_send_statechange(void * pco, const unsigned char msg_type)
     pwp_connection_t *me = pco;
     unsigned char data[5], *ptr = data;
 
-    bitstream_write_uint32(&ptr, 1);
+    bitstream_write_uint32(&ptr, fe(1));
     bitstream_write_ubyte(&ptr, msg_type);
 
     __log(me, "send,%s", pwp_msgtype_to_string(msg_type));
@@ -431,10 +448,10 @@ void pwp_conn_send_piece(void *pco, bt_block_t * req)
     }
 
     ptr = data;
-    bitstream_write_uint32(&ptr, size - 4);
+    bitstream_write_uint32(&ptr, fe(size - 4));
     bitstream_write_ubyte(&ptr, PWP_MSGTYPE_PIECE);
-    bitstream_write_uint32(&ptr, req->piece_idx);
-    bitstream_write_uint32(&ptr, req->block_byte_offset);
+    bitstream_write_uint32(&ptr, fe(req->piece_idx));
+    bitstream_write_uint32(&ptr, fe(req->block_byte_offset));
     me->func->write_block_to_stream(pce,req,(unsigned char**)&ptr);
     __send_to_peer(me, data, size);
 
@@ -467,9 +484,9 @@ int pwp_conn_send_have(void *pco, const int piece_idx)
     pwp_connection_t *me = pco;
     unsigned char data[12], *ptr = data;
 
-    bitstream_write_uint32(&ptr, 5);
+    bitstream_write_uint32(&ptr, fe(5));
     bitstream_write_ubyte(&ptr, PWP_MSGTYPE_HAVE);
-    bitstream_write_uint32(&ptr, piece_idx);
+    bitstream_write_uint32(&ptr, fe(piece_idx));
     __send_to_peer(me, data, 5+4);
     __log(me, "send,have,piece_idx=%d", piece_idx);
     return 1;
@@ -483,11 +500,11 @@ void pwp_conn_send_request(void *pco, const bt_block_t * request)
     unsigned char data[32], *ptr;
 
     ptr = data;
-    bitstream_write_uint32(&ptr, 13);
+    bitstream_write_uint32(&ptr, fe(13));
     bitstream_write_ubyte(&ptr, PWP_MSGTYPE_REQUEST);
-    bitstream_write_uint32(&ptr, request->piece_idx);
-    bitstream_write_uint32(&ptr, request->block_byte_offset);
-    bitstream_write_uint32(&ptr, request->block_len);
+    bitstream_write_uint32(&ptr, fe(request->piece_idx));
+    bitstream_write_uint32(&ptr, fe(request->block_byte_offset));
+    bitstream_write_uint32(&ptr, fe(request->block_len));
     __send_to_peer(me, data, 13+4);
     __log(me, "send,request,piece_idx=%d block_byte_offset=%d block_len=%d",
           request->piece_idx, request->block_byte_offset, request->block_len);
@@ -501,11 +518,11 @@ void pwp_conn_send_cancel(void *pco, bt_block_t * cancel)
     unsigned char data[32], *ptr;
 
     ptr = data;
-    bitstream_write_uint32(&ptr, 13);
+    bitstream_write_uint32(&ptr, fe(13));
     bitstream_write_ubyte(&ptr, PWP_MSGTYPE_CANCEL);
-    bitstream_write_uint32(&ptr, cancel->piece_idx);
-    bitstream_write_uint32(&ptr, cancel->block_byte_offset);
-    bitstream_write_uint32(&ptr, cancel->block_len);
+    bitstream_write_uint32(&ptr, fe(cancel->piece_idx));
+    bitstream_write_uint32(&ptr, fe(cancel->block_byte_offset));
+    bitstream_write_uint32(&ptr, fe(cancel->block_len));
     __send_to_peer(me, data, 17);
     __log(me, "send,cancel,piece_idx=%d block_byte_offset=%d block_len=%d",
           cancel->piece_idx, cancel->block_byte_offset, cancel->block_len);
@@ -551,7 +568,7 @@ void pwp_conn_send_bitfield(void *pco)
     size =
         sizeof(uint32_t) + sizeof(unsigned char) + (me->num_pieces / 8) +
         ((me->num_pieces % 8 == 0) ? 0 : 1);
-    bitstream_write_uint32(&ptr, size - sizeof(uint32_t));
+    bitstream_write_uint32(&ptr, fe(size - sizeof(uint32_t)));
     bitstream_write_ubyte(&ptr, PWP_MSGTYPE_BITFIELD);
     __write_bitfield_to_stream_from_getpiece_func(me, &ptr);
 
@@ -695,8 +712,10 @@ void pwp_conn_request_block_from_peer(void * pco, bt_block_t * blk)
     pwp_connection_t * me = pco;
     request_t *req;
 
+#if 0 /*  debugging */
     __log(me, "request block: %d %d %d",
            blk->piece_idx, blk->block_byte_offset, blk->block_len);
+#endif
 
     __request_fit(blk, me->piece_len);
     pwp_conn_send_request(me, blk);
@@ -717,26 +736,6 @@ static void __make_request(pwp_connection_t * me)
     }
 }
 
-#if 0
-/**
- * Tells the peerconn that the connection worked.
- * We are now connected */
-void pwp_conn_connected(void* pco)
-{
-    pwp_connection_t *me = pco;
-
-    __log(me, "[connected],%.*s", 20, me->their_peer_id);
-
-    assert(!pwp_conn_flag_is_set(me,PC_HANDSHAKE_SENT));
-
-    me->state.flags |= PC_CONNECTED;
-
-    /* send handshake */
-    //pwp_conn_send_handshake(me);
-    //pwp_conn_recv_handshake(me, me->infohash);
-}
-#endif
-
 /**
  * Tells the peerconn that the connection failed */
 void pwp_conn_connect_failed(void *pco)
@@ -754,14 +753,17 @@ void pwp_conn_connect_failed(void *pco)
     assert(0);
 }
 
-void pwp_conn_step(void *pco)
+void pwp_conn_periodic(void *pco)
 {
     pwp_connection_t *me;
 
     me = pco;
 
     if (pwp_conn_flag_is_set(me, PC_UNCONTACTABLE_PEER))
+    {
+        printf("uncontactable\n");
         return;
+    }
 
     /* send one pending request to the peer */
     if (0 < llqueue_count(me->pendpeerreqs))
@@ -795,6 +797,7 @@ void pwp_conn_step(void *pco)
 
         /*  max out pipeline */
         end = 10 - pwp_conn_get_npending_requests(me);
+//        printf("pending requests: %d\n", pwp_conn_get_npending_requests(me));
 
         for (ii = 0; ii < end; ii++)
         {
@@ -870,7 +873,7 @@ void pwp_conn_have(void* pco, msg_have_t* have)
 
     if (1 == pwp_conn_mark_peer_has_piece(me, have->piece_idx))
     {
-//                    assert(pwp_conn_peer_has_piece(me, piece_idx));
+//      assert(pwp_conn_peer_has_piece(me, piece_idx));
     }
 
 //  bitfield_mark(&me->state.have_bitfield, piece_idx);
@@ -1033,7 +1036,7 @@ int pwp_conn_piece(void* pco, msg_piece_t *piece)
     pwp_connection_t* me = pco;
     request_t *req_removed;
 
-    __log(me, "read,piece,piece_idx=%d offset=%d length=%d",
+    __log(me, "READ,piece,piece_idx=%d offset=%d length=%d",
           piece->block.piece_idx,
           piece->block.block_byte_offset,
           piece->block.block_len);
@@ -1041,12 +1044,14 @@ int pwp_conn_piece(void* pco, msg_piece_t *piece)
     /* remove pending request */
     if (!(req_removed = hashmap_remove(me->pendreqs, &piece->block)))
     {
+#if 0
         /* ensure that the peer is sending us a piece we requested */
         __disconnect(me, "err: received a block we did not request: %d %d %d\n",
                      piece->block.piece_idx,
                      piece->block.block_byte_offset,
                      piece->block.block_len);
         return 0;
+#endif
     }
 
     /* Insert block into database.
@@ -1058,7 +1063,8 @@ int pwp_conn_piece(void* pco, msg_piece_t *piece)
             piece->data);
 
     /*  there should have been a request polled */
-    assert(NULL != req_removed);
-    free(req_removed);
+//    assert(NULL != req_removed);
+    if (req_removed)
+        free(req_removed);
     return 1;
 }

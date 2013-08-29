@@ -18,6 +18,23 @@
 
 #define STATE_READY_TO_SENDRECV PC_CONNECTED | PC_HANDSHAKE_SENT | PC_HANDSHAKE_RECEIVED
 
+/**
+ * Flip endianess
+ **/
+static uint32_t fe(uint32_t i)
+{
+    uint32_t o;
+    unsigned char *c = (unsigned char *)&i;
+    unsigned char *p = (unsigned char *)&o;
+
+    p[0] = c[3];
+    p[1] = c[2];
+    p[2] = c[1];
+    p[3] = c[0];
+
+    return o;
+}
+
 static int __disconnect_msg(
         void* a __attribute__((__unused__)),
         void* b __attribute__((__unused__)),
@@ -70,21 +87,21 @@ void T_estPWP_send_request_spawns_wellformed_piece_response(
 
     /* request msg */
     __sender_set(&sender,NULL,msg);
-    bitstream_write_uint32(&ptr, 13);   /* msg size */
+    bitstream_write_uint32(&ptr, fe(13));   /* msg size */
     bitstream_write_ubyte(&ptr, 6);     /* request */
-    bitstream_write_uint32(&ptr, 1);    /*  piece one */
-    bitstream_write_uint32(&ptr, 0);    /*  block offset 0 */
-    bitstream_write_uint32(&ptr, 2);    /*  block length 2 */
+    bitstream_write_uint32(&ptr, fe(1));    /*  piece one */
+    bitstream_write_uint32(&ptr, fe(0));    /*  block offset 0 */
+    bitstream_write_uint32(&ptr, fe(2));    /*  block length 2 */
 
     /* receive msg */
     pwp_msghandler_dispatch_from_buffer(mh, msg, 4 + 1 + 4 + 4 + 4);
     CuAssertTrue(tc, 0 == sender.has_disconnected);
 
     /* read sent message */
-    CuAssertTrue(tc, 9 + 1 + 2 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 9 + 1 + 2 == fe(bitstream_read_uint32(&ptr)));
     CuAssertTrue(tc, PWP_MSGTYPE_PIECE == bitstream_read_ubyte(&ptr));
-    CuAssertTrue(tc, 0 == bitstream_read_uint32(&ptr)); /* piece one */
-    CuAssertTrue(tc, 0 == bitstream_read_uint32(&ptr)); /* block offset */
+    CuAssertTrue(tc, 0 == fe(bitstream_read_uint32(&ptr))); /* piece one */
+    CuAssertTrue(tc, 0 == fe(bitstream_read_uint32(&ptr))); /* block offset */
     CuAssertTrue(tc, 0xde == bitstream_read_ubyte(&ptr));
     CuAssertTrue(tc, 0xad == bitstream_read_ubyte(&ptr));
 }
@@ -113,7 +130,7 @@ void TestPWP_send_state_change_is_wellformed(
     pwp_conn_send_statechange(pc, PWP_MSGTYPE_INTERESTED);
 
     /* read sent message */
-    CuAssertTrue(tc, 1 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 1 == fe(bitstream_read_uint32(&ptr)));
     CuAssertTrue(tc, PWP_MSGTYPE_INTERESTED == bitstream_read_ubyte(&ptr));
 }
 
@@ -145,9 +162,9 @@ void TestPWP_send_have_is_wellformed(
     pwp_conn_send_have(pc, 17);
 
     /* read sent msg */
-    CuAssertTrue(tc, 5 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 5 == fe(bitstream_read_uint32(&ptr)));
     CuAssertTrue(tc, PWP_MSGTYPE_HAVE == bitstream_read_ubyte(&ptr));
-    CuAssertTrue(tc, 17 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 17 == fe(bitstream_read_uint32(&ptr)));
 }
 
 /**
@@ -181,7 +198,7 @@ void TestPWP_send_bitField_is_wellformed(
 
     /* read msg */
     /*  length */
-    CuAssertTrue(tc, 4 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 4 == fe(bitstream_read_uint32(&ptr)));
     /*  message type */
     CuAssertTrue(tc, PWP_MSGTYPE_BITFIELD == bitstream_read_ubyte(&ptr));
     /* 11111111 11111111 11110000  */
@@ -222,11 +239,11 @@ void TestPWP_send_request_is_wellformed(
     pwp_conn_send_request(pc, &blk);
 
     /* read sent msg */
-    CuAssertTrue(tc, 13 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 13 == fe(bitstream_read_uint32(&ptr)));
     CuAssertTrue(tc, 6 == bitstream_read_ubyte(&ptr));
-    CuAssertTrue(tc, 1 == bitstream_read_uint32(&ptr));
-    CuAssertTrue(tc, 0 == bitstream_read_uint32(&ptr));
-    CuAssertTrue(tc, 20 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 1 == fe(bitstream_read_uint32(&ptr)));
+    CuAssertTrue(tc, 0 == fe(bitstream_read_uint32(&ptr)));
+    CuAssertTrue(tc, 20 == fe(bitstream_read_uint32(&ptr)));
 }
 
 #if 0
@@ -255,11 +272,11 @@ void TxestPWP_send_RequestForPieceOnlyIfPeerHasPiece_is_wellformed(
 
     pwp_conn_mark_peer_has_piece(pc, 1);
 
-    CuAssertTrue(tc, 13 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 13 == fe(bitstream_read_uint32(&ptr)));
     CuAssertTrue(tc, 6 == bitstream_read_ubyte(&ptr));
-    CuAssertTrue(tc, 1 == bitstream_read_uint32(&ptr));
-    CuAssertTrue(tc, 0 == bitstream_read_uint32(&ptr));
-    CuAssertTrue(tc, 20 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 1 == fe(bitstream_read_uint32(&ptr)));
+    CuAssertTrue(tc, 0 == fe(bitstream_read_uint32(&ptr)));
+    CuAssertTrue(tc, 20 == fe(bitstream_read_uint32(&ptr)));
 }
 #endif
 
@@ -294,13 +311,13 @@ void TestPWP_send_piece_is_wellformed(
 
     /* READ sent msg */
     /*  length */
-    CuAssertTrue(tc, 13 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 13 == fe(bitstream_read_uint32(&ptr)));
     /*  msgtype */
     CuAssertTrue(tc, 7 == bitstream_read_ubyte(&ptr));
     /* piece idx  */
-    CuAssertTrue(tc, 0 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 0 == fe(bitstream_read_uint32(&ptr)));
     /*  block offset */
-    CuAssertTrue(tc, 0 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 0 == fe(bitstream_read_uint32(&ptr)));
     /*  block payload */
     CuAssertTrue(tc, 0XDE == bitstream_read_ubyte(&ptr));
     CuAssertTrue(tc, 0XAD == bitstream_read_ubyte(&ptr));
@@ -339,11 +356,11 @@ void TestPWP_send_cancel_is_wellformed(
     pwp_conn_send_cancel(pc, &blk);
 
     /* read sent msg */
-    CuAssertTrue(tc, 13 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 13 == fe(bitstream_read_uint32(&ptr)));
     CuAssertTrue(tc, 8 == bitstream_read_ubyte(&ptr));
-    CuAssertTrue(tc, 1 == bitstream_read_uint32(&ptr));
-    CuAssertTrue(tc, 0 == bitstream_read_uint32(&ptr));
-    CuAssertTrue(tc, 20 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 1 == fe(bitstream_read_uint32(&ptr)));
+    CuAssertTrue(tc, 0 == fe(bitstream_read_uint32(&ptr)));
+    CuAssertTrue(tc, 20 == fe(bitstream_read_uint32(&ptr)));
 }
 
 /*----------------------------------------------------------------------------*/
@@ -367,9 +384,9 @@ void TestPWP_read_havemsg_marks_peer_as_having_piece(
 
     /* setup */
     __sender_set(&sender, msg, NULL);
-    bitstream_write_uint32(&ptr, 5);       /*  length */
+    bitstream_write_uint32(&ptr, fe(5));       /*  length */
     bitstream_write_ubyte(&ptr, 4);        /*  HAVE */
-    bitstream_write_uint32(&ptr, 1);       /*  piece 1 */
+    bitstream_write_uint32(&ptr, fe(1));       /*  piece 1 */
 
     /*  peer connection */
     pc = pwp_conn_new();
@@ -400,9 +417,9 @@ void TestPWP_read_havemsg_disconnects_with_piece_idx_out_of_bounds(
     unsigned char msg[50], *ptr = msg;
 
     __sender_set(&sender, msg, NULL);
-    bitstream_write_uint32(&ptr, 5);
+    bitstream_write_uint32(&ptr, fe(5));
     bitstream_write_ubyte(&ptr, 4);
-    bitstream_write_uint32(&ptr, 10000);
+    bitstream_write_uint32(&ptr, fe(10000));
 
     /*  peer connection */
     pc = pwp_conn_new();
@@ -437,9 +454,9 @@ void TestPWP_send_interested_if_lacking_piece_from_have_msg(
     unsigned char r_msg[1000], *r_ptr = r_msg;
 
     __sender_set(&sender,r_msg,s_msg);
-    bitstream_write_uint32(&r_ptr, 5);       /*  length */
+    bitstream_write_uint32(&r_ptr, fe(5));       /*  length */
     bitstream_write_ubyte(&r_ptr, 4);        /*  HAVE */
-    bitstream_write_uint32(&r_ptr, 1);       /*  piece 1 */
+    bitstream_write_uint32(&r_ptr, fe(1));       /*  piece 1 */
 
     /*  peer connection */
     pc = pwp_conn_new();
@@ -451,7 +468,7 @@ void TestPWP_send_interested_if_lacking_piece_from_have_msg(
     /* receive */
     pwp_msghandler_dispatch_from_buffer(mh, r_msg, 4 + 1 + 4);
     /* check send interested message */
-    CuAssertTrue(tc, 1 == bitstream_read_uint32(&s_ptr));
+    CuAssertTrue(tc, 1 == fe(bitstream_read_uint32(&s_ptr)));
     CuAssertTrue(tc, 2 == bitstream_read_ubyte(&s_ptr));
 }
 
@@ -471,7 +488,7 @@ void TestPWP_read_chokemsg_marks_us_as_choked(
 
     /*  choke */
     __sender_set(&sender, msg, NULL);
-    bitstream_write_uint32(&ptr, 1);
+    bitstream_write_uint32(&ptr, fe(1));
     bitstream_write_ubyte(&ptr, 0);
 
     /*  peer connection */
@@ -503,7 +520,7 @@ void TestPWP_read_chokemsg_empties_our_pending_requests(
     memset(&blk, 0, sizeof(bt_block_t));
     /*  choke */
     __sender_set(&sender, msg, NULL);
-    bitstream_write_uint32(&ptr, 1);       /* length = 1 */
+    bitstream_write_uint32(&ptr, fe(1));       /* length = 1 */
     bitstream_write_ubyte(&ptr, 0);        /* choke = 0 */
 
     /*  peer connection */
@@ -537,7 +554,7 @@ void TestPWP_read_unchokemsg_marks_us_as_unchoked(
     /*  choke msg */
     __sender_set(&sender, msg, NULL);
     ptr = msg;
-    bitstream_write_uint32(&ptr, 1);
+    bitstream_write_uint32(&ptr, fe(1));
     bitstream_write_ubyte(&ptr, 0);
 
     /* setup */
@@ -554,7 +571,7 @@ void TestPWP_read_unchokemsg_marks_us_as_unchoked(
     /*  unchoke msg */
     __sender_set(&sender, msg, NULL);
     ptr = msg;
-    bitstream_write_uint32(&ptr, 1);
+    bitstream_write_uint32(&ptr, fe(1));
     bitstream_write_ubyte(&ptr, 1);
 
     /* receive */
@@ -576,14 +593,14 @@ void TestPWP_read_request_msg_disconnects_if_peer_is_choked(
     unsigned char msg[50], *ptr = msg;
 
     /*  request piece */
-    bitstream_write_uint32(&ptr, 12);      /*  payload length */
+    bitstream_write_uint32(&ptr, fe(12));      /*  payload length */
     bitstream_write_ubyte(&ptr, 6);        /*  message type */
-    bitstream_write_uint32(&ptr, 1);      /*  piece idx */
-    bitstream_write_uint32(&ptr, 0);       /*  block offset */
-    bitstream_write_uint32(&ptr, 1);       /*  block length */
+    bitstream_write_uint32(&ptr, fe(1));      /*  piece idx */
+    bitstream_write_uint32(&ptr, fe(0));       /*  block offset */
+    bitstream_write_uint32(&ptr, fe(1));       /*  block length */
 
     __sender_set(&sender, msg, NULL);
-//    bitstream_write_uint32(&ptr, 1);
+//    bitstream_write_uint32(&ptr, fe(1));
 //    bitstream_write_ubyte(&ptr, 0);
 
     pc = pwp_conn_new();
@@ -613,7 +630,7 @@ void TestPWP_read_peerisinterested_marks_peer_as_interested(
 
     /*  show interest */
     __sender_set(&sender, msg, NULL);
-    bitstream_write_uint32(&ptr, 1);       /* length = 1 */
+    bitstream_write_uint32(&ptr, fe(1));       /* length = 1 */
     bitstream_write_ubyte(&ptr, 2);        /* interested = 2 */
 
     /*  peer connection */
@@ -644,7 +661,7 @@ void TestPWP_read_peerisuninterested_marks_peer_as_uninterested(
 
     /*  show interest */
     __sender_set(&sender, msg, NULL);
-    bitstream_write_uint32(&ptr, 1);
+    bitstream_write_uint32(&ptr, fe(1));
     bitstream_write_ubyte(&ptr, 2);
 
     /*  peer connection */
@@ -661,7 +678,7 @@ void TestPWP_read_peerisuninterested_marks_peer_as_uninterested(
     /*  show uninterest */
     __sender_set(&sender, msg, NULL);
     ptr = msg;
-    bitstream_write_uint32(&ptr, 1);
+    bitstream_write_uint32(&ptr, fe(1));
     bitstream_write_ubyte(&ptr, 3);
 
     /* receive */
@@ -684,7 +701,7 @@ void TestPWP_read_bitfield_marks_peers_pieces_as_haved_by_peer(
 
     /*  bitfield */
     __sender_set(&sender,msg,NULL);
-    bitstream_write_uint32(&ptr, 4);
+    bitstream_write_uint32(&ptr, fe(4));
     bitstream_write_ubyte(&ptr, 5);        /*  bitpiece */
     bitstream_write_ubyte(&ptr, 0xff);     /*  11111111 */
     bitstream_write_ubyte(&ptr, 0xff);     /*  11111111 */
@@ -723,7 +740,7 @@ void TestPWP_read_disconnect_if_bitfield_received_more_than_once(
     __sender_set(&sender,msg,NULL);
 
     /*  bitfield */
-    bitstream_write_uint32(&ptr, 4);
+    bitstream_write_uint32(&ptr, fe(4));
     bitstream_write_ubyte(&ptr, 5);
     bitstream_write_ubyte(&ptr, 0xff);
     bitstream_write_ubyte(&ptr, 0xff);
@@ -768,7 +785,7 @@ void T_estPWP_read_bitfield_greaterthan_npieces_results_in_disconnect(
     pwp_conn_set_functions(pc, &funcs, &sender);
 
     /*  bad bitfield */
-    bitstream_write_uint32(&ptr, 4);
+    bitstream_write_uint32(&ptr, fe(4));
     bitstream_write_ubyte(&ptr, 5);
     bitstream_write_ubyte(&ptr, 0xF0);     // 11110000
     bitstream_write_ubyte(&ptr, 0x00);     // 00000000
@@ -794,7 +811,7 @@ void T_estPWP_readBitfieldLessThanNPieces(
 
     /*  bitfield */
     ptr = __sender_set(&sender, msg);
-    bitstream_write_uint32(&ptr, 3);
+    bitstream_write_uint32(&ptr, fe(3));
     bitstream_write_ubyte(&ptr, 5);
     bitstream_write_ubyte(&ptr, 0xF0);     // 11110000
     bitstream_write_ubyte(&ptr, 0x00);     // 00000000
@@ -829,13 +846,13 @@ void TestPWP_read_request_of_piece_not_completed_disconnects_peer(
     __sender_set(&sender, msg, NULL);
 
     /*  piece */
-    bitstream_write_uint32(&ptr, 12);      /*  payload length */
+    bitstream_write_uint32(&ptr, fe(12));      /*  payload length */
     bitstream_write_ubyte(&ptr, 6);        /*  message type: request */
     /*  invalid piece idx of zero */
-    bitstream_write_uint32(&ptr, 1);       /*  piece idx */
-    bitstream_write_uint32(&ptr, 0);       /*  block offset */
+    bitstream_write_uint32(&ptr, fe(1));       /*  piece idx */
+    bitstream_write_uint32(&ptr, fe(0));       /*  block offset */
     /*  invalid length of zero */
-    bitstream_write_uint32(&ptr, 2);       /*  block length */
+    bitstream_write_uint32(&ptr, fe(2));       /*  block length */
 
     pwp_connection_functions_t funcs = {
         .disconnect = __FUNC_disconnect,
@@ -876,12 +893,12 @@ void TestPWP_read_request_with_invalid_piece_idx_disconnects_peer(
     __sender_set(&sender,msg,NULL);
 
     /*  piece */
-    bitstream_write_uint32(&ptr, 12);      /*  payload length */
+    bitstream_write_uint32(&ptr, fe(12));      /*  payload length */
     bitstream_write_ubyte(&ptr, 6);        /*  message type */
     /*  invalid piece idx of 62 */
-    bitstream_write_uint32(&ptr, 62);      /*  piece idx */
-    bitstream_write_uint32(&ptr, 0);       /*  block offset */
-    bitstream_write_uint32(&ptr, 1);       /*  block length */
+    bitstream_write_uint32(&ptr, fe(62));      /*  piece idx */
+    bitstream_write_uint32(&ptr, fe(0));       /*  block offset */
+    bitstream_write_uint32(&ptr, fe(1));       /*  block length */
 
     /* setup */
     pc = pwp_conn_new();
@@ -918,12 +935,12 @@ void TestPWP_read_request_with_invalid_block_length_disconnects_peer(
     __sender_set(&sender,msg,NULL);
 
     /*  request piece */
-    bitstream_write_uint32(&ptr, 12);      /*  payload length */
+    bitstream_write_uint32(&ptr, fe(12));      /*  payload length */
     bitstream_write_ubyte(&ptr, 6);        /*  message type */
-    bitstream_write_uint32(&ptr, 0);      /*  piece idx */
-    bitstream_write_uint32(&ptr, 0);       /*  block offset */
+    bitstream_write_uint32(&ptr, fe(0));      /*  piece idx */
+    bitstream_write_uint32(&ptr, fe(0));       /*  block offset */
     /*  invalid block length of 62 */
-    bitstream_write_uint32(&ptr, 999);       /*  block length */
+    bitstream_write_uint32(&ptr, fe(999));       /*  block length */
 
     /* setup */
     pc = pwp_conn_new();
@@ -955,9 +972,9 @@ void TestPWP_read_request_of_piece_which_client_has_results_in_disconnect(
     unsigned char msg[1000], *ptr = msg;
 
     __sender_set(&sender, msg, NULL);
-    bitstream_write_uint32(&ptr, 5);       /*  length */
+    bitstream_write_uint32(&ptr, fe(5));       /*  length */
     bitstream_write_ubyte(&ptr, 4);        /*  HAVE */
-    bitstream_write_uint32(&ptr, 1);       /*  piece 1 */
+    bitstream_write_uint32(&ptr, fe(1));       /*  piece 1 */
 
     /*  peer connection */
     pc = pwp_conn_new();
@@ -974,11 +991,11 @@ void TestPWP_read_request_of_piece_which_client_has_results_in_disconnect(
 
     /*  request piece */
     ptr = msg;
-    bitstream_write_uint32(&ptr, 12);      /*  payload length */
+    bitstream_write_uint32(&ptr, fe(12));      /*  payload length */
     bitstream_write_ubyte(&ptr, 6);        /*  message type */
-    bitstream_write_uint32(&ptr, 1);      /*  piece idx */
-    bitstream_write_uint32(&ptr, 0);       /*  block offset */
-    bitstream_write_uint32(&ptr, 2);       /*  block length */
+    bitstream_write_uint32(&ptr, fe(1));      /*  piece idx */
+    bitstream_write_uint32(&ptr, fe(0));       /*  block offset */
+    bitstream_write_uint32(&ptr, fe(2));       /*  block length */
 
     /* receive */
     pwp_msghandler_dispatch_from_buffer(mh, msg, 4 + 1 + 4 + 4 + 4);
@@ -990,7 +1007,8 @@ void TestPWP_read_request_of_piece_which_client_has_results_in_disconnect(
 /*
  * Disconnect if piece message is received without us requesting the piece
  */
-void TestPWP_read_piece_results_in_disconnect_if_we_havent_requested_this_piece(
+#if 0
+void TxestPWP_read_piece_results_in_disconnect_if_we_havent_requested_this_piece(
     CuTest * tc
 )
 {
@@ -1004,10 +1022,10 @@ void TestPWP_read_piece_results_in_disconnect_if_we_havent_requested_this_piece(
 
     /*  piece */
     __sender_set(&sender, msg, NULL);
-    bitstream_write_uint32(&ptr, 11);      /*  payload */
+    bitstream_write_uint32(&ptr, fe(11));      /*  payload */
     bitstream_write_ubyte(&ptr, 7);        /*  piece type */
-    bitstream_write_uint32(&ptr, 1);       /*  piece one */
-    bitstream_write_uint32(&ptr, 0);       /*  byte offset is 0 */
+    bitstream_write_uint32(&ptr, fe(1));       /*  piece one */
+    bitstream_write_uint32(&ptr, fe(0));       /*  byte offset is 0 */
     bitstream_write_ubyte(&ptr, 0xDE);
     bitstream_write_ubyte(&ptr, 0xAD);
 
@@ -1022,6 +1040,7 @@ void TestPWP_read_piece_results_in_disconnect_if_we_havent_requested_this_piece(
     pwp_msghandler_dispatch_from_buffer(mh, msg, 4 + 1 + 4 + 4 + 1 + 1);
     CuAssertTrue(tc, 1 == sender.has_disconnected);
 }
+#endif
 
 void TestPWP_read_piece_results_in_correct_receivable(
     CuTest * tc
@@ -1040,10 +1059,10 @@ void TestPWP_read_piece_results_in_correct_receivable(
 
     /*  piece */
     __sender_set(&sender, msg, NULL);
-    bitstream_write_uint32(&ptr, 11);      /*  payload */
+    bitstream_write_uint32(&ptr, fe(11));      /*  payload */
     bitstream_write_ubyte(&ptr, 7);        /*  piece type */
-    bitstream_write_uint32(&ptr, 1);       /*  piece one */
-    bitstream_write_uint32(&ptr, 0);       /*  byte offset is 0 */
+    bitstream_write_uint32(&ptr, fe(1));       /*  piece one */
+    bitstream_write_uint32(&ptr, fe(0));       /*  byte offset is 0 */
     bitstream_write_ubyte(&ptr, 0xDE);
     bitstream_write_ubyte(&ptr, 0xAD);
 
@@ -1108,12 +1127,12 @@ void TestPWP_send_request_is_wellformed_even_when_request_len_was_outside_piece_
     pwp_conn_request_block_from_peer(pc, &request);
 
     /* check sie is valid */
-    CuAssertTrue(tc, 13 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 13 == fe(bitstream_read_uint32(&ptr)));
     CuAssertTrue(tc, 6 == bitstream_read_ubyte(&ptr));
-    CuAssertTrue(tc, 0 == bitstream_read_uint32(&ptr));
-    CuAssertTrue(tc, 0 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 0 == fe(bitstream_read_uint32(&ptr)));
+    CuAssertTrue(tc, 0 == fe(bitstream_read_uint32(&ptr)));
     /* FIXME: is this correct? shouldn't it be 20 to fit within the piece size? */
-    CuAssertTrue(tc, 980 == bitstream_read_uint32(&ptr));
+    CuAssertTrue(tc, 980 == fe(bitstream_read_uint32(&ptr)));
 }
 
 void TestPWP_read_request_doesnt_duplicate_within_pending_queue(
@@ -1204,10 +1223,10 @@ void TestPWP_read_piece_decreases_pending_requests(
 
     /*  piece msg */
     __sender_set(&sender, msg, NULL);
-    bitstream_write_uint32(&ptr, 9 + 1);  /* data length = 9 (hdr) + 1 (data) */
+    bitstream_write_uint32(&ptr, fe(9 + 1));  /* data length = 9 (hdr) + 1 (data) */
     bitstream_write_ubyte(&ptr, 7);    /* piece msg = 7 */
-    bitstream_write_uint32(&ptr, 0);   /* piece idx */
-    bitstream_write_uint32(&ptr, 0);   /* block offset */
+    bitstream_write_uint32(&ptr, fe(0));   /* piece idx */
+    bitstream_write_uint32(&ptr, fe(0));   /* block offset */
     bitstream_write_ubyte(&ptr, 0);   /* data */
 
     /* receive */
@@ -1258,11 +1277,11 @@ void TestPWP_read_cancelmsg_cancels_last_request(
 
     /* send cancel message */
     r_ptr = r_msg;
-    bitstream_write_uint32(&r_ptr, 13);
+    bitstream_write_uint32(&r_ptr, fe(13));
     bitstream_write_ubyte(&r_ptr, PWP_MSGTYPE_CANCEL);
-    bitstream_write_uint32(&r_ptr, request.piece_idx);
-    bitstream_write_uint32(&r_ptr, request.block_byte_offset);
-    bitstream_write_uint32(&r_ptr, request.block_len);
+    bitstream_write_uint32(&r_ptr, fe(request.piece_idx));
+    bitstream_write_uint32(&r_ptr, fe(request.block_byte_offset));
+    bitstream_write_uint32(&r_ptr, fe(request.block_len));
 
     /* request */
     pwp_msghandler_dispatch_from_buffer(mh, r_msg, 4 + 1 + 4 + 4 + 4);

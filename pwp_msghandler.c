@@ -35,10 +35,24 @@ typedef struct {
 
 static void __endmsg(msg_t* msg)
 {
-    msg->bytes_read = 0;
-    msg->id = 0;
-    msg->tok_bytes_read = 0;
-    msg->len = 0;
+    memset(msg,0,sizeof(msg_t));
+}
+
+/**
+ * Flip endianess
+ **/
+static uint32_t fe(uint32_t i)
+{
+    uint32_t o;
+    unsigned char *c = (unsigned char *)&i;
+    unsigned char *p = (unsigned char *)&o;
+
+    p[0] = c[3];
+    p[1] = c[2];
+    p[2] = c[1];
+    p[3] = c[0];
+
+    return o;
 }
 
 static int __read_uint32(
@@ -51,6 +65,7 @@ static int __read_uint32(
     {
         if (msg->tok_bytes_read == 4)
         {
+            *in = fe(*in);
             msg->tok_bytes_read = 0;
             return 1;
         }
@@ -67,6 +82,11 @@ static int __read_uint32(
     }
 }
 
+/**
+ * @param in Read data into 
+ * @param tot_bytes_read Running total of total number of bytes read
+ * @param buf Read data from
+ * @param len Length of stream left to read from */
 static int __read_byte(
         unsigned char* in,
         unsigned int *tot_bytes_read,
@@ -106,11 +126,13 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, uns
     bt_peer_connection_event_handler_t* me = mh;
     msg_t* msg = &me->msg;
 
+    /* while we have a stream left to read... */
     while (0 < len)
     {
-        /* read length of message (int) */
+        /* read at least an int */
         if (msg->bytes_read < 4)
         {
+            /* read length of message */
             if (1 == __read_uint32(&msg->len, &me->msg, &buf, &len))
             {
                 /* it was a keep alive message */
@@ -122,10 +144,11 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, uns
             }
         }
         /* get message ID */
-        else if (msg->bytes_read == 4)
+        else if (4 == msg->bytes_read)
         {
-            __read_byte(&msg->id, &msg->bytes_read,&buf,&len);
+            __read_byte(&msg->id, &msg->bytes_read, &buf, &len);
 
+            /* payloadless messages */
             if (msg->len != 1) continue;
 
             switch (msg->id)
@@ -146,6 +169,7 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, uns
             }
             __endmsg(&me->msg);
         }
+        /* messages with a payload: */
         else 
         {
             switch (msg->id)
@@ -162,20 +186,21 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, uns
                 break;
             case PWP_MSGTYPE_BITFIELD:
                 {
-                    unsigned char val;
+                    unsigned char val = 0;
                     unsigned int ii;
 
-                    if (msg->bytes_read == 1 + 4)
+                    if (1 + 4 == msg->bytes_read)
                     {
-                         bitfield_init(&msg->bitfield.bf, (msg->len - 1) * 8);
+                        bitfield_init(&msg->bitfield.bf, (msg->len - 1) * 8);
                     }
 
-                    __read_byte(&val, &msg->bytes_read,&buf,&len);
+                    assert(msg->bitfield.bf.bits);
 
-                    /* mark bits from byte */
+                    /* read and mark bits from byte */
+                    __read_byte(&val, &msg->bytes_read, &buf, &len);
                     for (ii=0; ii<8; ii++)
                     {
-                        if (0x1 == ((unsigned char)(val<<ii) >> 7))
+                        if (0x1 == ((unsigned char)(val << ii) >> 7))
                         {
                             bitfield_mark(&msg->bitfield.bf,
                                     (msg->bytes_read - 5 - 1) * 8 + ii);
@@ -183,9 +208,10 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, uns
                     }
 
                     /* done reading bitfield */
-                    if (msg->bytes_read == 4 + msg->len)
+                    if (4 + msg->len == msg->bytes_read)
                     {
                         pwp_conn_bitfield(me->pc, &msg->bitfield);
+                        bitfield_release(&msg->bitfield.bf);
                         __endmsg(&me->msg);
                     }
                 }
@@ -262,7 +288,7 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, uns
                     msg->piece.block.block_byte_offset += size;
 
                     /* if we received the whole message we're done */
-                    if (msg->len == 9)
+                    if (9 == msg->len)
                         __endmsg(&me->msg);
 
                     len -= size;
