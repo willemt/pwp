@@ -674,6 +674,7 @@ int pwp_conn_mark_peer_has_piece(void *pco, const int piece_idx)
 
     /* remember that they have this piece */
     bitfield_mark(&me->state.have_bitfield, piece_idx);
+    me->func->peer_have_piece(me->caller, me->peer_udata, piece_idx);
 
     return 1;
 }
@@ -730,7 +731,7 @@ static void __make_request(pwp_connection_t * me)
 {
     bt_block_t blk;
 
-    if (0 == me->func->pollblock(me->caller, &me->state.have_bitfield, &blk))
+    if (0 == me->func->pollblock(me->caller, me->peer_udata, &me->state.have_bitfield, &blk))
     {
         pwp_conn_request_block_from_peer(me, &blk);
     }

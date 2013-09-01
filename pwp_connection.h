@@ -28,7 +28,8 @@ typedef int (
     *func_pollblock_f
 )   (
     void *udata,
-    void * peers_bitfield,
+    void *peer,
+    void *peers_bitfield,
     bt_block_t * blk
 );
 
@@ -57,6 +58,15 @@ typedef int (
     void * peer,
     char *reason
 );
+
+typedef void (
+    *func_peerhavepiece_f
+)   (
+    void *udata,
+    void * peer,
+    int piece_idx
+);
+
 
 #ifndef HAVE_FUNC_GET_INT
 #define HAVE_FUNC_GET_INT
@@ -196,6 +206,9 @@ typedef struct {
 
     /* We've just downloaded the block and want to allocate it. */
     func_pushblock_f pushblock;
+
+    /* Let caller know that a peer has announced that they have a piece */
+    func_peerhavepiece_f peer_have_piece;
 
     /* logging */
     func_log_f log;
