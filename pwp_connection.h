@@ -9,7 +9,7 @@ typedef struct
 typedef void *(*func_getpiece_f)( void *udata, unsigned int piece);
 
 typedef void (*func_write_block_to_stream_f)(
-    void* pce, bt_block_t * blk, unsigned char ** msg);
+    void *pce, bt_block_t *blk, unsigned char **msg);
 
 #ifndef HAVE_FUNC_LOG
 #define HAVE_FUNC_LOG
@@ -30,15 +30,15 @@ typedef int (
     void *udata,
     void *peer,
     void *peers_bitfield,
-    bt_block_t * blk
+    bt_block_t *blk
 );
 
 typedef int (
     *func_pushblock_f
 )   (
     void *udata,
-    void * peer,
-    bt_block_t * block,
+    void *peer,
+    bt_block_t *block,
     const void *data
 );
 
@@ -46,7 +46,7 @@ typedef int (
     *func_send_f
 )   (
     void *udata,
-    const void * peer,
+    const void *peer,
     const void *send_data,
     const int len
 );
@@ -55,17 +55,18 @@ typedef int (
     *func_disconnect_f
 )   (
     void *udata,
-    void * peer,
+    void *peer,
     char *reason
 );
 
 typedef void (
-    *func_peerhavepiece_f
+    *func_peerpiece_f
 )   (
     void *udata,
-    void * peer,
+    void *peer,
     int piece_idx
 );
+
 
 
 #ifndef HAVE_FUNC_GET_INT
@@ -208,7 +209,10 @@ typedef struct {
     func_pushblock_f pushblock;
 
     /* Let caller know that a peer has announced that they have a piece */
-    func_peerhavepiece_f peer_have_piece;
+    func_peerpiece_f peer_have_piece;
+
+    /* Let caller know that it couldn't download this piece from this peer */
+    func_peerpiece_f peer_giveback_piece;
 
     /* logging */
     func_log_f log;

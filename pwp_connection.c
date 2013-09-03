@@ -77,11 +77,15 @@ typedef struct
     /* count number of failed connections */
     int failed_connections;
 
+    /* current tick */
+    int tick;
+
 } peer_connection_state_t;
 
 typedef struct
 {
-//    int timestamp;
+    /* the tick which this request was made */
+    int tick;
     bt_block_t blk;
 } request_t;
 
@@ -252,6 +256,25 @@ static void __expunge_my_pending_reqs(pwp_connection_t* me)
     {
         req = hashmap_remove(me->pendreqs, req);
         free(req);
+    }
+}
+
+static void __expunge_my_old_pending_reqs(pwp_connection_t* me)
+{
+    request_t *req;
+    hashmap_iterator_t iter;
+
+    for (hashmap_iterator(me->pendreqs, &iter);
+         (req = hashmap_iterator_next(me->pendreqs, &iter));)
+    {
+        if (10 < me->state.tick - req->tick)
+        {
+            req = hashmap_remove(me->pendreqs, req);
+            assert(req);
+            assert(me->func->peer_giveback_piece);
+            me->func->peer_giveback_piece(me->caller, me->peer_udata, req->blk.piece_idx);
+            free(req);
+        }
     }
 }
 
@@ -674,7 +697,8 @@ int pwp_conn_mark_peer_has_piece(void *pco, const int piece_idx)
 
     /* remember that they have this piece */
     bitfield_mark(&me->state.have_bitfield, piece_idx);
-    me->func->peer_have_piece(me->caller, me->peer_udata, piece_idx);
+    if (me->func->peer_have_piece)
+        me->func->peer_have_piece(me->caller, me->peer_udata, piece_idx);
 
     return 1;
 }
@@ -723,6 +747,7 @@ void pwp_conn_request_block_from_peer(void * pco, bt_block_t * blk)
 
     /* remember that we requested it */
     req = malloc(sizeof(request_t));
+    req->tick = me->state.tick;
     memcpy(&req->blk, blk, sizeof(bt_block_t));
     hashmap_put(me->pendreqs, &req->blk, req);
 }
@@ -759,6 +784,10 @@ void pwp_conn_periodic(void *pco)
     pwp_connection_t *me;
 
     me = pco;
+
+    me->state.tick++;
+
+    __expunge_my_old_pending_reqs(me);
 
     if (pwp_conn_flag_is_set(me, PC_UNCONTACTABLE_PEER))
     {
@@ -809,6 +838,12 @@ void pwp_conn_periodic(void *pco)
     {
         pwp_conn_set_im_interested(me);
     }
+
+#if 0 /* debugging */
+    printf("pending requests: %lx %d %d\n",
+            me, pwp_conn_get_npending_requests(me),
+            llqueue_count(me->pendpeerreqs));
+#endif
 }
 
 /** 
@@ -1057,6 +1092,7 @@ int pwp_conn_piece(void* pco, msg_piece_t *piece)
 
     /* Insert block into database.
      * Should result in the caller having other peerconns send HAVE messages */
+    assert(me->func->pushblock);
     me->func->pushblock(
             me->caller,
             me->peer_udata,
