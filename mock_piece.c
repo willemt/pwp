@@ -93,10 +93,10 @@ void mock_piece_write_block_to_stream(
     int ii;
 
     data = priv(me)->disk->read_block(priv(me)->disk_udata, NULL, blk);
-//    data = priv(me)->data + blk->block_byte_offset;
+//    data = priv(me)->data + blk->byte_offset;
 
 //    printf("writingblock \n");
-    for (ii = 0; ii < blk->block_len; ii++)
+    for (ii = 0; ii < blk->len; ii++)
     {
         unsigned char val;
 

@@ -93,8 +93,8 @@ int __FUNC_push_block(
     test_sender_t * sender = r;
 
     memcpy(&sender->read_last_block, block, sizeof(bt_block_t));
-    assert(block->block_len < 10);
-    memcpy(sender->read_last_block_data, data, sizeof(char) * block->block_len);
+    assert(block->len < 10);
+    memcpy(sender->read_last_block_data, data, sizeof(char) * block->len);
     return 1;
 }
 
@@ -134,8 +134,8 @@ unsigned char *__sender_set(
     /* write block of length 4 */
     /* piece idx not necessary */
     blk.piece_idx = 0;
-    blk.block_byte_offset = 0;
-    blk.block_len = 4;
+    blk.byte_offset = 0;
+    blk.len = 4;
     mock_piece_write_block(sender->piece, NULL, &blk, piecedata);
 
     return NULL;

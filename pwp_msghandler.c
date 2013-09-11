@@ -224,10 +224,10 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, uns
                 }
                 else if (msg->bytes_read < 1 + 4 + 4 + 4)
                 {
-                    __read_uint32(&msg->block.block_byte_offset,
+                    __read_uint32(&msg->block.byte_offset,
                             &me->msg,&buf,&len);
                 }
-                else if (1 == __read_uint32(&msg->block.block_len,
+                else if (1 == __read_uint32(&msg->block.len,
                             &me->msg, &buf,&len))
                 {
                     pwp_conn_request(me->pc, &msg->block);
@@ -243,10 +243,10 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, uns
                 }
                 else if (msg->bytes_read < 1 + 4 + 4 + 4)
                 {
-                    __read_uint32(&msg->block.block_byte_offset,
+                    __read_uint32(&msg->block.byte_offset,
                             &me->msg,&buf,&len);
                 }
-                else if (1 == __read_uint32(&msg->block.block_len,
+                else if (1 == __read_uint32(&msg->block.len,
                             &me->msg, &buf,&len))
                 {
                     pwp_conn_cancel(me->pc, &msg->block);
@@ -256,12 +256,12 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, uns
             case PWP_MSGTYPE_PIECE:
                 if (msg->bytes_read < 1 + 4 + 4)
                 {
-                    __read_uint32(&msg->piece.block.piece_idx,
+                    __read_uint32(&msg->piece.blk.piece_idx,
                             &me->msg, &buf,&len);
                 }
                 else if (msg->bytes_read < 9 + 4)
                 {
-                    __read_uint32(&msg->piece.block.block_byte_offset,
+                    __read_uint32(&msg->piece.blk.byte_offset,
                             &me->msg,&buf,&len);
                 }
                 else
@@ -278,14 +278,14 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, uns
                     }
 
                     msg->piece.data = buf;
-                    msg->piece.block.block_len = size;
+                    msg->piece.blk.len = size;
                     pwp_conn_piece(me->pc, &msg->piece);
 
                     /* if we haven't received the full piece, why don't we
                      * just split it virtually? */
                     /* shorten the message */
                     msg->len -= size;
-                    msg->piece.block.block_byte_offset += size;
+                    msg->piece.blk.byte_offset += size;
 
                     /* if we received the whole message we're done */
                     if (9 == msg->len)

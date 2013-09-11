@@ -80,8 +80,8 @@ void T_estPWP_send_request_spawns_wellformed_piece_response(
 
     /* create request message */
     request.piece_idx = 0;
-    request.block_byte_offset = 0;
-    request.block_len = 2;
+    request.byte_offset = 0;
+    request.len = 2;
     pwp_conn_request(pc, &request);
 #endif
 
@@ -226,8 +226,8 @@ void TestPWP_send_request_is_wellformed(
     /* msg */
     ptr = msg;
     blk.piece_idx = 1;
-    blk.block_byte_offset = 0;
-    blk.block_len = 20;
+    blk.byte_offset = 0;
+    blk.len = 20;
 
     /* setup */
     __sender_set(&sender,NULL,msg);
@@ -260,8 +260,8 @@ void TxestPWP_send_RequestForPieceOnlyIfPeerHasPiece_is_wellformed(
     bt_block_t blk;
 
     blk.piece_idx = 1;
-    blk.block_byte_offset = 0;
-    blk.block_len = 20;
+    blk.byte_offset = 0;
+    blk.len = 20;
 
     ptr = __sender_set(&sender);
     pc = pwp_conn_new();
@@ -297,8 +297,8 @@ void TestPWP_send_piece_is_wellformed(
     /*  get us 4 bytes of data */
     ptr = msg;
     blk.piece_idx = 0;
-    blk.block_byte_offset = 0;
-    blk.block_len = 4;
+    blk.byte_offset = 0;
+    blk.len = 4;
 
     /* setup */
     __sender_set(&sender,NULL,msg);
@@ -342,8 +342,8 @@ void TestPWP_send_cancel_is_wellformed(
 
     /* msg */
     blk.piece_idx = 1;
-    blk.block_byte_offset = 0;
-    blk.block_len = 20;
+    blk.byte_offset = 0;
+    blk.len = 20;
 
     /* setup */
     ptr = msg;
@@ -1077,16 +1077,16 @@ void TestPWP_read_piece_results_in_correct_receivable(
 
     /*  make sure we're at least requesting this piece */
     blk.piece_idx = 1;
-    blk.block_byte_offset = 0;
-    blk.block_len = 2;
+    blk.byte_offset = 0;
+    blk.len = 2;
     pwp_conn_request_block_from_peer(pc, &blk);
 
     /* receive */
     pwp_msghandler_dispatch_from_buffer(mh, msg, 4 + 1 + 4 + 4 + 1 + 1);
     CuAssertTrue(tc, 0 == sender.has_disconnected);
     CuAssertTrue(tc, 1 == sender.read_last_block.piece_idx);
-    CuAssertTrue(tc, 0 == sender.read_last_block.block_byte_offset);
-    CuAssertTrue(tc, 2 == sender.read_last_block.block_len);
+    CuAssertTrue(tc, 0 == sender.read_last_block.byte_offset);
+    CuAssertTrue(tc, 2 == sender.read_last_block.len);
     CuAssertTrue(tc, 0xDE == sender.read_last_block_data[0]);
     CuAssertTrue(tc, 0xAD == sender.read_last_block_data[1]);
 }
@@ -1111,9 +1111,9 @@ void TestPWP_send_request_is_wellformed_even_when_request_len_was_outside_piece_
 
     /* create request message */
     request.piece_idx = 0;
-    request.block_byte_offset = 0;
+    request.byte_offset = 0;
     /* invalid block length */
-    request.block_len = 1000;
+    request.len = 1000;
 
     /* setup */
     pc = pwp_conn_new();
@@ -1164,8 +1164,8 @@ void TestPWP_read_request_doesnt_duplicate_within_pending_queue(
 
     /* send request message */
     request.piece_idx = 0;
-    request.block_byte_offset = 0;
-    request.block_len = 2;
+    request.byte_offset = 0;
+    request.len = 2;
     pwp_conn_request(pc, &request);
 
     /* send same request message */
@@ -1217,7 +1217,7 @@ void TestPWP_read_piece_decreases_pending_requests(
     /* Request block to increase pending requests */
     memset(&blk, 0, sizeof(bt_block_t));
     blk.piece_idx = 0;
-    blk.block_len = 1;
+    blk.len = 1;
     pwp_conn_request_block_from_peer(pc, &blk);
     CuAssertTrue(tc, 1 == pwp_conn_get_npending_requests(pc));
 
@@ -1232,6 +1232,132 @@ void TestPWP_read_piece_decreases_pending_requests(
     /* receive */
     pwp_msghandler_dispatch_from_buffer(mh, msg, 4 + 1 + 4 + 4 + 1);
     CuAssertTrue(tc, 0 == sender.has_disconnected);
+    CuAssertTrue(tc, 0 == pwp_conn_get_npending_requests(pc));
+}
+
+void TestPWP_read_piece_decreases_pending_requests_only_if_it_matches_a_request_rightside(
+    CuTest * tc
+)
+{
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_MOCK_send,
+        .pushblock = __FUNC_MOCK_push_block,
+        .disconnect = __disconnect_msg,
+    };
+    void *pc;
+    test_sender_t sender;
+    bt_block_t blk;
+
+    /*  peer connection */
+    pc = pwp_conn_new();
+    pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
+    pwp_conn_set_piece_info(pc,20,20);
+    pwp_conn_set_functions(pc, &funcs, &sender);
+
+    /* Request block to increase pending requests */
+    memset(&blk, 0, sizeof(bt_block_t));
+    blk.piece_idx = 0;
+    blk.len = 4;
+    pwp_conn_request_block_from_peer(pc, &blk);
+    CuAssertTrue(tc, 1 == pwp_conn_get_npending_requests(pc));
+
+    msg_piece_t pce;
+
+    /*  piece msg */
+    /*  piece clears the second half of the request */
+    pce.blk.piece_idx = 0;
+    pce.blk.len = 2;
+    pce.blk.byte_offset = 2;
+    pwp_conn_piece(pc,&pce);
+    CuAssertTrue(tc, 1 == pwp_conn_get_npending_requests(pc));
+
+    /*  this piece msg clears the rest of the request */
+    pce.blk.piece_idx = 0;
+    pce.blk.len = 2;
+    pce.blk.byte_offset = 0;
+    pwp_conn_piece(pc,&pce);
+    CuAssertTrue(tc, 0 == pwp_conn_get_npending_requests(pc));
+}
+
+void TestPWP_read_piece_decreases_pending_requests_only_if_it_matches_a_request_leftside(
+    CuTest * tc
+)
+{
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_MOCK_send,
+        .pushblock = __FUNC_MOCK_push_block,
+        .disconnect = __disconnect_msg,
+    };
+    void *pc;
+    test_sender_t sender;
+    bt_block_t blk;
+
+    /*  peer connection */
+    pc = pwp_conn_new();
+    pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
+    pwp_conn_set_piece_info(pc,20,20);
+    pwp_conn_set_functions(pc, &funcs, &sender);
+
+    /* Request block to increase pending requests */
+    memset(&blk, 0, sizeof(bt_block_t));
+    blk.piece_idx = 0;
+    blk.len = 4;
+    pwp_conn_request_block_from_peer(pc, &blk);
+    CuAssertTrue(tc, 1 == pwp_conn_get_npending_requests(pc));
+
+    msg_piece_t pce;
+
+    /*  piece msg */
+    /*  piece clears the second half of the request */
+    pce.blk.piece_idx = 0;
+    pce.blk.len = 2;
+    pce.blk.byte_offset = 0;
+    pwp_conn_piece(pc,&pce);
+    CuAssertTrue(tc, 1 == pwp_conn_get_npending_requests(pc));
+
+    /*  this piece msg clears the rest of the request */
+    pce.blk.piece_idx = 0;
+    pce.blk.len = 2;
+    pce.blk.byte_offset = 2;
+    pwp_conn_piece(pc,&pce);
+    CuAssertTrue(tc, 0 == pwp_conn_get_npending_requests(pc));
+}
+
+void TestPWP_read_piece_decreases_pending_requests_if_piece_covers_whole_request(
+    CuTest * tc
+)
+{
+    pwp_connection_functions_t funcs = {
+        .send = __FUNC_MOCK_send,
+        .pushblock = __FUNC_MOCK_push_block,
+        .disconnect = __disconnect_msg,
+    };
+    void *pc;
+    test_sender_t sender;
+    bt_block_t blk;
+
+    /*  peer connection */
+    pc = pwp_conn_new();
+    pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
+    pwp_conn_set_piece_info(pc,20,20);
+    pwp_conn_set_functions(pc, &funcs, &sender);
+
+    /* Request block to increase pending requests */
+    memset(&blk, 0, sizeof(bt_block_t));
+    blk.piece_idx = 0;
+    blk.len = 1;
+    blk.byte_offset = 2;
+    pwp_conn_request_block_from_peer(pc, &blk);
+    CuAssertTrue(tc, 1 == pwp_conn_get_npending_requests(pc));
+
+    msg_piece_t pce;
+
+    /*  piece msg */
+    /*  this piece msg completely covers the requested block */
+    pce.blk.piece_idx = 0;
+    pce.blk.len = 4;
+    pce.blk.byte_offset = 0;
+    pwp_conn_piece(pc,&pce);
     CuAssertTrue(tc, 0 == pwp_conn_get_npending_requests(pc));
 }
 
@@ -1271,8 +1397,8 @@ void TestPWP_read_cancelmsg_cancels_last_request(
 
     /* send request message */
     request.piece_idx = 0;
-    request.block_byte_offset = 0;
-    request.block_len = 2;
+    request.byte_offset = 0;
+    request.len = 2;
     pwp_conn_request(pc, &request);
 
     /* send cancel message */
@@ -1280,8 +1406,8 @@ void TestPWP_read_cancelmsg_cancels_last_request(
     bitstream_write_uint32(&r_ptr, fe(13));
     bitstream_write_ubyte(&r_ptr, PWP_MSGTYPE_CANCEL);
     bitstream_write_uint32(&r_ptr, fe(request.piece_idx));
-    bitstream_write_uint32(&r_ptr, fe(request.block_byte_offset));
-    bitstream_write_uint32(&r_ptr, fe(request.block_len));
+    bitstream_write_uint32(&r_ptr, fe(request.byte_offset));
+    bitstream_write_uint32(&r_ptr, fe(request.len));
 
     /* request */
     pwp_msghandler_dispatch_from_buffer(mh, r_msg, 4 + 1 + 4 + 4 + 4);
@@ -1321,8 +1447,8 @@ void TestPWP_request_queue_dropped_when_peer_is_choked(
 
     /* send request message */
     request.piece_idx = 0;
-    request.block_byte_offset = 0;
-    request.block_len = 2;
+    request.byte_offset = 0;
+    request.len = 2;
     pwp_conn_request(pc, &request);
     pwp_conn_choke_peer(pc);
 

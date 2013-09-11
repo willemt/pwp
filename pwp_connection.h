@@ -2,8 +2,8 @@
 typedef struct
 {
     uint32_t piece_idx;
-    uint32_t block_byte_offset;
-    uint32_t block_len;
+    uint32_t byte_offset;
+    uint32_t len;
 } bt_block_t;
 
 typedef void *(*func_getpiece_f)( void *udata, unsigned int piece);
@@ -219,7 +219,7 @@ typedef struct {
 } pwp_connection_functions_t;
 
 typedef struct {
-    bt_block_t block;
+    bt_block_t blk;
     const void* data;
 } msg_piece_t;
 

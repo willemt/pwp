@@ -28,6 +28,61 @@ typedef struct {
 //    int status;
 } pwp_handshaker_t;
 
+/**
+ * Send the handshake
+ *
+ * Steps taken:
+ * 1. send handshake
+ * 2. receive handshake
+ * 3. show interest
+ *
+ * @return 0 on failure; 1 otherwise */
+int pwp_handshaker_send_handshake(
+        void* callee,
+        void* udata,
+        int (*send)(void *callee, const void *udata, const void *send_data, const int len),
+        char* expected_ih,
+        char* my_pi)
+{
+    char buf[1024], *protocol_name = PROTOCOL_NAME, *ptr;
+    int size, ii;
+
+    assert(NULL != expected_ih);
+    assert(NULL != my_pi);
+
+//    sprintf(buf, "%c%s" PWP_PC_HANDSHAKE_RESERVERD "%s%s",
+//            strlen(protocol_name), protocol_name, expected_ih, peerid);
+
+    ptr = buf;
+
+    /* protocol name length */
+    bitstream_write_ubyte((unsigned char**)&ptr, strlen(protocol_name));
+
+    /* protocol name */
+    bitstream_write_string((unsigned char**)&ptr, protocol_name, strlen(protocol_name));
+
+    /* reserved characters */
+    for (ii=0;ii<8;ii++)
+        bitstream_write_ubyte((unsigned char**)&ptr, 0);
+
+    /* infohash */
+    bitstream_write_string((unsigned char**)&ptr, expected_ih, 20);
+
+    /* peerid */
+    bitstream_write_string((unsigned char**)&ptr, my_pi, 20);
+
+    /* calculate total handshake size */
+    size = 1 + strlen(protocol_name) + 8 + 20 + 20;
+
+    if (0 == send(callee, udata, buf, size))
+    {
+//        __log(me, "send,handshake,fail");
+        return 0;
+    }
+
+    return 1;
+}
+
 void* pwp_handshaker_new(unsigned char* expected_info_hash, unsigned char* mypeerid)
 {
     pwp_handshaker_t* me;
@@ -192,10 +247,10 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char** buf, un
             {
 #if 0
                 /* disconnect if peer's ID is the same as ours */
-                if (!strncmp(peer_id,me->my_peer_id,20))
+                if (!strncmp(peer_id,me->my_pi,20))
                 {
                     __disconnect(me, "handshake: peer_id same as ours (us: %s them: %.*s)",
-                            me->my_peer_id, 20, peer_id);
+                            me->my_pi, 20, peer_id);
                     return 0;
                 }
 #endif
