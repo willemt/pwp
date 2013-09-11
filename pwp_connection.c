@@ -272,8 +272,9 @@ static void __expunge_my_old_pending_reqs(pwp_connection_t* me)
         req = llqueue_poll(rem);
         assert(req);
         req = hashmap_remove(me->pendreqs, req);
-        assert(me->func->peer_giveback_piece);
-        me->func->peer_giveback_piece(me->caller, me->peer_udata, req->blk.piece_idx);
+        assert(me->func->peer_giveback_block);
+        //me->func->peer_giveback_block(me->caller, me->peer_udata, req->blk.piece_idx);
+        me->func->peer_giveback_block(me->caller, me->peer_udata, &req->blk);
         free(req);
     }
 
@@ -669,7 +670,6 @@ void pwp_conn_request_block_from_peer(void * pco, bt_block_t * blk)
     printf("request block: %d %d %d",
            blk->piece_idx, blk->byte_offset, blk->len);
 #endif
-
 }
 
 static void __make_request(pwp_connection_t * me)

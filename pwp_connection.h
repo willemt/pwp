@@ -60,13 +60,20 @@ typedef int (
 );
 
 typedef void (
+    *func_peergiveblockback_f
+)   (
+    void *udata,
+    void *peer,
+    bt_block_t * blk
+);
+
+typedef void (
     *func_peerpiece_f
 )   (
     void *udata,
     void *peer,
-    int piece_idx
+    int piece
 );
-
 
 
 #ifndef HAVE_FUNC_GET_INT
@@ -212,7 +219,8 @@ typedef struct {
     func_peerpiece_f peer_have_piece;
 
     /* Let caller know that it couldn't download this piece from this peer */
-    func_peerpiece_f peer_giveback_piece;
+    func_peergiveblockback_f peer_giveback_block;
+    //func_peerpiece_f peer_giveback_piece;
 
     /* logging */
     func_log_f log;
