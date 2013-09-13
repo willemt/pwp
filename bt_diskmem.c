@@ -75,20 +75,20 @@ static int __write_block(
 #if 0
     int ii;
 
-    printf("diskmem %d:", blk->byte_offset);
+    printf("diskmem %d:", blk->offset);
     for (ii = 0; ii < blk->len; ii++)
         printf("%02x,", ((const unsigned char*)blkdata)[ii]);
     printf("\n");
 #endif
 
     assert(dc->data);
-    memcpy(dc->data + blk->byte_offset, blkdata, blk->len);
+    memcpy(dc->data + blk->offset, blkdata, blk->len);
 
 #if 0
     {
     int ii;
 
-    printf("diskmem %d:", blk->byte_offset);
+    printf("diskmem %d:", blk->offset);
     for (ii = 0; ii < blk->len; ii++)
         printf("%02x,", ((const unsigned char*)dc->data)[ii]);
     printf("\n");
@@ -110,7 +110,7 @@ static void *__read_block(
 {
     diskmem_t *dc = udata;
 
-    return dc->data + blk->byte_offset;
+    return dc->data + blk->offset;
 }
 
 /*----------------------------------------------------------------------------*/

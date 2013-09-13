@@ -132,7 +132,7 @@ static unsigned long __request_hash(const void *obj)
 {
     const bt_block_t *req = obj;
 
-    return req->piece_idx + req->len + req->byte_offset;
+    return req->piece_idx + req->len + req->offset;
 }
 
 static long __request_compare(const void *obj, const void *other)
@@ -141,7 +141,7 @@ static long __request_compare(const void *obj, const void *other)
 
     if (req1->piece_idx == req2->piece_idx &&
         req1->len == req2->len &&
-        req1->byte_offset == req2->byte_offset)
+        req1->offset == req2->offset)
         return 0;
 
     return 1;
@@ -221,7 +221,7 @@ void *pwp_conn_new()
     }
 
     me->state.flags = PC_IM_CHOKING | PC_PEER_CHOKING;
-    me->pendreqs = hashmap_new(__request_hash, __request_compare, 11);
+    me->pendreqs = hashmap_new(__request_hash, __request_compare, 100);
     me->pendpeerreqs = llqueue_new();
 
     return me;
@@ -237,48 +237,78 @@ static void __expunge_their_pending_reqs(pwp_connection_t* me)
 
 static void __expunge_my_pending_reqs(pwp_connection_t* me)
 {
-    request_t *req;
+    request_t *r;
     hashmap_iterator_t iter;
 
+    void* rem;
+    rem = llqueue_new();
+
     for (hashmap_iterator(me->pendreqs, &iter);
-         (req = hashmap_iterator_next(me->pendreqs, &iter));)
+         (r = hashmap_iterator_next_value(me->pendreqs, &iter));)
     {
-        req = hashmap_remove(me->pendreqs, req);
-        free(req);
+        llqueue_offer(rem, r);
+#if 0
+        r = hashmap_remove(me->pendreqs, &r->blk);
+        if (me->func->peer_giveback_block)
+            me->func->peer_giveback_block(me->caller, me->peer_udata, &r->blk);
+        free(r);
+#endif
     }
+
+#if 1
+   while (llqueue_count(rem) > 0)
+    {
+        r = llqueue_poll(rem);
+        r = hashmap_remove(me->pendreqs, &r->blk);
+
+        assert(r);
+
+        if (me->func->peer_giveback_block)
+            me->func->peer_giveback_block(me->caller, me->peer_udata, &r->blk);
+        free(r);
+    }
+
+    llqueue_free(rem);
+#endif
 }
 
 static void __expunge_my_old_pending_reqs(pwp_connection_t* me)
 {
-    request_t *req;
+    request_t *r;
     hashmap_iterator_t iter;
-    linked_list_queue_t* rem;
+    void* rem;
 
     assert(me);
 
     rem = llqueue_new();
 
     for (hashmap_iterator(me->pendreqs, &iter);
-         (req = hashmap_iterator_next(me->pendreqs, &iter));)
+         (r = hashmap_iterator_next_value(me->pendreqs, &iter));)
     {
-        if (req && 10 < me->state.tick - req->tick)
+        if (r && 10 < me->state.tick - r->tick)
         {
-            llqueue_offer(rem, req);
+#if 0
+            hashmap_remove(me->pendreqs, &r->blk);
+            me->func->peer_giveback_block(me->caller, me->peer_udata, &r->blk);
+            free(r);
+#endif
+            llqueue_offer(rem, r);
         }
     }
 
+#if 1
     while (llqueue_count(rem) > 0)
     {
-        req = llqueue_poll(rem);
-        assert(req);
-        req = hashmap_remove(me->pendreqs, req);
-        assert(me->func->peer_giveback_block);
-        //me->func->peer_giveback_block(me->caller, me->peer_udata, req->blk.piece_idx);
-        me->func->peer_giveback_block(me->caller, me->peer_udata, &req->blk);
-        free(req);
-    }
+        r = llqueue_poll(rem);
+        r = hashmap_remove(me->pendreqs, &r->blk);
 
+        assert(me->func->peer_giveback_block);
+        me->func->peer_giveback_block(me->caller, me->peer_udata, &r->blk);
+        free(r);
+    }
     llqueue_free(rem);
+#endif
+
 }
 
 void pwp_conn_release(void* pco)
@@ -450,7 +480,7 @@ void pwp_conn_send_piece(void *pco, bt_block_t * req)
     bitstream_write_uint32(&ptr, fe(size - 4));
     bitstream_write_ubyte(&ptr, PWP_MSGTYPE_PIECE);
     bitstream_write_uint32(&ptr, fe(req->piece_idx));
-    bitstream_write_uint32(&ptr, fe(req->byte_offset));
+    bitstream_write_uint32(&ptr, fe(req->offset));
     me->func->write_block_to_stream(pce,req,(unsigned char**)&ptr);
     __send_to_peer(me, data, size);
 
@@ -462,15 +492,15 @@ void pwp_conn_send_piece(void *pco, bt_block_t * req)
         int len = BYTES_SENT < ii ? BYTES_SENT : ii;
 
         bt_piece_write_block_to_str(pce,
-                                    req->byte_offset +
+                                    req->offset +
                                     req->len - ii, len, block);
         __send_to_peer(me, block, len);
         ii -= len;
     }
 #endif
 
-    __log(me, "send,piece,piece_idx=%d byte_offset=%d len=%d",
-          req->piece_idx, req->byte_offset, req->len);
+    __log(me, "send,piece,piece_idx=%d offset=%d len=%d",
+          req->piece_idx, req->offset, req->len);
 
     free(data);
 }
@@ -502,11 +532,11 @@ void pwp_conn_send_request(void *pco, const bt_block_t * request)
     bitstream_write_uint32(&ptr, fe(13));
     bitstream_write_ubyte(&ptr, PWP_MSGTYPE_REQUEST);
     bitstream_write_uint32(&ptr, fe(request->piece_idx));
-    bitstream_write_uint32(&ptr, fe(request->byte_offset));
+    bitstream_write_uint32(&ptr, fe(request->offset));
     bitstream_write_uint32(&ptr, fe(request->len));
     __send_to_peer(me, data, 13+4);
-    __log(me, "send,request,piece_idx=%d byte_offset=%d len=%d",
-          request->piece_idx, request->byte_offset, request->len);
+    __log(me, "send,request,piece_idx=%d offset=%d len=%d",
+          request->piece_idx, request->offset, request->len);
 }
 
 /**
@@ -520,11 +550,11 @@ void pwp_conn_send_cancel(void *pco, bt_block_t * cancel)
     bitstream_write_uint32(&ptr, fe(13));
     bitstream_write_ubyte(&ptr, PWP_MSGTYPE_CANCEL);
     bitstream_write_uint32(&ptr, fe(cancel->piece_idx));
-    bitstream_write_uint32(&ptr, fe(cancel->byte_offset));
+    bitstream_write_uint32(&ptr, fe(cancel->offset));
     bitstream_write_uint32(&ptr, fe(cancel->len));
     __send_to_peer(me, data, 17);
-    __log(me, "send,cancel,piece_idx=%d byte_offset=%d len=%d",
-          cancel->piece_idx, cancel->byte_offset, cancel->len);
+    __log(me, "send,cancel,piece_idx=%d offset=%d len=%d",
+          cancel->piece_idx, cancel->offset, cancel->len);
 }
 
 static void __write_bitfield_to_stream_from_getpiece_func(pwp_connection_t* me,
@@ -626,10 +656,10 @@ int pwp_conn_mark_peer_has_piece(void *pco, const int piece_idx)
  * fit the request in the piece size so that we don't break anything */
 static void __request_fit(bt_block_t * request, const unsigned int piece_len)
 {
-    if (piece_len < request->byte_offset + request->len)
+    if (piece_len < request->offset + request->len)
     {
         request->len =
-            request->byte_offset + request->len - piece_len;
+            request->offset + request->len - piece_len;
     }
 }
 
@@ -656,9 +686,12 @@ void pwp_conn_request_block_from_peer(void * pco, bt_block_t * blk)
     pwp_connection_t * me = pco;
     request_t *req;
 
+    /*  drop meaningless blocks */
+    if (blk->len < 0)
+        return;
+
     __request_fit(blk, me->piece_len);
     pwp_conn_send_request(me, blk);
-
 
     /* remember that we requested it */
     req = malloc(sizeof(request_t));
@@ -668,7 +701,7 @@ void pwp_conn_request_block_from_peer(void * pco, bt_block_t * blk)
 
 #if 0 /*  debugging */
     printf("request block: %d %d %d",
-           blk->piece_idx, blk->byte_offset, blk->len);
+           blk->piece_idx, blk->offset, blk->len);
 #endif
 }
 
@@ -678,6 +711,7 @@ static void __make_request(pwp_connection_t * me)
 
     if (0 == me->func->pollblock(me->caller, me->peer_udata, &me->state.have_bitfield, &blk))
     {
+        if (blk.len == 0) return;
         pwp_conn_request_block_from_peer(me, &blk);
     }
 }
@@ -746,8 +780,7 @@ void pwp_conn_periodic(void *pco)
         }
 
         /*  max out pipeline */
-        end = 10 - pwp_conn_get_npending_requests(me);
-//        printf("pending requests: %d\n", pwp_conn_get_npending_requests(me));
+        end = 20 - pwp_conn_get_npending_requests(me);
 
         for (ii = 0; ii < end; ii++)
         {
@@ -934,7 +967,7 @@ int pwp_conn_request(void* pco, bt_block_t *request)
     }
 
     /* Ensure that block request length is valid  */
-    if (request->len == 0 || me->piece_len < request->byte_offset + request->len)
+    if (request->len == 0 || me->piece_len < request->offset + request->len)
     {
         __disconnect(me, "invalid block request"); 
         return 0;
@@ -975,7 +1008,7 @@ void pwp_conn_cancel(void* pco, bt_block_t *cancel)
     bt_block_t *removed;
 
     __log(me, "read,cancel,piece_idx=%d offset=%d length=%d",
-          cancel->piece_idx, cancel->byte_offset,
+          cancel->piece_idx, cancel->offset,
           cancel->len);
 
     /* remove from linked list queue */
@@ -987,9 +1020,18 @@ void pwp_conn_cancel(void* pco, bt_block_t *cancel)
 //  queue_remove(peer->request_queue);
 }
 
-static void __remove_pending_request(pwp_connection_t* me, msg_piece_t *p)
+/**
+ * @return 1 if the request is still pending; otherwise 0 */
+int pwp_conn_block_request_is_pending(void* pc, bt_block_t *b)
+{
+    pwp_connection_t* me = pc;
+    return NULL != hashmap_get(me->pendreqs, b);
+}
+
+static void pwp_conn_remove_pending_request(pwp_connection_t* me, const msg_piece_t *p)
 {
     request_t *r;
+    void *add;
 
     /* remove pending request */
     if ((r = hashmap_remove(me->pendreqs, &p->blk)))
@@ -998,11 +1040,13 @@ static void __remove_pending_request(pwp_connection_t* me, msg_piece_t *p)
         return;
     }
 
+    add = llqueue_new();
+
 #if 0
         /* ensure that the peer is sending us a piece we requested */
         __disconnect(me, "err: received a block we did not request: %d %d %d\n",
                      piece->block.piece_idx,
-                     piece->block.byte_offset,
+                     piece->block.offset,
                      piece->block.len);
         return 0;
 #endif
@@ -1011,41 +1055,101 @@ static void __remove_pending_request(pwp_connection_t* me, msg_piece_t *p)
 
     /*  find out if this piece is part of another request */
     for (hashmap_iterator(me->pendreqs, &iter);
-         (r = hashmap_iterator_next(me->pendreqs, &iter));)
+         (r = hashmap_iterator_next_value(me->pendreqs, &iter));)
     {
-        r = hashmap_get(me->pendreqs, r);
+        llqueue_offer(add,r);
+    }
 
-        if (r->blk.piece_idx != p->blk.piece_idx) continue;
+//    for (hashmap_iterator(me->pendreqs, &iter);
+//         (r = hashmap_iterator_next_value(me->pendreqs, &iter));)
 
-        /*  completely eats request */
-        if (p->blk.byte_offset <= r->blk.byte_offset &&
-            r->blk.byte_offset + r->blk.len <= p->blk.byte_offset + p->blk.len)
+    /*  find out if this piece is part of another request */
+    while (llqueue_count(add) > 0)
+    {
+        const bt_block_t *pb;
+        bt_block_t *rb;
+
+        r = llqueue_poll(add);
+
+        rb = &r->blk;
+        pb = &p->blk;
+
+        if (r->blk.piece_idx != pb->piece_idx) continue;
+
+        /*  piece completely eats request */
+        if (pb->offset <= rb->offset &&
+            rb->offset + rb->len <= pb->offset + pb->len)
         {
-            hashmap_remove(me->pendreqs, &r->blk);
+            r = hashmap_remove(me->pendreqs, &r->blk);
+            assert(r);
             free(r);
         }
-        /*  splits it on the left side */
-        else if (p->blk.byte_offset <= r->blk.byte_offset &&
-            r->blk.byte_offset < p->blk.byte_offset + p->blk.len)
+        /*
+         * Piece in the middle
+         * |00000LXL00000|
+         */
+        else if (rb->offset < pb->offset &&
+                pb->offset + pb->len < rb->offset + rb->len)
         {
-            hashmap_remove(me->pendreqs, &r->blk);
+            request_t *n;
 
-            /*  resize and return to hashmap */
-            r->blk.len -= (p->blk.byte_offset + p->blk.len) - r->blk.byte_offset;
-            r->blk.byte_offset = p->blk.byte_offset + p->blk.len;
+            n = malloc(sizeof(request_t));
+            n->tick = r->tick;
+            n->blk.piece_idx = rb->piece_idx;
+            n->blk.offset = pb->offset + pb->len;
+            n->blk.len = rb->len - pb->len - (pb->offset - rb->offset);
+            assert((int)n->blk.len != 0);
+            assert((int)n->blk.len > 0);
+//            llqueue_offer(add,n);
+            hashmap_put(me->pendreqs, &n->blk, n);
+            assert(n->blk.len > 0);
+
+            hashmap_remove(me->pendreqs, &r->blk);
+            rb->len = pb->offset - rb->offset;
+            assert((int)rb->len > 0);
+            //llqueue_offer(add,r);
             hashmap_put(me->pendreqs, &r->blk, r);
+            assert(rb->len > 0);
         }
-        /*  splits it on the right side */
-        else if (r->blk.byte_offset < p->blk.byte_offset &&
-            p->blk.byte_offset <= r->blk.byte_offset + r->blk.len)
+        /*  piece splits it on the left side */
+        else if (rb->offset < pb->offset + pb->len &&
+            pb->offset + pb->len < rb->offset + rb->len)
         {
             hashmap_remove(me->pendreqs, &r->blk);
 
             /*  resize and return to hashmap */
-            r->blk.len = p->blk.byte_offset - r->blk.byte_offset;
+            rb->len -= (pb->offset + pb->len) - rb->offset;
+            rb->offset = pb->offset + pb->len;
+            assert((int)rb->len > 0);
+
             hashmap_put(me->pendreqs, &r->blk, r);
+            //llqueue_offer(add,r);
+        }
+        /*  piece splits it on the right side */
+        else if (rb->offset < pb->offset &&
+            pb->offset < rb->offset + rb->len &&
+            rb->offset + rb->len <= pb->offset + pb->len)
+        {
+            hashmap_remove(me->pendreqs, &r->blk);
+
+            /*  resize and return to hashmap */
+            rb->len = pb->offset - rb->offset;
+            assert((int)rb->len > 0);
+            
+            hashmap_put(me->pendreqs, &r->blk, r);
+            //llqueue_offer(add,r);
         }
     }
+
+#if 0
+    while (llqueue_count(add) > 0)
+    {
+        r = llqueue_poll(add);
+        hashmap_put(me->pendreqs, &r->blk, r);
+    }
+#endif
+
+    llqueue_free(add);
 }
 
 /**
@@ -1057,10 +1161,10 @@ int pwp_conn_piece(void* pco, msg_piece_t *p)
 
     __log(me, "READ,piece,piece_idx=%d offset=%d length=%d",
           p->blk.piece_idx,
-          p->blk.byte_offset,
+          p->blk.offset,
           p->blk.len);
 
-    __remove_pending_request(me,p);
+    pwp_conn_remove_pending_request(me,p);
 
     /* Insert block into database.
      * Should result in the caller having other peerconns send HAVE messages */
@@ -1071,9 +1175,5 @@ int pwp_conn_piece(void* pco, msg_piece_t *p)
             &p->blk,
             p->data);
 
-    /*  there should have been a request polled */
-//    assert(NULL != req_removed);
-//    if (req_removed)
-//        free(req_removed);
     return 1;
 }

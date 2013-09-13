@@ -193,7 +193,7 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char** buf, un
             /* don't know what to do with set reserved bytes */
             if (*(me->cur-1) != 0)
             {
-                printf("ERROR: unreserved bytes used\n");
+//                printf("ERROR: unreserved bytes used\n");
 //                return -1;
             }
 

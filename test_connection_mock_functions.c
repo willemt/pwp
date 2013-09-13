@@ -134,7 +134,7 @@ unsigned char *__sender_set(
     /* write block of length 4 */
     /* piece idx not necessary */
     blk.piece_idx = 0;
-    blk.byte_offset = 0;
+    blk.offset = 0;
     blk.len = 4;
     mock_piece_write_block(sender->piece, NULL, &blk, piecedata);
 

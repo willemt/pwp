@@ -224,7 +224,7 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, uns
                 }
                 else if (msg->bytes_read < 1 + 4 + 4 + 4)
                 {
-                    __read_uint32(&msg->block.byte_offset,
+                    __read_uint32(&msg->block.offset,
                             &me->msg,&buf,&len);
                 }
                 else if (1 == __read_uint32(&msg->block.len,
@@ -243,7 +243,7 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, uns
                 }
                 else if (msg->bytes_read < 1 + 4 + 4 + 4)
                 {
-                    __read_uint32(&msg->block.byte_offset,
+                    __read_uint32(&msg->block.offset,
                             &me->msg,&buf,&len);
                 }
                 else if (1 == __read_uint32(&msg->block.len,
@@ -261,7 +261,7 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, uns
                 }
                 else if (msg->bytes_read < 9 + 4)
                 {
-                    __read_uint32(&msg->piece.blk.byte_offset,
+                    __read_uint32(&msg->piece.blk.offset,
                             &me->msg,&buf,&len);
                 }
                 else
@@ -285,7 +285,7 @@ void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, uns
                      * just split it virtually? */
                     /* shorten the message */
                     msg->len -= size;
-                    msg->piece.blk.byte_offset += size;
+                    msg->piece.blk.offset += size;
 
                     /* if we received the whole message we're done */
                     if (9 == msg->len)

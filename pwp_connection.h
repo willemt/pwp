@@ -1,9 +1,9 @@
 
 typedef struct
 {
-    uint32_t piece_idx;
-    uint32_t byte_offset;
-    uint32_t len;
+    unsigned int piece_idx;
+    unsigned int offset;
+    unsigned int len;
 } bt_block_t;
 
 typedef void *(*func_getpiece_f)( void *udata, unsigned int piece);
@@ -270,4 +270,6 @@ int pwp_conn_flag_is_set(void *pco, const int flag);
 void pwp_conn_connected(void* pco);
 
 void pwp_conn_connect_failed(void *pco);
+
+int pwp_conn_block_request_is_pending(void* pc, bt_block_t *b);
 
