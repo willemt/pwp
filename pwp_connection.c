@@ -96,8 +96,9 @@ typedef struct
     peer_connection_state_t state;
 
     unsigned int bytes_downloaded_this_period;
-
+    unsigned int bytes_uploaded_this_period;
     void* bytes_downloaded_rate;
+    void* bytes_upload_rate;
 
     /*  requests that we are waiting to get */
     hashmap_t *pendreqs;
@@ -229,6 +230,7 @@ void *pwp_conn_new()
     me->pendreqs = hashmap_new(__request_hash, __request_compare, 100);
     me->pendpeerreqs = llqueue_new();
     me->bytes_downloaded_rate = meanqueue_new(10);
+    me->bytes_uploaded_rate = meanqueue_new(10);
     return me;
 }
 
@@ -423,17 +425,14 @@ static void *__get_piece(pwp_connection_t * me, const unsigned int piece_idx)
 int pwp_conn_get_download_rate(const void * pco __attribute__((__unused__)))
 {
     const pwp_connection_t *me = pco;
-
     return meanqueue_get_value(me->bytes_downloaded_rate);
 }
 
-#if 0
 int pwp_conn_get_upload_rate(const void * pco __attribute__((__unused__)))
 {
-//    const pwp_connection_t *me = pco;
-    return 0;
+    const pwp_connection_t *me = pco;
+    return meanqueue_get_value(me->bytes_uploaded_rate);
 }
-#endif
 
 /**
  * unchoke, choke, interested, uninterested,
@@ -804,10 +803,11 @@ void pwp_conn_periodic(void *pco)
             llqueue_count(me->pendpeerreqs));
 #endif
 
-    /*  measure download rate */
-    meanqueue_offer(me->bytes_downloaded_rate,
-            me->bytes_downloaded_this_period);
+    /*  measure transfer rate */
+    meanqueue_offer(me->bytes_downloaded_rate, me->bytes_downloaded_this_period);
+    meanqueue_offer(me->bytes_uploaded_rate, me->bytes_uploaded_this_period);
     me->bytes_downloaded_this_period = 0;
+    me->bytes_uploaded_this_period = 0;
 
 cleanup:
     return;
