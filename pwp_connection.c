@@ -98,7 +98,7 @@ typedef struct
     unsigned int bytes_downloaded_this_period;
     unsigned int bytes_uploaded_this_period;
     void* bytes_downloaded_rate;
-    void* bytes_upload_rate;
+    void* bytes_uploaded_rate;
 
     /*  requests that we are waiting to get */
     hashmap_t *pendreqs;
