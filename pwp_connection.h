@@ -99,6 +99,8 @@ typedef int (
 #define PC_IM_INTERESTED ((unsigned int)1<<7)
 #define PC_PEER_CHOKING ((unsigned int)1<<8)
 #define PC_PEER_INTERESTED ((unsigned int)1<<9)
+#define PC_FAILED_CONNECTION ((unsigned int)1<<10)
+
 
 typedef enum
 {

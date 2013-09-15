@@ -13,9 +13,6 @@
 #include "mock_piece.h"
 #include "test_connection.h"
 
-//static char* __mock_infohash = "00000000000000000000";
-//static char* __mock_peerid = "00000000000000000000";
-
 #define STATE_READY_TO_SENDRECV PC_CONNECTED | PC_HANDSHAKE_SENT | PC_HANDSHAKE_RECEIVED
 
 /**

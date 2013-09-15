@@ -94,6 +94,8 @@ typedef struct
 {
     peer_connection_state_t state;
 
+    unsigned int bytes_downloaded_this_period;
+
     /*  requests that we are waiting to get */
     hashmap_t *pendreqs;
 
@@ -798,6 +800,8 @@ void pwp_conn_periodic(void *pco)
             llqueue_count(me->pendpeerreqs));
 #endif
 
+    me->bytes_downloaded_this_period = 0;
+
 cleanup:
     return;
 }
@@ -1174,6 +1178,8 @@ int pwp_conn_piece(void* pco, msg_piece_t *p)
             me->peer_udata,
             &p->blk,
             p->data);
+
+    me->bytes_downloaded_this_period += p->blk.len;
 
     return 1;
 }
