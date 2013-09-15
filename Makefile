@@ -3,12 +3,13 @@ HASHMAP_DIR = $(CONTRIB_DIR)/CHashMapViaLinkedList
 BITFIELD_DIR = $(CONTRIB_DIR)/CBitfield
 BITSTREAM_DIR = $(CONTRIB_DIR)/CSimpleBitstream
 LLQUEUE_DIR = $(CONTRIB_DIR)/CLinkedListQueue
+MEANQUEUE_DIR = $(CONTRIB_DIR)/CMeanQueue
 
 GCOV_OUTPUT = *.gcda *.gcno *.gcov 
 GCOV_CCFLAGS = -fprofile-arcs -ftest-coverage
 SHELL  = /bin/bash
 CC     = gcc
-CCFLAGS = -g -O2 -Wall -Werror -Werror=return-type -Werror=uninitialized -Wcast-align -fno-omit-frame-pointer -fno-common -fsigned-char $(GCOV_CCFLAGS) -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR)
+CCFLAGS = -g -O2 -Wall -Werror -Werror=return-type -Werror=uninitialized -Wcast-align -fno-omit-frame-pointer -fno-common -fsigned-char $(GCOV_CCFLAGS) -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR) -I$(MEANQUEUE_DIR)
 
 all: tests_connection tests_handler tests_handshaker
 
@@ -32,10 +33,16 @@ clinkedlistqueue:
 	git --git-dir=$(LLQUEUE_DIR)/.git init 
 	pushd $(LLQUEUE_DIR); git pull http://github.com/willemt/CLinkedListQueue; popd
 
-splint: pwp_connection.c
-	splint pwp_connection.c $@ -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR) +boolint -mustfreeonly -immediatetrans -temptrans -exportlocal -onlytrans -paramuse +charint
+cmeanqueue:
+	mkdir -p $(MEANQUEUE_DIR)/.git
+	git --git-dir=$(MEANQUEUE_DIR)/.git init 
+	pushd $(MEANQUEUE_DIR); git pull http://github.com/willemt/CMeanQueue; popd
 
-downloadcontrib: chashmap cbitfield cbitstream clinkedlistqueue
+
+splint: pwp_connection.c
+	splint pwp_connection.c $@ -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR) -I$(MEANQUEUE_DIR) +boolint -mustfreeonly -immediatetrans -temptrans -exportlocal -onlytrans -paramuse +charint
+
+downloadcontrib: chashmap cbitfield cbitstream clinkedlistqueue cmeanqueue
 
 main_connection.c:
 	if test -d $(HASHMAP_DIR); then echo have; else make downloadcontrib; fi
@@ -58,7 +65,7 @@ tests_handshaker: main_handshaker.c pwp_handshaker.c test_handshaker.c CuTest.c 
 	gcov main_handshaker.c test_handshaker.c pwp_handshaker.c
 
 
-tests_connection: main_connection.c pwp_connection.o pwp_msghandler.c test_connection.c test_connection_send.c test_connection_mock_functions.c mock_piece.c bt_diskmem.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c
+tests_connection: main_connection.c pwp_connection.o pwp_msghandler.c test_connection.c test_connection_send.c test_connection_mock_functions.c mock_piece.c bt_diskmem.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c $(MEANQUEUE_DIR)/meanqueue.c
 	$(CC) $(CCFLAGS) -o $@ $^
 	./tests_connection
 	gcov main_connection.c test_connection.c test_connection_send.c pwp_connection.c
