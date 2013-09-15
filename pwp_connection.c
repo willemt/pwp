@@ -51,6 +51,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "linked_list_hashmap.h"
 #include "linked_list_queue.h"
 #include "bitstream.h"
+#include "meanqueue.h"
 
 #define TRUE 1
 #define FALSE 0
@@ -95,6 +96,8 @@ typedef struct
     peer_connection_state_t state;
 
     unsigned int bytes_downloaded_this_period;
+
+    void* bytes_downloaded_rate;
 
     /*  requests that we are waiting to get */
     hashmap_t *pendreqs;
@@ -225,7 +228,7 @@ void *pwp_conn_new()
     me->state.flags = PC_IM_CHOKING | PC_PEER_CHOKING;
     me->pendreqs = hashmap_new(__request_hash, __request_compare, 100);
     me->pendpeerreqs = llqueue_new();
-
+    me->bytes_downloaded_rate = meanqueue_new(10);
     return me;
 }
 
@@ -417,13 +420,14 @@ static void *__get_piece(pwp_connection_t * me, const unsigned int piece_idx)
     return me->func->getpiece(me->caller, piece_idx);
 }
 
-#if 0
 int pwp_conn_get_download_rate(const void * pco __attribute__((__unused__)))
 {
-//    const pwp_connection_t *me = pco;
-    return 0;
+    const pwp_connection_t *me = pco;
+
+    return meanqueue_get_value(me->bytes_downloaded_rate);
 }
 
+#if 0
 int pwp_conn_get_upload_rate(const void * pco __attribute__((__unused__)))
 {
 //    const pwp_connection_t *me = pco;
@@ -800,6 +804,9 @@ void pwp_conn_periodic(void *pco)
             llqueue_count(me->pendpeerreqs));
 #endif
 
+    /*  measure download rate */
+    meanqueue_offer(me->bytes_downloaded_rate,
+            me->bytes_downloaded_this_period);
     me->bytes_downloaded_this_period = 0;
 
 cleanup:
