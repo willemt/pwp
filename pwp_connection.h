@@ -1,4 +1,6 @@
 
+typedef void* pwp_conn_t;
+
 typedef struct
 {
     unsigned int piece_idx;
@@ -121,78 +123,78 @@ typedef struct
     int max_pending_requests;
 } bt_pwp_cfg_t;
 
-void *pwp_conn_get_peer(void *pco);
+void *pwp_conn_get_peer(pwp_conn_t* pco);
 
 void *pwp_conn_new();
-void pwp_conn_release(void*);
+void pwp_conn_release(pwp_conn_t* pco);
 
-void pwp_conn_set_active(void *pco, int opt);
+void pwp_conn_set_active(pwp_conn_t* pco, int opt);
 
-int pwp_conn_peer_is_interested(void *pco);
+int pwp_conn_peer_is_interested(pwp_conn_t* pco);
 
-int pwp_conn_is_active(void *pco);
+int pwp_conn_is_active(pwp_conn_t* pco);
 
-void pwp_conn_set_my_peer_id(void *pco, const char *peer_id);
+void pwp_conn_set_my_peer_id(pwp_conn_t* pco, const char *peer_id);
 
-void pwp_conn_set_their_peer_id(void *pco, const char *peer_id);
+void pwp_conn_set_their_peer_id(pwp_conn_t* pco, const char *peer_id);
 
-void pwp_conn_set_infohash(void *pco, const char *infohash);
+void pwp_conn_set_infohash(pwp_conn_t* pco, const char *infohash);
 
-void pwp_conn_set_peer(void *pco, void * peer);
+void pwp_conn_set_peer(pwp_conn_t* pco, void * peer);
 
-int pwp_conn_peer_is_interested(void *pco);
+int pwp_conn_peer_is_interested(pwp_conn_t* pco);
 
-int pwp_conn_peer_is_choked(void *pco);
+int pwp_conn_peer_is_choked(pwp_conn_t* pco);
 
-int pwp_conn_im_choked(void *pco);
+int pwp_conn_im_choked(pwp_conn_t* pco);
 
-int pwp_conn_im_interested(void *pco);
+int pwp_conn_im_interested(pwp_conn_t* pco);
 
-void pwp_conn_choke(void * pc);
+void pwp_conn_unchoke(pwp_conn_t* pco);
 
-void pwp_conn_unchoke(void * pco);
+int pwp_conn_get_download_rate(const pwp_conn_t* pco);
 
-int pwp_conn_get_download_rate(const void * pco);
+int pwp_conn_get_upload_rate(const pwp_conn_t* pco);
 
-int pwp_conn_get_upload_rate(const void * pco);
+int pwp_conn_send_statechange(pwp_conn_t* pco, const unsigned char msg_type);
 
-int pwp_conn_send_statechange(void * pco, const unsigned char msg_type);
+void pwp_conn_send_piece(pwp_conn_t* pco, bt_block_t * req);
 
-void pwp_conn_send_piece(void *pco, bt_block_t * req);
+int pwp_conn_send_have(pwp_conn_t* pco, const int piece_idx);
 
-int pwp_conn_send_have(void *pco, const int piece_idx);
+void pwp_conn_send_request(pwp_conn_t* pco, const bt_block_t * request);
 
-void pwp_conn_send_request(void *pco, const bt_block_t * request);
+void pwp_conn_send_cancel(pwp_conn_t* pco, bt_block_t * cancel);
 
-void pwp_conn_send_cancel(void *pco, bt_block_t * cancel);
+void pwp_conn_send_bitfield(pwp_conn_t* pco);
 
-void pwp_conn_send_bitfield(void *pco);
+void pwp_conn_set_im_interested(pwp_conn_t* me_);
 
-int pwp_conn_recv_handshake(void *pco, const char *info_hash);
+int pwp_conn_recv_handshake(pwp_conn_t* pco, const char *info_hash);
 
-int pwp_conn_send_handshake(void *pco);
+int pwp_conn_send_handshake(pwp_conn_t* pco);
 
-void pwp_conn_set_piece_info(void *pco, int num_pieces, int piece_len);
+void pwp_conn_set_piece_info(pwp_conn_t* pco, int num_pieces, int piece_len);
 
-void pwp_conn_set_state(void *pco, const int state);
+void pwp_conn_set_state(pwp_conn_t* pco, const int state);
 
-int pwp_conn_get_state(void *pco);
+int pwp_conn_get_state(pwp_conn_t* pco);
 
-int pwp_conn_mark_peer_has_piece(void *pco, const int piece_idx);
+int pwp_conn_mark_peer_has_piece(pwp_conn_t* pco, const int piece_idx);
 
-int pwp_conn_process_request(void * pco, bt_block_t * request);
+int pwp_conn_process_request(pwp_conn_t* pco, bt_block_t * request);
 
-int pwp_conn_process_msg(void *pco);
+int pwp_conn_process_msg(pwp_conn_t* pco);
 
-int pwp_conn_get_npending_requests(const void * pco);
+int pwp_conn_get_npending_requests(const pwp_conn_t* pco);
 
-int pwp_conn_get_npending_peer_requests(const void* pco);
+int pwp_conn_get_npending_peer_requests(const pwp_conn_t* pco);
 
-void pwp_conn_request_block_from_peer(void * pco, bt_block_t * blk);
+void pwp_conn_request_block_from_peer(pwp_conn_t* pco, bt_block_t * blk);
 
-void pwp_conn_periodic(void *pco);
+void pwp_conn_periodic(pwp_conn_t* pco);
 
-int pwp_conn_peer_has_piece(void *pco, const int piece_idx);
+int pwp_conn_peer_has_piece(pwp_conn_t* pco, const int piece_idx);
 
 typedef struct {
     /** send data to peer */
@@ -226,7 +228,7 @@ typedef struct {
 
     /* logging */
     func_log_f log;
-} pwp_connection_functions_t;
+} pwp_conn_functions_t;
 
 typedef struct {
     bt_block_t blk;
@@ -241,37 +243,37 @@ typedef struct {
    bitfield_t bf;
 } msg_bitfield_t;
 
-void pwp_conn_choke_peer(void * pco);
+void pwp_conn_choke_peer(pwp_conn_t* pco);
 
-void pwp_conn_unchoke_peer(void * pco);
+void pwp_conn_unchoke_peer(pwp_conn_t* pco);
 
-void pwp_conn_keepalive(void* pco);
+void pwp_conn_keepalive(pwp_conn_t* pco);
 
-void pwp_conn_choke(void* pco);
+void pwp_conn_choke(pwp_conn_t* pco);
 
-void pwp_conn_unchoke(void* pco);
+void pwp_conn_unchoke(pwp_conn_t* pco);
 
-void pwp_conn_interested(void* pco);
+void pwp_conn_interested(pwp_conn_t* pco);
 
-void pwp_conn_uninterested(void* pco);
+void pwp_conn_uninterested(pwp_conn_t* pco);
 
-void pwp_conn_have(void* pco, msg_have_t* have);
+void pwp_conn_have(pwp_conn_t* pco, msg_have_t* have);
 
-void pwp_conn_bitfield(void* pco, msg_bitfield_t* bitfield);
+void pwp_conn_bitfield(pwp_conn_t* pco, msg_bitfield_t* bitfield);
 
-int pwp_conn_request(void* pco, bt_block_t *request);
+int pwp_conn_request(pwp_conn_t* pco, bt_block_t *request);
 
-void pwp_conn_cancel(void* pco, bt_block_t *cancel);
+void pwp_conn_cancel(pwp_conn_t* pco, bt_block_t *cancel);
 
-int pwp_conn_piece(void* pco, msg_piece_t *piece);
+int pwp_conn_piece(pwp_conn_t* pco, msg_piece_t *piece);
 
-void pwp_conn_set_functions(void *pco, pwp_connection_functions_t* funcs, void* caller);
+void pwp_conn_set_functions(pwp_conn_t* pco, pwp_conn_functions_t* funcs, void* caller);
 
-int pwp_conn_flag_is_set(void *pco, const int flag);
+int pwp_conn_flag_is_set(pwp_conn_t* pco, const int flag);
 
-void pwp_conn_connected(void* pco);
+void pwp_conn_connected(pwp_conn_t* pco);
 
-void pwp_conn_connect_failed(void *pco);
+void pwp_conn_connect_failed(pwp_conn_t* pco);
 
 int pwp_conn_block_request_is_pending(void* pc, bt_block_t *b);
 

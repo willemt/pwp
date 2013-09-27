@@ -43,69 +43,69 @@ static uint32_t fe(uint32_t i)
     return o;
 }
 
-void pwp_conn_keepalive(void* pco)
+void pwp_conn_keepalive(pwp_conn_t* pco)
 {
-    fake_pc_t* pc = pco;
+    fake_pc_t* pc = (void*)pco;
     pc->mtype = -1;
 }
 
-void pwp_conn_choke(void* pco)
+void pwp_conn_choke(pwp_conn_t* pco)
 {
-    fake_pc_t* pc = pco;
+    fake_pc_t* pc = (void*)pco;
     pc->mtype = PWP_MSGTYPE_CHOKE;
 }
 
-void pwp_conn_unchoke(void* pco)
+void pwp_conn_unchoke(pwp_conn_t* pco)
 {
-    fake_pc_t* pc = pco;
+    fake_pc_t* pc = (void*)pco;
     pc->mtype = PWP_MSGTYPE_UNCHOKE;
 }
 
-void pwp_conn_interested(void* pco)
+void pwp_conn_interested(pwp_conn_t* pco)
 {
-    fake_pc_t* pc = pco;
+    fake_pc_t* pc = (void*)pco;
     pc->mtype = PWP_MSGTYPE_INTERESTED;
 }
 
-void pwp_conn_uninterested(void* pco)
+void pwp_conn_uninterested(pwp_conn_t* pco)
 {
-    fake_pc_t* pc = pco;
+    fake_pc_t* pc = (void*)pco;
     pc->mtype = PWP_MSGTYPE_UNINTERESTED;
 }
 
-void pwp_conn_have(void* pco, msg_have_t* have)
+void pwp_conn_have(pwp_conn_t* pco, msg_have_t* have)
 {
-    fake_pc_t* pc = pco;
+    fake_pc_t* pc = (void*)pco;
     pc->mtype = PWP_MSGTYPE_HAVE;
     memcpy(&pc->have,have,sizeof(msg_have_t));
 }
 
-void pwp_conn_bitfield(void* pco, msg_bitfield_t* bitfield)
+void pwp_conn_bitfield(pwp_conn_t* pco, msg_bitfield_t* bitfield)
 {
-    fake_pc_t* pc = pco;
+    fake_pc_t* pc = (void*)pco;
     pc->mtype = PWP_MSGTYPE_BITFIELD;
     memcpy(&pc->bitfield,bitfield,sizeof(msg_bitfield_t));
     bitfield_clone(&bitfield->bf, &pc->bitfield.bf);
 }
 
-int pwp_conn_request(void* pco, bt_block_t *request)
+int pwp_conn_request(pwp_conn_t* pco, bt_block_t *request)
 {
-    fake_pc_t* pc = pco;
+    fake_pc_t* pc = (void*)pco;
     pc->mtype = PWP_MSGTYPE_REQUEST;
     memcpy(&pc->request,request,sizeof(bt_block_t));
     return 1;
 }
 
-void pwp_conn_cancel(void* pco, bt_block_t *cancel)
+void pwp_conn_cancel(pwp_conn_t* pco, bt_block_t *cancel)
 {
-    fake_pc_t* pc = pco;
+    fake_pc_t* pc = (void*)pco;
     pc->mtype = PWP_MSGTYPE_CANCEL;
     memcpy(&pc->cancel,cancel,sizeof(bt_block_t));
 }
 
-int pwp_conn_piece(void* pco, msg_piece_t *piece)
+int pwp_conn_piece(pwp_conn_t* pco, msg_piece_t *piece)
 {
-    fake_pc_t* pc = pco;
+    fake_pc_t* pc = (void*)pco;
     pc->mtype = PWP_MSGTYPE_PIECE;
     memcpy(&pc->piece,piece,sizeof(msg_piece_t));
     return 1;

@@ -50,7 +50,7 @@ void T_estPWP_send_request_spawns_wellformed_piece_response(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_send,
         .disconnect = __FUNC_disconnect,
         .pushblock = __FUNC_push_block,
@@ -111,7 +111,7 @@ void TestPWP_send_state_change_is_wellformed(
     void *pc;
     test_sender_t sender;
     unsigned char msg[1000], *ptr;
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_send
     };
 
@@ -143,7 +143,7 @@ void TestPWP_send_have_is_wellformed(
     void *pc;
     test_sender_t sender;
     unsigned char msg[1000], *ptr;
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_send,
         .getpiece = __FUNC_sender_get_piece
     };
@@ -170,7 +170,7 @@ void TestPWP_send_bitField_is_wellformed(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_send,
         .piece_is_complete = __FUNC_pieceiscomplete,
         .getpiece = __FUNC_sender_get_piece
@@ -212,7 +212,7 @@ void TestPWP_send_request_is_wellformed(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_send,
     };
     void *pc;
@@ -281,7 +281,7 @@ void TestPWP_send_piece_is_wellformed(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_send,
         .write_block_to_stream = mock_piece_write_block_to_stream,
         .getpiece = __FUNC_sender_get_piece
@@ -329,7 +329,7 @@ void TestPWP_send_cancel_is_wellformed(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_send,
     };
     void *pc;
@@ -371,7 +371,7 @@ void TestPWP_read_havemsg_marks_peer_as_having_piece(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .disconnect = __disconnect_msg,
         .getpiece = __FUNC_sender_get_piece,
     };
@@ -405,7 +405,7 @@ void TestPWP_read_havemsg_disconnects_with_piece_idx_out_of_bounds(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .disconnect = __FUNC_disconnect,
         .getpiece = __FUNC_sender_get_piece,
     };
@@ -440,7 +440,7 @@ void TestPWP_send_interested_if_lacking_piece_from_have_msg(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_send,
         .disconnect = __disconnect_msg,
         .getpiece = __FUNC_get_piece_never_have
@@ -476,7 +476,7 @@ void TestPWP_read_chokemsg_marks_us_as_choked(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .disconnect = __disconnect_msg,
     };
     void *pc, *mh;
@@ -504,7 +504,7 @@ void TestPWP_read_chokemsg_empties_our_pending_requests(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_MOCK_send,
     };
     void *pc, *mh;
@@ -543,7 +543,7 @@ void TestPWP_read_unchokemsg_marks_us_as_unchoked(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
     };
     void *pc, *mh;
     test_sender_t sender;
@@ -583,7 +583,7 @@ void TestPWP_read_request_msg_disconnects_if_peer_is_choked(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .disconnect = __FUNC_disconnect,
     };
     void *pc, *mh;
@@ -619,7 +619,7 @@ void TestPWP_read_peerisinterested_marks_peer_as_interested(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_MOCK_send,
     };
     void *pc, *mh;
@@ -650,7 +650,7 @@ void TestPWP_read_peerisuninterested_marks_peer_as_uninterested(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_MOCK_send,
     };
     void *pc, *mh;
@@ -691,7 +691,7 @@ void TestPWP_read_bitfield_marks_peers_pieces_as_haved_by_peer(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
     };
     void *pc, *mh;
     test_sender_t sender;
@@ -728,7 +728,7 @@ void TestPWP_read_disconnect_if_bitfield_received_more_than_once(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .disconnect = __FUNC_disconnect,
     };
     void *pc, *mh;
@@ -763,7 +763,7 @@ void T_estPWP_read_bitfield_greaterthan_npieces_results_in_disconnect(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .disconnect = __FUNC_disconnect,
     };
     void *pc, *mh;
@@ -852,7 +852,7 @@ void TestPWP_read_request_of_piece_not_completed_disconnects_peer(
     /*  invalid length of zero */
     bitstream_write_uint32(&ptr, fe(2));       /*  block length */
 
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .disconnect = __FUNC_disconnect,
         .piece_is_complete = __FUNC_pieceiscomplete_fail,
         .getpiece = __FUNC_sender_get_piece
@@ -879,7 +879,7 @@ void TestPWP_read_request_with_invalid_piece_idx_disconnects_peer(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .disconnect = __FUNC_disconnect,
         .piece_is_complete = __FUNC_pieceiscomplete,
         .getpiece = __FUNC_sender_get_piece
@@ -921,7 +921,7 @@ void TestPWP_read_request_with_invalid_block_length_disconnects_peer(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .disconnect = __FUNC_disconnect,
         .piece_is_complete = __FUNC_pieceiscomplete,
         .getpiece = __FUNC_sender_get_piece
@@ -960,7 +960,7 @@ void TestPWP_read_request_of_piece_which_client_has_results_in_disconnect(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .disconnect = __FUNC_disconnect,
         .getpiece = __FUNC_sender_get_piece,
 //        .write_block_to_stream = mock_piece_write_block_to_stream,
@@ -1010,7 +1010,7 @@ void TxestPWP_read_piece_results_in_disconnect_if_we_havent_requested_this_piece
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .disconnect = __FUNC_disconnect,
         .pushblock = __FUNC_push_block,
     };
@@ -1044,7 +1044,7 @@ void TestPWP_read_piece_results_in_correct_receivable(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .disconnect = __FUNC_disconnect,
         .pushblock = __FUNC_push_block,
     };
@@ -1093,7 +1093,7 @@ void TestPWP_send_request_is_wellformed_even_when_request_len_was_outside_piece_
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_send,
         .disconnect = __FUNC_disconnect,
         .piece_is_complete = __FUNC_pieceiscomplete,
@@ -1137,7 +1137,7 @@ void TestPWP_read_request_doesnt_duplicate_within_pending_queue(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_send,
         .disconnect = __FUNC_disconnect,
         .pushblock = __FUNC_push_block,
@@ -1174,7 +1174,7 @@ void TestPWP_read_request_doesnt_duplicate_within_pending_queue(
 void TestPWP_requesting_block_increments_pending_requests(
     CuTest * tc
 )
-{    pwp_connection_functions_t funcs = {
+{    pwp_conn_functions_t funcs = {
         .send = __FUNC_MOCK_send,
     };
     bt_block_t blk;
@@ -1195,7 +1195,7 @@ void TestPWP_read_piece_decreases_pending_requests(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_MOCK_send,
         .pushblock = __FUNC_MOCK_push_block,
         .disconnect = __disconnect_msg,
@@ -1237,7 +1237,7 @@ void TestPWP_read_piece_decreases_pending_requests_only_if_it_matches_a_request_
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_MOCK_send,
         .pushblock = __FUNC_MOCK_push_block,
         .disconnect = __disconnect_msg,
@@ -1285,7 +1285,7 @@ void TestPWP_read_piece_decreases_pending_requests_only_if_it_matches_a_request_
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_MOCK_send,
         .pushblock = __FUNC_MOCK_push_block,
         .disconnect = __disconnect_msg,
@@ -1333,7 +1333,7 @@ void TestPWP_read_piece_decreases_pending_requests_if_piece_covers_whole_request
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_MOCK_send,
         .pushblock = __FUNC_MOCK_push_block,
         .disconnect = __disconnect_msg,
@@ -1371,7 +1371,7 @@ void TestPWP_read_piece_increases_pending_requests_if_piece_splits_requested(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_MOCK_send,
         .pushblock = __FUNC_MOCK_push_block,
         .disconnect = __disconnect_msg,
@@ -1414,7 +1414,7 @@ void TestPWP_read_cancelmsg_cancels_last_request(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_send,
         .disconnect = __FUNC_disconnect,
         .pushblock = __FUNC_push_block,
@@ -1466,7 +1466,7 @@ void TestPWP_request_queue_dropped_when_peer_is_choked(
     CuTest * tc
 )
 {
-    pwp_connection_functions_t funcs = {
+    pwp_conn_functions_t funcs = {
         .send = __FUNC_send,
         .disconnect = __FUNC_disconnect,
         .pushblock = __FUNC_push_block,
