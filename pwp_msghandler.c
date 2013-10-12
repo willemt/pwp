@@ -40,8 +40,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* for uint32_t */
 #include <stdint.h>
 
-#include <assert.h>
-
 #include "bitfield.h"
 #include "pwp_connection.h"
 #include "pwp_msghandler.h"
@@ -155,8 +153,13 @@ void pwp_msghandler_release(void *pc)
 
 /**
  * Receive this much data.
- * If there is enough data this function will dispatch pwp_connection events */
-void pwp_msghandler_dispatch_from_buffer(void *mh, const unsigned char* buf, unsigned int len)
+ * If there is enough data this function will dispatch pwp_connection events
+ * @param mh The message handler object
+ * @param buf The data to be read in
+ * @param len The length of the data to be read in */
+void pwp_msghandler_dispatch_from_buffer(void *mh,
+        const unsigned char* buf,
+        unsigned int len)
 {
     bt_peer_connection_event_handler_t* me = mh;
     msg_t* msg = &me->msg;

@@ -1,4 +1,3 @@
-
 /**
  * @file
  * @brief Manage a connection with a peer
@@ -40,8 +39,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* for uint32_t */
 #include <stdint.h>
 
-#include <assert.h>
-
 /* for varags */
 #include <stdarg.h>
 
@@ -73,6 +70,7 @@ typedef struct
     /* this bitfield indicates which pieces the peer has */
     bitfield_t have_bitfield;
 
+    /* for recording state machine's state */
     unsigned int flags;
 
     /* count number of failed connections */
@@ -737,9 +735,7 @@ void pwp_conn_connect_failed(pwp_conn_t* me_)
 
 void pwp_conn_periodic(pwp_conn_t* me_)
 {
-    pwp_conn_private_t *me;
-
-    me = (void*)me_;
+    pwp_conn_private_t *me = (void*)me_;
 
     me->state.tick++;
 
@@ -777,7 +773,6 @@ void pwp_conn_periodic(pwp_conn_t* me_)
 
         if (pwp_conn_im_choked(me_))
         {
-//            __log(me,"peer is choking us %lx", (long unsigned int) me_);
             goto cleanup;
         }
 
@@ -846,14 +841,6 @@ void pwp_conn_interested(pwp_conn_t* me_)
     pwp_conn_private_t* me = (void*)me_;
 
     me->state.flags |= PC_PEER_INTERESTED;
-
-#if 0
-    if (pwp_conn_peer_is_choked(me))
-    {
-        pwp_conn_unchoke(me);
-    }
-#endif
-
     __log(me, "read,interested");
 }
 
@@ -862,7 +849,7 @@ void pwp_conn_uninterested(pwp_conn_t* me_)
     pwp_conn_private_t* me = (void*)me_;
 
     me->state.flags &= ~PC_PEER_INTERESTED;
-            __log(me, "read,uninterested");
+    __log(me, "read,uninterested");
 }
 
 void pwp_conn_have(pwp_conn_t* me_, msg_have_t* have)
@@ -907,10 +894,12 @@ void pwp_conn_bitfield(pwp_conn_t* me_, msg_bitfield_t* bitfield)
     }
 #endif
 
-    if (pwp_conn_flag_is_set(me_,PC_BITFIELD_RECEIVED))
+    if (pwp_conn_flag_is_set(me_, PC_BITFIELD_RECEIVED))
     {
         __disconnect(me, "peer sent bitfield twice");
     }
+
+    me->state.flags |= PC_BITFIELD_RECEIVED;
 
     for (ii = 0; ii < me->num_pieces; ii++)
     {
@@ -923,8 +912,6 @@ void pwp_conn_bitfield(pwp_conn_t* me_, msg_bitfield_t* bitfield)
     str = bitfield_str(&me->state.have_bitfield);
     __log(me, "read,bitfield,%s", str);
     free(str);
-
-    me->state.flags |= PC_BITFIELD_RECEIVED;
 }
 
 /**
@@ -1008,8 +995,7 @@ int pwp_conn_request(pwp_conn_t* me_, bt_block_t *request)
 }
 
 /**
- * Receive a cancel message
- */
+ * Receive a cancel message. */
 void pwp_conn_cancel(pwp_conn_t* me_, bt_block_t *cancel)
 {
     pwp_conn_private_t* me = (void*)me_;
@@ -1019,7 +1005,6 @@ void pwp_conn_cancel(pwp_conn_t* me_, bt_block_t *cancel)
           cancel->piece_idx, cancel->offset,
           cancel->len);
 
-    /* remove from linked list queue */
     removed = llqueue_remove_item_via_cmpfunction(
             me->pendpeerreqs, cancel, (void*)__request_compare);
 
@@ -1167,6 +1152,7 @@ int pwp_conn_piece(pwp_conn_t* me_, msg_piece_t *p)
 {
     pwp_conn_private_t* me = (void*)me_;
 
+    assert(me->func->pushblock);
     __log(me, "READ,piece,piece_idx=%d offset=%d length=%d",
           p->blk.piece_idx,
           p->blk.offset,
@@ -1174,7 +1160,6 @@ int pwp_conn_piece(pwp_conn_t* me_, msg_piece_t *p)
 
     pwp_conn_remove_pending_request(me,p);
 
-    assert(me->func->pushblock);
     me->func->pushblock(
             me->caller,
             me->peer_udata,
