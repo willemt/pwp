@@ -1,4 +1,15 @@
 
+/**
+ * Copyright (c) 2011, Willem-Hendrik Thiart
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file. 
+ *
+ * @file
+ * @brief Manage a connection with a peer
+ * @author  Willem Thiart himself@willemthiart.com
+ * @version 0.1
+ */
+
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
