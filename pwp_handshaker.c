@@ -194,9 +194,20 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char** buf, un
                 me->cur = me->curr_value = hs->reserved = malloc(8);
             }
         }
-    /* Reserved
-    The next 8 bytes in the string are reserved for future extensions and
-    should be read without interpretation. */
+    /* Reserved The next 8 bytes in the string are reserved for future
+     * extensions and should be read without interpretation. */
+
+    /* bep_0005, DHT: TODO
+     * Peers supporting the DHT set the last bit of the 8-byte reserved flags
+     *  exchanged in the BitTorrent protocol handshake. Peer receiving a
+     *  handshake indicating the remote peer supports the DHT should send a
+     *  PORT message. It begins with byte 0x09 and has a two byte payload
+     *  containing the UDP port of the DHT node in network byte order. Peers
+     *  that receive this message should attempt to ping the node on the
+     *  received port and IP address of the remote peer. If a response to the
+     *  ping is recieved, the node should attempt to insert the new contact
+     *  information into their routing table according to the usual rules.  */
+
         else if (me->curr_value == hs->reserved)
         {
             *(me->cur++) = __readbyte(&me->bytes_read, buf, len);

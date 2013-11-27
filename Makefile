@@ -4,12 +4,13 @@ BITFIELD_DIR = $(CONTRIB_DIR)/CBitfield
 BITSTREAM_DIR = $(CONTRIB_DIR)/CSimpleBitstream
 LLQUEUE_DIR = $(CONTRIB_DIR)/CLinkedListQueue
 MEANQUEUE_DIR = $(CONTRIB_DIR)/CMeanQueue
+SPARSECOUNTER_DIR = $(CONTRIB_DIR)/CSparseCounter
 
 GCOV_OUTPUT = *.gcda *.gcno *.gcov 
 GCOV_CCFLAGS = -fprofile-arcs -ftest-coverage
 SHELL  = /bin/bash
 CC     = gcc
-CCFLAGS = -g -O2 -Wall -Werror -Werror=return-type -Werror=uninitialized -Wcast-align -fno-omit-frame-pointer -fno-common -fsigned-char $(GCOV_CCFLAGS) -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR) -I$(MEANQUEUE_DIR)
+CCFLAGS = -g -O2 -Wall -Werror -Werror=return-type -Werror=uninitialized -Wcast-align -fno-omit-frame-pointer -fno-common -fsigned-char $(GCOV_CCFLAGS) -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR) -I$(MEANQUEUE_DIR) -I$(SPARSECOUNTER_DIR)
 
 all: tests_connection tests_handler tests_handshaker
 
@@ -38,9 +39,14 @@ cmeanqueue:
 	git --git-dir=$(MEANQUEUE_DIR)/.git init 
 	pushd $(MEANQUEUE_DIR); git pull http://github.com/willemt/CMeanQueue; popd
 
+csparsecounter:
+	mkdir -p $(SPARSECOUNTER_DIR)/.git
+	git --git-dir=$(SPARSECOUNTER_DIR)/.git init 
+	pushd $(SPARSECOUNTER_DIR); git pull http://github.com/willemt/CSparseCounter; popd
 
-splint: pwp_connection.c
-	splint pwp_connection.c $@ -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR) -I$(MEANQUEUE_DIR) +boolint -mustfreeonly -immediatetrans -temptrans -exportlocal -onlytrans -paramuse +charint
+
+#splint: pwp_connection.c
+#	splint pwp_connection.c $@ -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR) -I$(MEANQUEUE_DIR) -I$(SPARSECOUNTER_DIR) +boolint -mustfreeonly -immediatetrans -temptrans -exportlocal -onlytrans -paramuse +charint
 
 downloadcontrib: chashmap cbitfield cbitstream clinkedlistqueue cmeanqueue
 
@@ -65,10 +71,12 @@ tests_handshaker: main_handshaker.c pwp_handshaker.c test_handshaker.c CuTest.c 
 	gcov main_handshaker.c test_handshaker.c pwp_handshaker.c
 
 
-tests_connection: main_connection.c pwp_connection.o pwp_msghandler.c test_connection.c test_connection_send.c test_connection_mock_functions.c mock_piece.c bt_diskmem.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c $(MEANQUEUE_DIR)/meanqueue.c
+tests_connection: main_connection.c pwp_connection.o pwp_msghandler.c test_connection.c test_connection_send.c test_connection_mock_functions.c mock_piece.c bt_diskmem.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c $(MEANQUEUE_DIR)/meanqueue.c $(SPARSECOUNTER_DIR)/sparse_counter.c 
 	$(CC) $(CCFLAGS) -o $@ $^
 	./tests_connection
 	gcov main_connection.c test_connection.c test_connection_send.c pwp_connection.c
+
+#lfds611_queue/lfds611_queue_delete.c lfds611_queue/lfds611_queue_new.c lfds611_queue/lfds611_queue_query.c lfds611_queue/lfds611_queue_queue.c lfds611_freelist\lfds611_freelist_delete.c lfds611_freelist\lfds611_freelist_get_and_set.c lfds611_freelist\lfds611_freelist_new.c lfds611_freelist\lfds611_freelist_pop_push.c lfds611_freelist\lfds611_freelist_query.c lfds611_liblfds\lfds611_liblfds_aligned_free.c lfds611_liblfds\lfds611_liblfds_aligned_malloc.c lfds611_abstraction\lfds611_abstraction_free.c lfds611_abstraction\lfds611_abstraction_malloc.c
 
 pwp_connection.o: pwp_connection.c 
 	$(CC) $(CCFLAGS) -c -o $@ $^

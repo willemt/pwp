@@ -31,7 +31,6 @@ typedef int (
 )   (
     void *udata,
     void *peer,
-    void *peers_bitfield,
     bt_block_t *blk
 );
 
@@ -77,6 +76,12 @@ typedef void (
     int piece
 );
 
+typedef int (
+    *func_lock_f
+)   (
+    void *udata,
+    void **lock
+);
 
 #ifndef HAVE_FUNC_GET_INT
 #define HAVE_FUNC_GET_INT
@@ -225,6 +230,15 @@ typedef struct {
     /* Let caller know that it couldn't download this piece from this peer */
     func_peergiveblockback_f peer_giveback_block;
     //func_peerpiece_f peer_giveback_piece;
+
+    /**
+     * Obtain mutually exclusive lock.
+     * Create lock if lock is NULL */
+    func_lock_f get_lock;
+
+    /**
+     * Release mutually exclusive lock. */
+    func_lock_f release_lock;
 
     /* logging */
     func_log_f log;
