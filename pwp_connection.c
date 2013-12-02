@@ -101,8 +101,8 @@ typedef struct
     void *peer_udata;
 
     /* callbacks */
-    pwp_conn_functions_t *func;
-    void *caller;
+    pwp_conn_cbs_t cb;
+    void *cb_ctx;
 
     const sparsecounter_t *pieces_downloaded;
     const sparsecounter_t *pieces_completed;
@@ -150,13 +150,13 @@ static void __log(pwp_conn_private_t * me, const char *format, ...)
 
     va_list args;
 
-    if (NULL == me->func || NULL == me->func->log)
+    if (NULL == me->cb.log)
         return;
 
     va_start(args, format);
     (void)vsnprintf(buffer, 1000, format, args);
 
-    me->func->log(me->caller, me->peer_udata, buffer);
+    me->cb.log(me->cb_ctx, me->peer_udata, buffer);
 }
 
 static void __disconnect(pwp_conn_private_t * me, const char *reason, ...)
@@ -167,9 +167,9 @@ static void __disconnect(pwp_conn_private_t * me, const char *reason, ...)
 
     va_start(args, reason);
     (void)vsnprintf(buffer, 128, reason, args);
-    if (me->func->disconnect)
+    if (me->cb.disconnect)
     {
-       (void)me->func->disconnect(me->caller, me->peer_udata, buffer);
+       (void)me->cb.disconnect(me->cb_ctx, me->peer_udata, buffer);
     }
 }
 
@@ -177,9 +177,9 @@ static int __send_to_peer(pwp_conn_private_t * me, void *data, const int len)
 {
     int ret;
 
-    if (NULL != me->func && NULL != me->func->send)
+    if (NULL != me->cb.send)
     {
-        ret = me->func->send(me->caller, me->peer_udata, data, len);
+        ret = me->cb.send(me->cb_ctx, me->peer_udata, data, len);
 
         if (0 == ret)
         {
@@ -248,8 +248,8 @@ static void __expunge_my_pending_reqs(pwp_conn_private_t* me)
         llqueue_offer(rem, r);
 #if 0
         r = hashmap_remove(me->pnd_reqs, &r->blk);
-        if (me->func->peer_giveback_block)
-            me->func->peer_giveback_block(me->caller, me->peer_udata, &r->blk);
+        if (me->cb.peer_giveback_block)
+            me->cb.peer_giveback_block(me->cb_ctx, me->peer_udata, &r->blk);
         free(r);
 #endif
     }
@@ -262,8 +262,8 @@ static void __expunge_my_pending_reqs(pwp_conn_private_t* me)
 
         assert(r);
 
-        if (me->func->peer_giveback_block)
-            me->func->peer_giveback_block(me->caller, me->peer_udata, &r->blk);
+        if (me->cb.peer_giveback_block)
+            me->cb.peer_giveback_block(me->cb_ctx, me->peer_udata, &r->blk);
         free(r);
     }
 
@@ -286,7 +286,7 @@ static void __expunge_my_old_pending_reqs(pwp_conn_private_t* me)
         {
 #if 0
             hashmap_remove(me->pnd_reqs, &r->blk);
-            me->func->peer_giveback_block(me->caller, me->peer_udata, &r->blk);
+            me->cb.peer_giveback_block(me->cb_ctx, me->peer_udata, &r->blk);
             free(r);
 #endif
             llqueue_offer(rem, r);
@@ -299,8 +299,8 @@ static void __expunge_my_old_pending_reqs(pwp_conn_private_t* me)
         r = llqueue_poll(rem);
         r = hashmap_remove(me->pnd_reqs, &r->blk);
 
-        assert(me->func->peer_giveback_block);
-        me->func->peer_giveback_block(me->caller, me->peer_udata, &r->blk);
+        assert(me->cb.peer_giveback_block);
+        me->cb.peer_giveback_block(me->cb_ctx, me->peer_udata, &r->blk);
         free(r);
     }
     llqueue_free(rem);
@@ -327,12 +327,12 @@ void pwp_conn_set_piece_info(pwp_conn_t* me_, int num_pieces, int piece_len)
     me->piece_len = piece_len;
 }
 
-void pwp_conn_set_functions(pwp_conn_t* me_, pwp_conn_functions_t* funcs, void* caller)
+void pwp_conn_set_cbs(pwp_conn_t* me_, pwp_conn_cbs_t* funcs, void* cb_ctx)
 {
     pwp_conn_private_t *me = (void*)me_;
 
-    me->func = funcs;
-    me->caller = caller;
+    memcpy(&me->cb, funcs, sizeof(pwp_conn_cbs_t));
+    me->cb_ctx = cb_ctx;
 }
 
 int pwp_conn_peer_is_interested(pwp_conn_t* me_)
@@ -405,8 +405,8 @@ void pwp_conn_unchoke_peer(pwp_conn_t* me_)
 
 static void *__get_piece(pwp_conn_private_t * me, const unsigned int piece_idx)
 {
-    assert(NULL != me->func->getpiece);
-    return me->func->getpiece(me->caller, piece_idx);
+    assert(NULL != me->cb.getpiece);
+    return me->cb.getpiece(me->cb_ctx, piece_idx);
 }
 
 int pwp_conn_get_download_rate(const pwp_conn_t* me_ __attribute__((__unused__)))
@@ -451,15 +451,10 @@ void pwp_conn_send_piece(pwp_conn_t* me_, bt_block_t * req)
     pwp_conn_private_t *me = (void*)me_;
     unsigned char *data = NULL;
     unsigned char *ptr;
-    void *pce;
     unsigned int size;
 
     assert(NULL != me);
-    assert(NULL != me->func->write_block_to_stream);
-
-    /*  get data to send */
-    // TODO: remove getpiece
-    pce = __get_piece(me, req->piece_idx);
+    assert(NULL != me->cb.write_block_to_stream);
 
     /* prepare buf */
     size = 4 + 1 + 4 + 4 + req->len;
@@ -474,8 +469,7 @@ void pwp_conn_send_piece(pwp_conn_t* me_, bt_block_t * req)
     bitstream_write_ubyte(&ptr, PWP_MSGTYPE_PIECE);
     bitstream_write_uint32(&ptr, fe(req->piece_idx));
     bitstream_write_uint32(&ptr, fe(req->offset));
-    // TODO: abstract out pce
-    me->func->write_block_to_stream(pce,req,(unsigned char**)&ptr);
+    me->cb.write_block_to_stream(me->cb_ctx, req, (unsigned char**)&ptr);
     __send_to_peer(me, data, size);
 
 #if 0
@@ -557,8 +551,8 @@ static void __write_bitfield_to_stream_from_getpiece_func(pwp_conn_private_t* me
     int ii;
     unsigned char bits;
 
-    assert(NULL != me->func->getpiece);
-    assert(NULL != me->func->piece_is_complete);
+    assert(NULL != me->cb.getpiece);
+    assert(NULL != me->cb.piece_is_complete);
 
     /*  for all pieces set bit = 1 if we have the completed piece */
     for (bits = 0, ii = 0; ii < me->num_pieces; ii++)
@@ -566,8 +560,8 @@ static void __write_bitfield_to_stream_from_getpiece_func(pwp_conn_private_t* me
         void *pce;
 
         // TODO: remove getpiece and piece_is_complete
-        pce = me->func->getpiece(me->caller, ii);
-        bits |= me->func->piece_is_complete(me->caller, pce) << (7 - (ii % 8));
+        pce = me->cb.getpiece(me->cb_ctx, ii);
+        bits |= me->cb.piece_is_complete(me->cb_ctx, pce) << (7 - (ii % 8));
         /* ...up to eight bits, write to byte */
         if (((ii + 1) % 8 == 0) || me->num_pieces - 1 == ii)
         {
@@ -585,7 +579,7 @@ void pwp_conn_send_bitfield(pwp_conn_t* me_)
     unsigned char data[1000], *ptr;
     uint32_t size;
 
-    if (!me->func->getpiece)
+    if (!me->cb.getpiece)
         return;
 
     ptr = data;
@@ -641,8 +635,8 @@ int pwp_conn_mark_peer_has_piece(pwp_conn_t* me_, const int piece_idx)
 
     /* remember that they have this piece */
     bitfield_mark(&me->state.have_bitfield, piece_idx);
-    if (me->func->peer_have_piece)
-        me->func->peer_have_piece(me->caller, me->peer_udata, piece_idx);
+    if (me->cb.peer_have_piece)
+        me->cb.peer_have_piece(me->cb_ctx, me->peer_udata, piece_idx);
 
     return 1;
 }
@@ -698,17 +692,6 @@ void pwp_conn_request_block_from_peer(pwp_conn_t* me_, bt_block_t * blk)
     printf("request block: %d %d %d",
            blk->piece_idx, blk->offset, blk->len);
 #endif
-}
-
-static void __make_request(pwp_conn_private_t * me)
-{
-    bt_block_t blk;
-
-    if (0 == me->func->pollblock(me->caller, me->peer_udata, &blk))
-    {
-        if (blk.len == 0) return;
-//        pwp_conn_request_block_from_peer((pwp_conn_t*)me, &blk);
-    }
 }
 
 /**
@@ -775,7 +758,13 @@ void pwp_conn_periodic(pwp_conn_t* me_)
 
         for (ii = 0; ii < end; ii++)
         {
-            __make_request(me);
+            bt_block_t blk;
+
+            if (0 == me->cb.pollblock(me->cb_ctx, me->peer_udata, &blk))
+            {
+                if (blk.len == 0) return;
+                //pwp_conn_request_block_from_peer((pwp_conn_t*)me, &blk);
+            }
         }
     }
     else
@@ -968,8 +957,8 @@ int pwp_conn_request(pwp_conn_t* me_, bt_block_t *request)
     /* Ensure that we have completed this piece.
      * The peer should know if we have completed this piece or not, so
      * asking for it is an indicator of a invalid peer. */
-    assert(NULL != me->func->piece_is_complete);
-    if (0 == me->func->piece_is_complete(me->caller, pce))
+    assert(NULL != me->cb.piece_is_complete);
+    if (0 == me->cb.piece_is_complete(me->cb_ctx, pce))
     {
         __disconnect(me, "requested piece %d is not completed",
                      request->piece_idx);
@@ -1131,7 +1120,7 @@ int pwp_conn_piece(pwp_conn_t* me_, msg_piece_t *p)
 {
     pwp_conn_private_t* me = (void*)me_;
 
-    assert(me->func->pushblock);
+    assert(me->cb.pushblock);
     __log(me, "READ,piece,piece_idx=%d offset=%d length=%d",
           p->blk.piece_idx,
           p->blk.offset,
@@ -1139,8 +1128,8 @@ int pwp_conn_piece(pwp_conn_t* me_, msg_piece_t *p)
 
     __conn_remove_pending_request(me,p);
 
-    me->func->pushblock(
-            me->caller,
+    me->cb.pushblock(
+            me->cb_ctx,
             me->peer_udata,
             &p->blk,
             p->data);
@@ -1155,15 +1144,23 @@ void pwp_conn_offer_block(pwp_conn_t* me_, msg_piece_t *p)
 {
     pwp_conn_private_t* me = (void*)me_;
 
-    if (me->func->get_lock && me->func->release_lock)
+    if (me->cb.call_exclusively)
     {
-        me->func->get_lock(me->caller, &me->req_lock);
 
-        me->func->release_lock(me->caller, &me->req_lock);
+    }
+
+#if 0
+    if (me->cb.get_lock && me->cb.release_lock)
+    {
+        me->cb.get_lock(me->cb_ctx, &me->req_lock);
+
+        me->cb.release_lock(me->cb_ctx, &me->req_lock);
     }
     else
     {
 
     }
+#endif
+
 }
 

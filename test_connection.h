@@ -62,3 +62,8 @@ int __FUNC_pieceiscomplete( void *bto __attribute__((__unused__)), void *piece _
 
 int __FUNC_pieceiscomplete_fail( void *bto __attribute__((__unused__)), void *piece __attribute__((__unused__)));
 
+void __FUNC_piece_write_block_to_stream(
+    void * me,
+    bt_block_t * blk,
+    unsigned char ** msg);
+

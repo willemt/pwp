@@ -8,10 +8,14 @@ typedef struct
     unsigned int len;
 } bt_block_t;
 
-typedef void *(*func_getpiece_f)( void *udata, unsigned int piece);
+typedef void *(*func_getpiece_f)(
+        void *udata,
+        unsigned int piece);
 
 typedef void (*func_write_block_to_stream_f)(
-    void *pce, bt_block_t *blk, unsigned char **msg);
+        void *udata,
+        bt_block_t *blk,
+        unsigned char **msg);
 
 #ifndef HAVE_FUNC_LOG
 #define HAVE_FUNC_LOG
@@ -231,18 +235,26 @@ typedef struct {
     func_peergiveblockback_f peer_giveback_block;
     //func_peerpiece_f peer_giveback_piece;
 
+#if 0
     /**
-     * Obtain mutually exclusive lock.
-     * Create lock if lock is NULL */
+     * Create lock */
+    func_lock_f create_lock;
+
+    /**
+     * Obtain mutually exclusive lock. */
     func_lock_f get_lock;
 
     /**
      * Release mutually exclusive lock. */
     func_lock_f release_lock;
+#else
+    int (*call_exclusively)(void *udata, void **lock,
+            int (*cb)(void* caller, void* udata));
+#endif
 
     /* logging */
     func_log_f log;
-} pwp_conn_functions_t;
+} pwp_conn_cbs_t;
 
 typedef struct {
     bt_block_t blk;
@@ -281,7 +293,7 @@ void pwp_conn_cancel(pwp_conn_t* pco, bt_block_t *cancel);
 
 int pwp_conn_piece(pwp_conn_t* pco, msg_piece_t *piece);
 
-void pwp_conn_set_functions(pwp_conn_t* pco, pwp_conn_functions_t* funcs, void* caller);
+void pwp_conn_set_cbs(pwp_conn_t* pco, pwp_conn_cbs_t* funcs, void* caller);
 
 int pwp_conn_flag_is_set(pwp_conn_t* pco, const int flag);
 

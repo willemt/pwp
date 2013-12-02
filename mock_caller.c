@@ -235,3 +235,15 @@ int __FUNC_pieceiscomplete_fail(
     return 0;
 }
 
+void __FUNC_piece_write_block_to_stream(
+    void * me,
+    bt_block_t * blk,
+    unsigned char ** msg
+)
+{
+    void *pce;
+
+    pce = __FUNC_sender_get_piece(me,blk->piece_idx);
+    mock_piece_write_block_to_stream(pce,blk,msg);
+}
+
