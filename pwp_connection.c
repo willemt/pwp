@@ -1044,13 +1044,16 @@ int pwp_conn_block_request_is_pending(void* pc, bt_block_t *b)
     return NULL != hashmap_get(me->recv_reqs, b);
 }
 
-static void __conn_remove_pending_request(pwp_conn_private_t* me, const msg_piece_t *p)
+/**
+ * We keep a record of the block requests we made.
+ * Remove the request represented by this block */
+static void __conn_remove_pending_request(pwp_conn_private_t* me, const bt_block_t *pb)
 {
     request_t *r;
     void *add;
 
     /* remove pending request */
-    if ((r = hashmap_remove(me->recv_reqs, &p->blk)))
+    if ((r = hashmap_remove(me->recv_reqs, &pb)))
     {
         free(r);
         return;
@@ -1078,12 +1081,10 @@ static void __conn_remove_pending_request(pwp_conn_private_t* me, const msg_piec
     /* find out if this block is part of another request */
     while (llqueue_count(add) > 0)
     {
-        const bt_block_t *pb;
         bt_block_t *rb;
 
         r = llqueue_poll(add);
         rb = &r->blk;
-        pb = &p->blk;
 
         if (r->blk.piece_idx != pb->piece_idx) continue;
 
@@ -1152,7 +1153,7 @@ static void __conn_remove_pending_request(pwp_conn_private_t* me, const msg_piec
 
 /**
  * Receive a piece message
- * @return 1; otherwise 0 on failure */
+ * @return 1 on sucess; otherwise 0 */
 int pwp_conn_piece(pwp_conn_t* me_, msg_piece_t *p)
 {
     pwp_conn_private_t* me = (void*)me_;
@@ -1163,7 +1164,7 @@ int pwp_conn_piece(pwp_conn_t* me_, msg_piece_t *p)
           p->blk.offset,
           p->blk.len);
 
-    __conn_remove_pending_request(me,p);
+    __conn_remove_pending_request(me, &p->blk);
 
     me->cb.pushblock(
             me->cb_ctx,
