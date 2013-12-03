@@ -48,7 +48,7 @@ csparsecounter:
 #splint: pwp_connection.c
 #	splint pwp_connection.c $@ -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR) -I$(MEANQUEUE_DIR) -I$(SPARSECOUNTER_DIR) +boolint -mustfreeonly -immediatetrans -temptrans -exportlocal -onlytrans -paramuse +charint
 
-downloadcontrib: chashmap cbitfield cbitstream clinkedlistqueue cmeanqueue
+downloadcontrib: chashmap cbitfield cbitstream clinkedlistqueue cmeanqueue csparsecounter
 
 main_connection.c:
 	if test -d $(HASHMAP_DIR); then echo have; else make downloadcontrib; fi
