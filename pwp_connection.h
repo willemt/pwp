@@ -248,8 +248,16 @@ typedef struct {
      * Release mutually exclusive lock. */
     func_lock_f release_lock;
 #else
-    int (*call_exclusively)(void *udata, void **lock,
-            int (*cb)(void* caller, void* udata));
+    /**
+     * Waits until lock is released, and then runs callback.
+     * Creates lock when lock is NULL
+     * @param me The caller
+     * @param lock Lock to be used. Will be initialised if NULL
+     * @param udata Argument for callback
+     * @param cb Callback
+     * @return result of callback */
+    void* (*call_exclusively)(void* me, void* cb_ctx, void **lock, void* udata,
+            void* (*cb)(void* me, void* udata));
 #endif
 
     /* logging */

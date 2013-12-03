@@ -84,15 +84,14 @@ typedef struct
 
     /* Pending requests that we are waiting to get
      * We could receive pieces that are a subset of the original request */
-    hashmap_t *pnd_reqs;
+    hashmap_t *recv_reqs;
 
     /* Pending requests we are fufilling for the peer */
-    linked_list_queue_t *pnd_peer_reqs;
+    linked_list_queue_t *peer_reqs;
     
+    /* list of requests to make */
     linked_list_queue_t *reqs;
-
     void *req_lock;
-//    struct lfds611_queue_state *reqs;
 
     int piece_len;
     int num_pieces;
@@ -217,20 +216,21 @@ void *pwp_conn_new()
         exit(0);
     }
 
-    me->state.flags = PC_IM_CHOKING | PC_PEER_CHOKING;
-    me->pnd_reqs = hashmap_new(__request_hash, __request_compare, 100);
-    me->pnd_peer_reqs = llqueue_new();
     me->bytes_drate = meanqueue_new(10);
     me->bytes_urate = meanqueue_new(10);
-    //lfds611_queue_new(&me->reqs, 100);
+    me->recv_reqs = hashmap_new(__request_hash, __request_compare, 100);
+    me->peer_reqs = llqueue_new();
+    me->reqs = llqueue_new();
+    me->req_lock = NULL;
+    me->state.flags = PC_IM_CHOKING | PC_PEER_CHOKING;
     return me;
 }
 
 static void __expunge_their_pending_reqs(pwp_conn_private_t* me)
 {
-    while (0 < llqueue_count(me->pnd_peer_reqs))
+    while (0 < llqueue_count(me->peer_reqs))
     {
-        free(llqueue_poll(me->pnd_peer_reqs));
+        free(llqueue_poll(me->peer_reqs));
     }
 }
 
@@ -242,12 +242,12 @@ static void __expunge_my_pending_reqs(pwp_conn_private_t* me)
     void* rem;
     rem = llqueue_new();
 
-    for (hashmap_iterator(me->pnd_reqs, &iter);
-         (r = hashmap_iterator_next_value(me->pnd_reqs, &iter));)
+    for (hashmap_iterator(me->recv_reqs, &iter);
+         (r = hashmap_iterator_next_value(me->recv_reqs, &iter));)
     {
         llqueue_offer(rem, r);
 #if 0
-        r = hashmap_remove(me->pnd_reqs, &r->blk);
+        r = hashmap_remove(me->recv_reqs, &r->blk);
         if (me->cb.peer_giveback_block)
             me->cb.peer_giveback_block(me->cb_ctx, me->peer_udata, &r->blk);
         free(r);
@@ -258,7 +258,7 @@ static void __expunge_my_pending_reqs(pwp_conn_private_t* me)
    while (llqueue_count(rem) > 0)
     {
         r = llqueue_poll(rem);
-        r = hashmap_remove(me->pnd_reqs, &r->blk);
+        r = hashmap_remove(me->recv_reqs, &r->blk);
 
         assert(r);
 
@@ -279,13 +279,13 @@ static void __expunge_my_old_pending_reqs(pwp_conn_private_t* me)
 
     rem = llqueue_new();
 
-    for (hashmap_iterator(me->pnd_reqs, &iter);
-         (r = hashmap_iterator_next_value(me->pnd_reqs, &iter));)
+    for (hashmap_iterator(me->recv_reqs, &iter);
+         (r = hashmap_iterator_next_value(me->recv_reqs, &iter));)
     {
         if (r && 10 < me->state.tick - r->tick)
         {
 #if 0
-            hashmap_remove(me->pnd_reqs, &r->blk);
+            hashmap_remove(me->recv_reqs, &r->blk);
             me->cb.peer_giveback_block(me->cb_ctx, me->peer_udata, &r->blk);
             free(r);
 #endif
@@ -297,7 +297,7 @@ static void __expunge_my_old_pending_reqs(pwp_conn_private_t* me)
     while (llqueue_count(rem) > 0)
     {
         r = llqueue_poll(rem);
-        r = hashmap_remove(me->pnd_reqs, &r->blk);
+        r = hashmap_remove(me->recv_reqs, &r->blk);
 
         assert(me->cb.peer_giveback_block);
         me->cb.peer_giveback_block(me->cb_ctx, me->peer_udata, &r->blk);
@@ -313,8 +313,8 @@ void pwp_conn_release(pwp_conn_t* me_)
 
     __expunge_their_pending_reqs(me);
     __expunge_my_pending_reqs(me);
-    hashmap_free(me->pnd_reqs);
-    llqueue_free(me->pnd_peer_reqs);
+    hashmap_free(me->recv_reqs);
+    llqueue_free(me->peer_reqs);
     free(me_);
 }
 
@@ -360,8 +360,7 @@ int pwp_conn_flag_is_set(pwp_conn_t* me_, const int flag)
 }
 
 /**
- * @return whether I am choked or not
- */
+ * @return whether I am choked or not */
 int pwp_conn_im_choked(pwp_conn_t* me_)
 {
     pwp_conn_private_t *me = (void*)me_;
@@ -657,7 +656,7 @@ static void __request_fit(bt_block_t * request, const unsigned int piece_len)
 int pwp_conn_get_npending_requests(const pwp_conn_t* me_)
 {
     const pwp_conn_private_t * me = (void*)me_;
-    return hashmap_count(me->pnd_reqs);
+    return hashmap_count(me->recv_reqs);
 }
 
 /**
@@ -665,7 +664,7 @@ int pwp_conn_get_npending_requests(const pwp_conn_t* me_)
 int pwp_conn_get_npending_peer_requests(const pwp_conn_t* me_)
 {
     const pwp_conn_private_t * me = (void*)me_;
-    return llqueue_count(me->pnd_peer_reqs);
+    return llqueue_count(me->peer_reqs);
 }
 
 /**
@@ -686,7 +685,7 @@ void pwp_conn_request_block_from_peer(pwp_conn_t* me_, bt_block_t * blk)
     req = malloc(sizeof(request_t));
     req->tick = me->state.tick;
     memcpy(&req->blk, blk, sizeof(bt_block_t));
-    hashmap_put(me->pnd_reqs, &req->blk, req);
+    hashmap_put(me->recv_reqs, &req->blk, req);
 
 #if 0 /*  debugging */
     printf("request block: %d %d %d",
@@ -711,6 +710,37 @@ void pwp_conn_connect_failed(pwp_conn_t* me_)
     assert(0);
 }
 
+static void* __offer_block(void* me_, void* b)
+{
+    pwp_conn_private_t *me = (void*)me_;
+    bt_block_t *b_new;
+
+    /* TODO: replace with mempool/arena */
+    b_new = malloc(sizeof(bt_block_t));
+    memcpy(b_new,b,sizeof(bt_block_t));
+    llqueue_offer(me->reqs, b_new);
+    return NULL;
+}
+
+static void* __poll_block(
+        void* me_,
+        void* __unused __attribute__((__unused__)))
+{
+    pwp_conn_private_t *me = (void*)me_;
+
+    return llqueue_poll(me->reqs);
+}
+
+/**
+ * Provide a block for us to request from the peer */
+void pwp_conn_offer_block(pwp_conn_t* me_, bt_block_t *b)
+{
+    pwp_conn_private_t* me = (void*)me_;
+
+    assert(me->cb.call_exclusively);
+    me->cb.call_exclusively(me, me->cb_ctx, &me->req_lock, b, __offer_block);
+}
+
 void pwp_conn_periodic(pwp_conn_t* me_)
 {
     pwp_conn_private_t *me = (void*)me_;
@@ -725,11 +755,11 @@ void pwp_conn_periodic(pwp_conn_t* me_)
     }
 
     /* Send one pending request to the peer */
-    if (0 < llqueue_count(me->pnd_peer_reqs))
+    if (0 < llqueue_count(me->peer_reqs))
     {
         bt_block_t* blk;
 
-        blk = llqueue_poll(me->pnd_peer_reqs);
+        blk = llqueue_poll(me->peer_reqs);
         pwp_conn_send_piece(me_, blk);
         free(blk);
     }
@@ -762,9 +792,18 @@ void pwp_conn_periodic(pwp_conn_t* me_)
 
             if (0 == me->cb.pollblock(me->cb_ctx, me->peer_udata, &blk))
             {
-                if (blk.len == 0) return;
                 //pwp_conn_request_block_from_peer((pwp_conn_t*)me, &blk);
             }
+        }
+
+        /* process requests */
+        while (0 < llqueue_count(me->reqs))
+        {
+            /* TODO: probably want to split the request into smaller requests */
+            void *b = me->cb.call_exclusively(me, me->cb_ctx, &me->req_lock,
+                    NULL, __poll_block);
+            pwp_conn_request_block_from_peer((pwp_conn_t*)me, b);
+            free(b);
         }
     }
     else
@@ -775,7 +814,7 @@ void pwp_conn_periodic(pwp_conn_t* me_)
 #if 0 /* debugging */
     printf("pending requests: %lx %d %d\n",
             me, pwp_conn_get_npending_requests(me),
-            llqueue_count(me->pnd_peer_reqs));
+            llqueue_count(me->peer_reqs));
 #endif
 
     /*  measure transfer rate */
@@ -968,13 +1007,13 @@ int pwp_conn_request(pwp_conn_t* me_, bt_block_t *request)
     /* Append block to our pending request queue. */
     /* Don't append the block twice. */
     if (!llqueue_get_item_via_cmpfunction(
-                me->pnd_peer_reqs,request,(void*)__request_compare))
+                me->peer_reqs,request,(void*)__request_compare))
     {
         bt_block_t* blk;
 
         blk = malloc(sizeof(bt_block_t));
         memcpy(blk,request, sizeof(bt_block_t));
-        llqueue_offer(me->pnd_peer_reqs,blk);
+        llqueue_offer(me->peer_reqs,blk);
     }
 
     return 1;
@@ -992,8 +1031,7 @@ void pwp_conn_cancel(pwp_conn_t* me_, bt_block_t *cancel)
           cancel->len);
 
     removed = llqueue_remove_item_via_cmpfunction(
-            me->pnd_peer_reqs, cancel, (void*)__request_compare);
-
+            me->peer_reqs, cancel, (void*)__request_compare);
     free(removed);
 //  queue_remove(peer->request_queue);
 }
@@ -1003,7 +1041,7 @@ void pwp_conn_cancel(pwp_conn_t* me_, bt_block_t *cancel)
 int pwp_conn_block_request_is_pending(void* pc, bt_block_t *b)
 {
     pwp_conn_private_t* me = pc;
-    return NULL != hashmap_get(me->pnd_reqs, b);
+    return NULL != hashmap_get(me->recv_reqs, b);
 }
 
 static void __conn_remove_pending_request(pwp_conn_private_t* me, const msg_piece_t *p)
@@ -1012,7 +1050,7 @@ static void __conn_remove_pending_request(pwp_conn_private_t* me, const msg_piec
     void *add;
 
     /* remove pending request */
-    if ((r = hashmap_remove(me->pnd_reqs, &p->blk)))
+    if ((r = hashmap_remove(me->recv_reqs, &p->blk)))
     {
         free(r);
         return;
@@ -1031,14 +1069,13 @@ static void __conn_remove_pending_request(pwp_conn_private_t* me, const msg_piec
 
     hashmap_iterator_t iter;
 
-    /*  find out if this piece is part of another request */
-    for (hashmap_iterator(me->pnd_reqs, &iter);
-         (r = hashmap_iterator_next_value(me->pnd_reqs, &iter));)
+    for (hashmap_iterator(me->recv_reqs, &iter);
+         (r = hashmap_iterator_next_value(me->recv_reqs, &iter));)
     {
         llqueue_offer(add,r);
     }
 
-    /*  find out if this piece is part of another request */
+    /* find out if this block is part of another request */
     while (llqueue_count(add) > 0)
     {
         const bt_block_t *pb;
@@ -1054,7 +1091,7 @@ static void __conn_remove_pending_request(pwp_conn_private_t* me, const msg_piec
         if (pb->offset <= rb->offset &&
             rb->offset + rb->len <= pb->offset + pb->len)
         {
-            r = hashmap_remove(me->pnd_reqs, &r->blk);
+            r = hashmap_remove(me->recv_reqs, &r->blk);
             assert(r);
             free(r);
         }
@@ -1074,39 +1111,39 @@ static void __conn_remove_pending_request(pwp_conn_private_t* me, const msg_piec
             n->blk.len = rb->len - pb->len - (pb->offset - rb->offset);
             assert((int)n->blk.len != 0);
             assert((int)n->blk.len > 0);
-            hashmap_put(me->pnd_reqs, &n->blk, n);
+            hashmap_put(me->recv_reqs, &n->blk, n);
             assert(n->blk.len > 0);
 
-            hashmap_remove(me->pnd_reqs, &r->blk);
+            hashmap_remove(me->recv_reqs, &r->blk);
 
             rb->len = pb->offset - rb->offset;
             assert((int)rb->len > 0);
-            hashmap_put(me->pnd_reqs, &r->blk, r);
+            hashmap_put(me->recv_reqs, &r->blk, r);
             assert(rb->len > 0);
         }
         /*  piece splits it on the left side */
         else if (rb->offset < pb->offset + pb->len &&
             pb->offset + pb->len < rb->offset + rb->len)
         {
-            hashmap_remove(me->pnd_reqs, &r->blk);
+            hashmap_remove(me->recv_reqs, &r->blk);
 
             /*  resize and return to hashmap */
             rb->len -= (pb->offset + pb->len) - rb->offset;
             rb->offset = pb->offset + pb->len;
             assert((int)rb->len > 0);
-            hashmap_put(me->pnd_reqs, &r->blk, r);
+            hashmap_put(me->recv_reqs, &r->blk, r);
         }
         /*  piece splits it on the right side */
         else if (rb->offset < pb->offset &&
             pb->offset < rb->offset + rb->len &&
             rb->offset + rb->len <= pb->offset + pb->len)
         {
-            hashmap_remove(me->pnd_reqs, &r->blk);
+            hashmap_remove(me->recv_reqs, &r->blk);
 
             /*  resize and return to hashmap */
             rb->len = pb->offset - rb->offset;
             assert((int)rb->len > 0);
-            hashmap_put(me->pnd_reqs, &r->blk, r);
+            hashmap_put(me->recv_reqs, &r->blk, r);
         }
     }
 
@@ -1136,31 +1173,5 @@ int pwp_conn_piece(pwp_conn_t* me_, msg_piece_t *p)
 
     me->bytes_downloaded_this_period += p->blk.len;
     return 1;
-}
-
-/**
- * Provide a block for us to request from the peer */
-void pwp_conn_offer_block(pwp_conn_t* me_, msg_piece_t *p)
-{
-    pwp_conn_private_t* me = (void*)me_;
-
-    if (me->cb.call_exclusively)
-    {
-
-    }
-
-#if 0
-    if (me->cb.get_lock && me->cb.release_lock)
-    {
-        me->cb.get_lock(me->cb_ctx, &me->req_lock);
-
-        me->cb.release_lock(me->cb_ctx, &me->req_lock);
-    }
-    else
-    {
-
-    }
-#endif
-
 }
 
