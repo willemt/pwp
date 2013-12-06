@@ -34,8 +34,7 @@ typedef int (
     *func_pollblock_f
 )   (
     void *udata,
-    void *peer,
-    bt_block_t *blk
+    void *peer
 );
 
 typedef int (
@@ -311,3 +310,4 @@ void pwp_conn_connect_failed(pwp_conn_t* pco);
 
 int pwp_conn_block_request_is_pending(void* pc, bt_block_t *b);
 
+void pwp_conn_offer_block(pwp_conn_t* me_, bt_block_t *b);

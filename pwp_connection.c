@@ -30,8 +30,6 @@
 #include "bitstream.h"
 #include "meanqueue.h"
 
-//#include "lfds611_queue/liblfds611.h"
-
 #define TRUE 1
 #define FALSE 0
 
@@ -154,7 +152,6 @@ static void __log(pwp_conn_private_t * me, const char *format, ...)
 
     va_start(args, format);
     (void)vsnprintf(buffer, 1000, format, args);
-
     me->cb.log(me->cb_ctx, me->peer_udata, buffer);
 }
 
@@ -599,7 +596,6 @@ void pwp_conn_send_bitfield(pwp_conn_t* me_)
 
     __send_to_peer(me, data, size);
     __log(me, "send,bitfield");
-
 }
 
 void pwp_conn_set_state(pwp_conn_t* me_, const int state)
@@ -773,31 +769,28 @@ void pwp_conn_periodic(pwp_conn_t* me_)
         }
     }
 
-    /* request piece */
     if (pwp_conn_im_interested(me_))
     {
-        int ii, end;
-
         if (pwp_conn_im_choked(me_))
         {
             goto cleanup;
         }
 
+        int ii, end;
+        
+        // TODO: turn 10 into configuration value
         /*  max out pipeline */
-        end = 20 - pwp_conn_get_npending_requests(me_);
-
+        end = 10 - pwp_conn_get_npending_requests(me_);
         for (ii = 0; ii < end; ii++)
         {
-            bt_block_t blk;
-
-            if (0 == me->cb.pollblock(me->cb_ctx, me->peer_udata, &blk))
+            if (0 == me->cb.pollblock(me->cb_ctx, me->peer_udata))
             {
                 //pwp_conn_request_block_from_peer((pwp_conn_t*)me, &blk);
             }
         }
 
         /* process requests */
-        while (0 < llqueue_count(me->reqs))
+        if (0 < llqueue_count(me->reqs))
         {
             /* TODO: probably want to split the request into smaller requests */
             void *b = me->cb.call_exclusively(me, me->cb_ctx, &me->req_lock,
@@ -845,8 +838,8 @@ void pwp_conn_choke(pwp_conn_t* me_)
 {
     pwp_conn_private_t* me = (void*)me_;
 
-    me->state.flags |= PC_PEER_CHOKING;
     __log(me, "read,choke");
+    me->state.flags |= PC_PEER_CHOKING;
     __expunge_my_pending_reqs(me);
 }
 
@@ -854,24 +847,24 @@ void pwp_conn_unchoke(pwp_conn_t* me_)
 {
     pwp_conn_private_t* me = (void*)me_;
 
-    me->state.flags &= ~PC_PEER_CHOKING;
     __log(me, "read,unchoke");
+    me->state.flags &= ~PC_PEER_CHOKING;
 }
 
 void pwp_conn_interested(pwp_conn_t* me_)
 {
     pwp_conn_private_t* me = (void*)me_;
 
-    me->state.flags |= PC_PEER_INTERESTED;
     __log(me, "read,interested");
+    me->state.flags |= PC_PEER_INTERESTED;
 }
 
 void pwp_conn_uninterested(pwp_conn_t* me_)
 {
     pwp_conn_private_t* me = (void*)me_;
 
-    me->state.flags &= ~PC_PEER_INTERESTED;
     __log(me, "read,uninterested");
+    me->state.flags &= ~PC_PEER_INTERESTED;
 }
 
 void pwp_conn_have(pwp_conn_t* me_, msg_have_t* have)
@@ -880,14 +873,14 @@ void pwp_conn_have(pwp_conn_t* me_, msg_have_t* have)
 
 //    assert(payload_len == 4);
 
+    __log(me, "read,have,piece_idx=%d", have->piece_idx);
+
     if (1 == pwp_conn_mark_peer_has_piece(me_, have->piece_idx))
     {
 //      assert(pwp_conn_peer_has_piece(me, piece_idx));
     }
 
 //  bitfield_mark(&me->state.have_bitfield, piece_idx);
-
-    __log(me, "read,have,piece_idx=%d", have->piece_idx);
 
     // TODO: remove getpiece
     /* tell the peer we are intested if we don't have this piece */
@@ -944,6 +937,9 @@ int pwp_conn_request(pwp_conn_t* me_, bt_block_t *request)
 {
     pwp_conn_private_t* me = (void*)me_;
     void *pce;
+
+    __log(me, "read,request,piece_idx=%d offset=%d len=%d",
+          request->piece_idx, request->offset, request->len);
 
     /* check that the client doesn't request when they are choked */
     if (pwp_conn_peer_is_choked(me_))
@@ -1027,8 +1023,7 @@ void pwp_conn_cancel(pwp_conn_t* me_, bt_block_t *cancel)
     bt_block_t *removed;
 
     __log(me, "read,cancel,piece_idx=%d offset=%d length=%d",
-          cancel->piece_idx, cancel->offset,
-          cancel->len);
+          cancel->piece_idx, cancel->offset, cancel->len);
 
     removed = llqueue_remove_item_via_cmpfunction(
             me->peer_reqs, cancel, (void*)__request_compare);
@@ -1159,7 +1154,8 @@ int pwp_conn_piece(pwp_conn_t* me_, msg_piece_t *p)
     pwp_conn_private_t* me = (void*)me_;
 
     assert(me->cb.pushblock);
-    __log(me, "READ,piece,piece_idx=%d offset=%d length=%d",
+
+    __log(me, "read,piece,piece_idx=%d offset=%d length=%d",
           p->blk.piece_idx,
           p->blk.offset,
           p->blk.len);
