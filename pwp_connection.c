@@ -403,14 +403,6 @@ void pwp_conn_unchoke_peer(pwp_conn_t* me_)
     pwp_conn_send_statechange(me_, PWP_MSGTYPE_UNCHOKE);
 }
 
-#if 0
-static void *__get_piece(pwp_conn_private_t * me, const unsigned int piece_idx)
-{
-    assert(NULL != me->cb.getpiece);
-    return me->cb.getpiece(me->cb_ctx, piece_idx);
-}
-#endif
-
 int pwp_conn_get_download_rate(const pwp_conn_t* me_ __attribute__((__unused__)))
 {
     const pwp_conn_private_t *me = (void*)me_;
@@ -553,17 +545,10 @@ static void __write_bitfield_to_stream_from_getpiece_func(pwp_conn_private_t* me
     int i;
     unsigned char bits;
 
-    assert(NULL != me->cb.getpiece);
-    assert(NULL != me->cb.piece_is_complete);
-
     /*  for all pieces set bit = 1 if we have the completed piece */
     for (bits = 0, i = 0; i < me->num_pieces; i++)
     {
-        // TODO: remove getpiece and piece_is_complete
         bits |= sc_have(me->pieces_completed, i, 1) << (7 - (i % 8));
-        //void *pce;
-        //pce = me->cb.getpiece(me->cb_ctx, i);
-        //bits |= me->cb.piece_is_complete(me->cb_ctx, pce) << (7 - (i % 8));
         /* ...up to eight bits, write to byte */
         if (((i + 1) % 8 == 0) || me->num_pieces - 1 == i)
         {
@@ -580,9 +565,6 @@ void pwp_conn_send_bitfield(pwp_conn_t* me_)
     pwp_conn_private_t *me = (void*)me_;
     unsigned char data[1000], *ptr;
     uint32_t size;
-
-    if (!me->cb.getpiece)
-        return;
 
     ptr = data;
     size =
@@ -888,10 +870,8 @@ void pwp_conn_have(pwp_conn_t* me_, msg_have_t* have)
 
 //  bitfield_mark(&me->state.have_bitfield, piece_idx);
 
-    // TODO: remove getpiece
     /* tell the peer we are intested if we don't have this piece */
     if (!sc_have(me->pieces_completed, have->piece_idx, 1))
-    //if (!__get_piece(me, have->piece_idx))
     {
         // TODO: do we need to be interested if we are already?
         pwp_conn_set_im_interested(me_);
@@ -968,11 +948,8 @@ int pwp_conn_request(pwp_conn_t* me_, bt_block_t *r)
         return 0;
     }
 
-    //void *pce;
-    // TODO: remove getpiece
     /* Ensure that we have this piece */
     if (!sc_have(me->pieces_completed, r->piece_idx, 1))
-    //if (!(pce = __get_piece(me, r->piece_idx)))
     {
         __disconnect(me, "requested piece %d is not available", r->piece_idx);
         return 0;
@@ -994,7 +971,6 @@ int pwp_conn_request(pwp_conn_t* me_, bt_block_t *r)
         return 0;
     }
 
-    // TODO: remove piece_is_complete
     /* Ensure that we have completed this piece.
      * The peer should know if we have completed this piece or not, so
      * asking for it is an indicator of a invalid peer. */
