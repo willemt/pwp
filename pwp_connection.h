@@ -138,8 +138,6 @@ void pwp_conn_release(pwp_conn_t* pco);
 
 void pwp_conn_set_active(pwp_conn_t* pco, int opt);
 
-int pwp_conn_peer_is_interested(pwp_conn_t* pco);
-
 int pwp_conn_is_active(pwp_conn_t* pco);
 
 void pwp_conn_set_my_peer_id(pwp_conn_t* pco, const char *peer_id);
@@ -152,7 +150,7 @@ void pwp_conn_set_peer(pwp_conn_t* pco, void * peer);
 
 int pwp_conn_peer_is_interested(pwp_conn_t* pco);
 
-int pwp_conn_peer_is_choked(pwp_conn_t* pco);
+int pwp_conn_im_choking(pwp_conn_t* pco);
 
 int pwp_conn_im_choked(pwp_conn_t* pco);
 
@@ -311,3 +309,5 @@ void pwp_conn_connect_failed(pwp_conn_t* pco);
 int pwp_conn_block_request_is_pending(void* pc, bt_block_t *b);
 
 void pwp_conn_offer_block(pwp_conn_t* me_, bt_block_t *b);
+
+void pwp_conn_set_progress(pwp_conn_t* me_, void* counter);

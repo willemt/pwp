@@ -101,7 +101,6 @@ typedef struct
     pwp_conn_cbs_t cb;
     void *cb_ctx;
 
-    const sparsecounter_t *pieces_downloaded;
     const sparsecounter_t *pieces_completed;
 
 } pwp_conn_private_t;
@@ -122,14 +121,14 @@ static uint32_t fe(uint32_t i)
     return o;
 }
 
-static unsigned long __request_hash(const void *obj)
+static unsigned long __req_hash(const void *obj)
 {
     const bt_block_t *req = obj;
 
     return req->piece_idx + req->len + req->offset;
 }
 
-static long __request_compare(const void *obj, const void *other)
+static long __req_cmp(const void *obj, const void *other)
 {
     const bt_block_t *req1 = obj, *req2 = other;
 
@@ -164,16 +163,14 @@ static void __disconnect(pwp_conn_private_t * me, const char *reason, ...)
     va_start(args, reason);
     (void)vsnprintf(buffer, 128, reason, args);
     if (me->cb.disconnect)
-    {
        (void)me->cb.disconnect(me->cb_ctx, me->peer_udata, buffer);
-    }
 }
 
 static int __send_to_peer(pwp_conn_private_t * me, void *data, const int len)
 {
     int ret;
 
-    if (NULL != me->cb.send)
+    if (me->cb.send)
     {
         ret = me->cb.send(me->cb_ctx, me->peer_udata, data, len);
 
@@ -203,6 +200,13 @@ void pwp_conn_set_peer(pwp_conn_t* me_, void * peer)
     me->peer_udata = peer;
 }
 
+void pwp_conn_set_progress(pwp_conn_t* me_, void* counter)
+{
+    pwp_conn_private_t *me = (void*)me_;
+
+    me->pieces_completed = counter;
+}
+
 void *pwp_conn_new()
 {
     pwp_conn_private_t *me;
@@ -215,7 +219,7 @@ void *pwp_conn_new()
 
     me->bytes_drate = meanqueue_new(10);
     me->bytes_urate = meanqueue_new(10);
-    me->recv_reqs = hashmap_new(__request_hash, __request_compare, 100);
+    me->recv_reqs = hashmap_new(__req_hash, __req_cmp, 100);
     me->peer_reqs = llqueue_new();
     me->reqs = llqueue_new();
     me->req_lock = NULL;
@@ -339,7 +343,7 @@ int pwp_conn_peer_is_interested(pwp_conn_t* me_)
     return 0 != (me->state.flags & PC_PEER_INTERESTED);
 }
 
-int pwp_conn_peer_is_choked(pwp_conn_t* me_)
+int pwp_conn_im_choking(pwp_conn_t* me_)
 {
     pwp_conn_private_t *me = (void*)me_;
 
@@ -399,11 +403,13 @@ void pwp_conn_unchoke_peer(pwp_conn_t* me_)
     pwp_conn_send_statechange(me_, PWP_MSGTYPE_UNCHOKE);
 }
 
+#if 0
 static void *__get_piece(pwp_conn_private_t * me, const unsigned int piece_idx)
 {
     assert(NULL != me->cb.getpiece);
     return me->cb.getpiece(me->cb_ctx, piece_idx);
 }
+#endif
 
 int pwp_conn_get_download_rate(const pwp_conn_t* me_ __attribute__((__unused__)))
 {
@@ -544,22 +550,22 @@ void pwp_conn_send_cancel(pwp_conn_t* me_, bt_block_t * cancel)
 static void __write_bitfield_to_stream_from_getpiece_func(pwp_conn_private_t* me,
         unsigned char ** ptr)
 {
-    int ii;
+    int i;
     unsigned char bits;
 
     assert(NULL != me->cb.getpiece);
     assert(NULL != me->cb.piece_is_complete);
 
     /*  for all pieces set bit = 1 if we have the completed piece */
-    for (bits = 0, ii = 0; ii < me->num_pieces; ii++)
+    for (bits = 0, i = 0; i < me->num_pieces; i++)
     {
-        void *pce;
-
         // TODO: remove getpiece and piece_is_complete
-        pce = me->cb.getpiece(me->cb_ctx, ii);
-        bits |= me->cb.piece_is_complete(me->cb_ctx, pce) << (7 - (ii % 8));
+        bits |= sc_have(me->pieces_completed, i, 1) << (7 - (i % 8));
+        //void *pce;
+        //pce = me->cb.getpiece(me->cb_ctx, i);
+        //bits |= me->cb.piece_is_complete(me->cb_ctx, pce) << (7 - (i % 8));
         /* ...up to eight bits, write to byte */
-        if (((ii + 1) % 8 == 0) || me->num_pieces - 1 == ii)
+        if (((i + 1) % 8 == 0) || me->num_pieces - 1 == i)
         {
             bitstream_write_ubyte(ptr, bits);
             bits = 0;
@@ -638,7 +644,7 @@ int pwp_conn_mark_peer_has_piece(pwp_conn_t* me_, const int piece_idx)
 
 /**
  * fit the request in the piece size so that we don't break anything */
-static void __request_fit(bt_block_t * request, const unsigned int piece_len)
+static void __req_fit(bt_block_t * request, const unsigned int piece_len)
 {
     if (piece_len < request->offset + request->len)
     {
@@ -674,7 +680,7 @@ void pwp_conn_request_block_from_peer(pwp_conn_t* me_, bt_block_t * blk)
     if (blk->len < 0)
         return;
 
-    __request_fit(blk, me->piece_len);
+    __req_fit(blk, me->piece_len);
     pwp_conn_send_request(me_, blk);
 
     /* remember that we requested it */
@@ -763,7 +769,7 @@ void pwp_conn_periodic(pwp_conn_t* me_)
     /* unchoke interested peer */
     if (pwp_conn_peer_is_interested(me_))
     {
-        if (pwp_conn_peer_is_choked(me_))
+        if (pwp_conn_im_choking(me_))
         {
             pwp_conn_unchoke(me_);
         }
@@ -884,8 +890,10 @@ void pwp_conn_have(pwp_conn_t* me_, msg_have_t* have)
 
     // TODO: remove getpiece
     /* tell the peer we are intested if we don't have this piece */
-    if (!__get_piece(me, have->piece_idx))
+    if (!sc_have(me->pieces_completed, have->piece_idx, 1))
+    //if (!__get_piece(me, have->piece_idx))
     {
+        // TODO: do we need to be interested if we are already?
         pwp_conn_set_im_interested(me_);
     }
 }
@@ -933,56 +941,54 @@ void pwp_conn_bitfield(pwp_conn_t* me_, msg_bitfield_t* bitfield)
 /**
  * Respond to a peer's request for a block
  * @return 0 on error, 1 otherwise */
-int pwp_conn_request(pwp_conn_t* me_, bt_block_t *request)
+int pwp_conn_request(pwp_conn_t* me_, bt_block_t *r)
 {
     pwp_conn_private_t* me = (void*)me_;
-    void *pce;
 
     __log(me, "read,request,piece_idx=%d offset=%d len=%d",
-          request->piece_idx, request->offset, request->len);
+          r->piece_idx, r->offset, r->len);
 
     /* check that the client doesn't request when they are choked */
-    if (pwp_conn_peer_is_choked(me_))
+    if (pwp_conn_im_choking(me_))
     {
         __disconnect(me, "peer requested when they were choked");
         return 0;
     }
 
     /* We're choking - we aren't obligated to respond to this request */
-    if (pwp_conn_peer_is_choked(me_))
+    if (pwp_conn_im_choking(me_))
     {
         return 0;
     }
 
     /* Ensure we have correct piece_idx */
-    if (me->num_pieces < request->piece_idx)
+    if (me->num_pieces < r->piece_idx)
     {
-        __disconnect(me, "requested piece %d has invalid idx",
-                     request->piece_idx);
+        __disconnect(me, "requested piece %d has invalid idx", r->piece_idx);
         return 0;
     }
 
+    //void *pce;
     // TODO: remove getpiece
     /* Ensure that we have this piece */
-    if (!(pce = __get_piece(me, request->piece_idx)))
+    if (!sc_have(me->pieces_completed, r->piece_idx, 1))
+    //if (!(pce = __get_piece(me, r->piece_idx)))
     {
-        __disconnect(me, "requested piece %d is not available",
-                     request->piece_idx);
+        __disconnect(me, "requested piece %d is not available", r->piece_idx);
         return 0;
     }
 
     /* Ensure that the peer needs this piece.
      * If the peer doesn't need the piece then that means the peer is
      * potentially invalid */
-    if (pwp_conn_peer_has_piece(me_, request->piece_idx))
+    if (pwp_conn_peer_has_piece(me_, r->piece_idx))
     {
-        __disconnect(me, "peer requested pce%d which they confirmed they had",
-                     request->piece_idx);
+        __disconnect(me, "peer requested pce%d which they had", r->piece_idx);
         return 0;
     }
 
     /* Ensure that block request length is valid  */
-    if (request->len == 0 || me->piece_len < request->offset + request->len)
+    if (r->len == 0 || me->piece_len < r->offset + r->len)
     {
         __disconnect(me, "invalid block request"); 
         return 0;
@@ -992,24 +998,22 @@ int pwp_conn_request(pwp_conn_t* me_, bt_block_t *request)
     /* Ensure that we have completed this piece.
      * The peer should know if we have completed this piece or not, so
      * asking for it is an indicator of a invalid peer. */
+    #if 0
     assert(NULL != me->cb.piece_is_complete);
     if (0 == me->cb.piece_is_complete(me->cb_ctx, pce))
     {
-        __disconnect(me, "requested piece %d is not completed",
-                     request->piece_idx);
+        __disconnect(me, "requested piece %d is not completed", r->piece_idx);
         return 0;
     }
+    #endif
 
     /* Append block to our pending request queue. */
     /* Don't append the block twice. */
-    if (!llqueue_get_item_via_cmpfunction(
-                me->peer_reqs,request,(void*)__request_compare))
+    if (!llqueue_get_item_via_cmpfunction(me->peer_reqs,r,(void*)__req_cmp))
     {
-        bt_block_t* blk;
-
-        blk = malloc(sizeof(bt_block_t));
-        memcpy(blk,request, sizeof(bt_block_t));
-        llqueue_offer(me->peer_reqs,blk);
+        bt_block_t* b = malloc(sizeof(bt_block_t));
+        memcpy(b,r, sizeof(bt_block_t));
+        llqueue_offer(me->peer_reqs,b);
     }
 
     return 1;
@@ -1026,7 +1030,8 @@ void pwp_conn_cancel(pwp_conn_t* me_, bt_block_t *cancel)
           cancel->piece_idx, cancel->offset, cancel->len);
 
     removed = llqueue_remove_item_via_cmpfunction(
-            me->peer_reqs, cancel, (void*)__request_compare);
+            me->peer_reqs, cancel, (void*)__req_cmp);
+
     free(removed);
 //  queue_remove(peer->request_queue);
 }
@@ -1161,14 +1166,9 @@ int pwp_conn_piece(pwp_conn_t* me_, msg_piece_t *p)
           p->blk.len);
 
     __conn_remove_pending_request(me, &p->blk);
-
-    me->cb.pushblock(
-            me->cb_ctx,
-            me->peer_udata,
-            &p->blk,
-            p->data);
-
+    me->cb.pushblock(me->cb_ctx, me->peer_udata, &p->blk, p->data);
     me->bytes_downloaded_this_period += p->blk.len;
+
     return 1;
 }
 
