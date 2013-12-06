@@ -146,7 +146,6 @@ void TestPWP_send_have_is_wellformed(
     unsigned char msg[1000], *ptr;
     pwp_conn_cbs_t funcs = {
         .send = __FUNC_send,
-        .getpiece = __FUNC_sender_get_piece
     };
     sparsecounter_t* sc;
 
@@ -177,8 +176,6 @@ void TestPWP_send_bitField_is_wellformed(
 {
     pwp_conn_cbs_t funcs = {
         .send = __FUNC_send,
-        .piece_is_complete = __FUNC_pieceiscomplete,
-        .getpiece = __FUNC_sender_get_piece
     };
 
     void *pc;
@@ -293,7 +290,6 @@ void TestPWP_send_piece_is_wellformed(
     pwp_conn_cbs_t funcs = {
         .send = __FUNC_send,
         .write_block_to_stream = __FUNC_piece_write_block_to_stream,
-        .getpiece = __FUNC_sender_get_piece
     };
     void *pc;
     test_sender_t sender;
@@ -386,7 +382,6 @@ void TestPWP_read_havemsg_marks_peer_as_having_piece(
 {
     pwp_conn_cbs_t funcs = {
         .disconnect = __disconnect_msg,
-        .getpiece = __FUNC_sender_get_piece,
     };
     void *pc, *mh;
     test_sender_t sender;
@@ -424,7 +419,6 @@ void TestPWP_read_havemsg_disconnects_with_piece_idx_out_of_bounds(
 {
     pwp_conn_cbs_t funcs = {
         .disconnect = __FUNC_disconnect,
-        .getpiece = __FUNC_sender_get_piece,
     };
     void *pc, *mh;
     test_sender_t sender;
@@ -464,7 +458,6 @@ void TestPWP_send_interested_if_lacking_piece_from_have_msg(
     pwp_conn_cbs_t funcs = {
         .send = __FUNC_send,
         .disconnect = __disconnect_msg,
-        .getpiece = __FUNC_get_piece_never_have
     };
     void *pc, *mh;
     test_sender_t sender;
@@ -878,9 +871,7 @@ void TestPWP_read_request_of_piece_not_completed_disconnects_peer(
     bitstream_write_uint32(&ptr, fe(2));       /*  block length */
 
     pwp_conn_cbs_t funcs = {
-        .disconnect = __FUNC_disconnect,
-        .piece_is_complete = __FUNC_pieceiscomplete_fail,
-        .getpiece = __FUNC_sender_get_piece
+        .disconnect = __FUNC_disconnect
     };
 
     /* recv */
@@ -907,9 +898,7 @@ void TestPWP_read_request_with_invalid_piece_idx_disconnects_peer(
 )
 {
     pwp_conn_cbs_t funcs = {
-        .disconnect = __FUNC_disconnect,
-        .piece_is_complete = __FUNC_pieceiscomplete,
-        .getpiece = __FUNC_sender_get_piece
+        .disconnect = __FUNC_disconnect
     };
     void *pc, *mh;
     test_sender_t sender;
@@ -953,9 +942,7 @@ void TestPWP_read_request_with_invalid_block_length_disconnects_peer(
 )
 {
     pwp_conn_cbs_t funcs = {
-        .disconnect = __FUNC_disconnect,
-        .piece_is_complete = __FUNC_pieceiscomplete,
-        .getpiece = __FUNC_sender_get_piece
+        .disconnect = __FUNC_disconnect
     };
     void *pc, *mh;
     test_sender_t sender;
@@ -997,7 +984,6 @@ void TestPWP_read_request_of_piece_which_client_has_results_in_disconnect(
 {
     pwp_conn_cbs_t funcs = {
         .disconnect = __FUNC_disconnect,
-        .getpiece = __FUNC_sender_get_piece,
 //        .write_block_to_stream = __FUNC_piece_write_block_to_stream,
     };
     void *pc, *mh;
@@ -1135,8 +1121,6 @@ void TestPWP_send_request_is_wellformed_even_when_request_len_was_outside_piece_
     pwp_conn_cbs_t funcs = {
         .send = __FUNC_send,
         .disconnect = __FUNC_disconnect,
-        .piece_is_complete = __FUNC_pieceiscomplete,
-        .getpiece = __FUNC_sender_get_piece
     };
 
     unsigned char msg[1000], *ptr = msg;
@@ -1185,8 +1169,6 @@ void TestPWP_read_request_doesnt_duplicate_within_pending_queue(
         .disconnect = __FUNC_disconnect,
         .pushblock = __FUNC_push_block,
         .write_block_to_stream = __FUNC_piece_write_block_to_stream,
-        .piece_is_complete = __FUNC_pieceiscomplete,
-        .getpiece = __FUNC_sender_get_piece
     };
 
     unsigned char msg[1000];//, *ptr = msg;
@@ -1466,8 +1448,6 @@ void TestPWP_read_cancelmsg_cancels_last_request(
         .disconnect = __FUNC_disconnect,
         .pushblock = __FUNC_push_block,
         .write_block_to_stream = __FUNC_piece_write_block_to_stream,
-        .piece_is_complete = __FUNC_pieceiscomplete,
-        .getpiece = __FUNC_sender_get_piece
     };
 
     unsigned char r_msg[1000], *r_ptr;
@@ -1522,8 +1502,6 @@ void TestPWP_request_queue_dropped_when_peer_is_choked(
         .disconnect = __FUNC_disconnect,
         .pushblock = __FUNC_push_block,
         .write_block_to_stream = __FUNC_piece_write_block_to_stream,
-        .piece_is_complete = __FUNC_pieceiscomplete,
-        .getpiece = __FUNC_sender_get_piece
     };
 
     unsigned char msg[1000];

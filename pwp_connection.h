@@ -212,8 +212,6 @@ typedef struct {
 
     /* manage piece related operations */
     func_write_block_to_stream_f write_block_to_stream;
-    func_get_int_f piece_is_complete;
-    func_getpiece_f getpiece;
 
     /**
      * Ask our caller if they have an idea of what block they would like.
@@ -230,7 +228,6 @@ typedef struct {
 
     /* Let caller know that it couldn't download this piece from this peer */
     func_peergiveblockback_f peer_giveback_block;
-    //func_peerpiece_f peer_giveback_piece;
 
 #if 0
     /**
