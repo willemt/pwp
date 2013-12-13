@@ -91,7 +91,9 @@ typedef struct
     linked_list_queue_t *reqs;
     void *req_lock;
 
+    /* need the piece_length to check pieces sent/rcvd are well formed */
     int piece_len;
+
     int num_pieces;
 
     /* info of who we are connected to */
@@ -539,12 +541,24 @@ void pwp_conn_send_cancel(pwp_conn_t* me_, bt_block_t * cancel)
           cancel->piece_idx, cancel->offset, cancel->len);
 }
 
-static void __write_bitfield_to_stream_from_getpiece_func(pwp_conn_private_t* me,
-        unsigned char ** ptr)
+// TODO: move bitfield into separate module
+/**
+ * Send a bitfield to peer, telling them what we have */
+void pwp_conn_send_bitfield(pwp_conn_t* me_)
 {
+    pwp_conn_private_t *me = (void*)me_;
+    // TODO: replace 1000
+    unsigned char data[1000], *ptr;
+    uint32_t size;
+
+    ptr = data;
+    size = sizeof(uint32_t) + sizeof(unsigned char) + (me->num_pieces / 8) +
+        ((me->num_pieces % 8 == 0) ? 0 : 1);
+    bitstream_write_uint32(&ptr, fe(size - sizeof(uint32_t)));
+    bitstream_write_ubyte(&ptr, PWP_MSGTYPE_BITFIELD);
+
     int i;
     unsigned char bits;
-
     /*  for all pieces set bit = 1 if we have the completed piece */
     for (bits = 0, i = 0; i < me->num_pieces; i++)
     {
@@ -552,35 +566,10 @@ static void __write_bitfield_to_stream_from_getpiece_func(pwp_conn_private_t* me
         /* ...up to eight bits, write to byte */
         if (((i + 1) % 8 == 0) || me->num_pieces - 1 == i)
         {
-            bitstream_write_ubyte(ptr, bits);
+            bitstream_write_ubyte(&ptr, bits);
             bits = 0;
         }
     }
-}
-
-/**
- * Send a bitfield to peer, telling them what we have */
-void pwp_conn_send_bitfield(pwp_conn_t* me_)
-{
-    pwp_conn_private_t *me = (void*)me_;
-    unsigned char data[1000], *ptr;
-    uint32_t size;
-
-    ptr = data;
-    size =
-        sizeof(uint32_t) + sizeof(unsigned char) + (me->num_pieces / 8) +
-        ((me->num_pieces % 8 == 0) ? 0 : 1);
-    bitstream_write_uint32(&ptr, fe(size - sizeof(uint32_t)));
-    bitstream_write_ubyte(&ptr, PWP_MSGTYPE_BITFIELD);
-    __write_bitfield_to_stream_from_getpiece_func(me, &ptr);
-
-#if 0
-    /*  ensure padding */
-    if (ii % 8 != 0)
-    {
-//        bitstream_write_ubyte(&ptr, bits);
-    }
-#endif
 
     __send_to_peer(me, data, size);
     __log(me, "send,bitfield");
@@ -630,8 +619,7 @@ static void __req_fit(bt_block_t * request, const unsigned int piece_len)
 {
     if (piece_len < request->offset + request->len)
     {
-        request->len =
-            request->offset + request->len - piece_len;
+        request->len = request->offset + request->len - piece_len;
     }
 }
 

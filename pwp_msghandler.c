@@ -12,6 +12,7 @@
  * @version 0.1
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -135,8 +136,9 @@ void pwp_msghandler_release(void *pc)
  * If there is enough data this function will dispatch pwp_connection events
  * @param mh The message handler object
  * @param buf The data to be read in
- * @param len The length of the data to be read in */
-void pwp_msghandler_dispatch_from_buffer(void *mh,
+ * @param len The length of the data to be read in
+ * @return 1 if successful, 0 if the peer needs to be disconnected */
+int pwp_msghandler_dispatch_from_buffer(void *mh,
         const unsigned char* buf,
         unsigned int len)
 {
@@ -290,17 +292,14 @@ void pwp_msghandler_dispatch_from_buffer(void *mh,
                     /* check it isn't bigger than what the message tells
                      * us we should be expecting */
                     if (size > msg->len - 1 - 4 - 4)
-                    {
                         size = msg->len - 1 - 4 - 4;
-                    }
 
                     msg->piece.data = buf;
                     msg->piece.blk.len = size;
                     pwp_conn_piece(me->pc, &msg->piece);
 
-                    /* if we haven't received the full piece, why don't we
-                     * just split it virtually? */
-                    /* shorten the message */
+                    /* If we haven't received the full piece, why don't we
+                     * just split it "virtually"? That's what we do here: */
                     msg->len -= size;
                     msg->piece.blk.offset += size;
 
@@ -313,9 +312,13 @@ void pwp_msghandler_dispatch_from_buffer(void *mh,
                 }
                 break;
             default:
-                assert(0); break;
+                printf("ERROR: bad pwp msg type: '%d'\n", msg->id);
+                return 0;
+                break;
             }
         }
     }
+
+    return 1;
 }
 
