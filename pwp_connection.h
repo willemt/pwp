@@ -172,7 +172,13 @@ void pwp_conn_send_request(pwp_conn_t* pco, const bt_block_t * request);
 
 void pwp_conn_send_cancel(pwp_conn_t* pco, bt_block_t * cancel);
 
-void pwp_conn_send_bitfield(pwp_conn_t* pco);
+int pwp_send_bitfield(
+        int npieces,
+        void* pieces_completed,
+        func_send_f send_cb,
+        void* cb_ctx,
+        void* peer_udata
+        );
 
 void pwp_conn_set_im_interested(pwp_conn_t* me_);
 
@@ -308,3 +314,4 @@ int pwp_conn_block_request_is_pending(void* pc, bt_block_t *b);
 void pwp_conn_offer_block(pwp_conn_t* me_, bt_block_t *b);
 
 void pwp_conn_set_progress(pwp_conn_t* me_, void* counter);
+

@@ -71,7 +71,7 @@ tests_handshaker: main_handshaker.c pwp_handshaker.c test_handshaker.c CuTest.c 
 	gcov main_handshaker.c test_handshaker.c pwp_handshaker.c
 
 
-tests_connection: main_connection.c pwp_connection.o pwp_msghandler.c test_connection.c test_connection_send.c mock_caller.c mock_piece.c bt_diskmem.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c $(MEANQUEUE_DIR)/meanqueue.c $(SPARSECOUNTER_DIR)/sparse_counter.c 
+tests_connection: main_connection.c pwp_connection.o pwp_msghandler.c pwp_bitfield.c pwp_util.c test_connection.c test_connection_send.c mock_caller.c mock_piece.c bt_diskmem.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c $(MEANQUEUE_DIR)/meanqueue.c $(SPARSECOUNTER_DIR)/sparse_counter.c 
 	$(CC) $(CCFLAGS) -o $@ $^
 	./tests_connection
 	gcov main_connection.c test_connection.c test_connection_send.c pwp_connection.c

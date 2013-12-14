@@ -6,3 +6,4 @@
 #define PEER_ID_LEN 20
 #define INFO_HASH_LEN 20
 
+uint32_t fe(uint32_t i);

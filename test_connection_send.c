@@ -174,11 +174,6 @@ void TestPWP_send_bitField_is_wellformed(
     CuTest * tc
 )
 {
-    pwp_conn_cbs_t funcs = {
-        .send = __FUNC_send,
-    };
-
-    void *pc;
     test_sender_t sender;
     unsigned char msg[1000], *ptr;
     sparsecounter_t* sc;
@@ -186,18 +181,12 @@ void TestPWP_send_bitField_is_wellformed(
     /* setup */
     ptr = msg;
     __sender_set(&sender,NULL,msg);
-    pc = pwp_conn_new();
-    /* .piece_len = 20,
-     * .npieces = 20 */
-    pwp_conn_set_piece_info(pc,20,20);
-    pwp_conn_set_cbs(pc, &funcs, &sender);
     sc = sc_init(0);
-    pwp_conn_set_progress(pc,sc);
     sc_mark_complete(sc,0,20);
 
     /* send msg */
     /*  piece complete func will always return 1 (ie. piece is complete) */
-    pwp_conn_send_bitfield(pc);
+    pwp_send_bitfield(20, sc, __FUNC_send, &sender, NULL);
 
     /* read msg */
     /*  length */

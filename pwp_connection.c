@@ -107,22 +107,6 @@ typedef struct
 
 } pwp_conn_private_t;
 
-/**
- * Flip endianess */
-static uint32_t fe(uint32_t i)
-{
-    uint32_t o;
-    unsigned char *c = (unsigned char *)&i;
-    unsigned char *p = (unsigned char *)&o;
-
-    p[0] = c[3];
-    p[1] = c[2];
-    p[2] = c[1];
-    p[3] = c[0];
-
-    return o;
-}
-
 static unsigned long __req_hash(const void *obj)
 {
     const bt_block_t *req = obj;
@@ -172,17 +156,14 @@ static int __send_to_peer(pwp_conn_private_t * me, void *data, const int len)
 {
     int ret;
 
-    if (me->cb.send)
+    if (!me->cb.send)
+        return 0;
+
+    if (0 == (ret = me->cb.send(me->cb_ctx, me->peer_udata, data, len))) 
     {
-        ret = me->cb.send(me->cb_ctx, me->peer_udata, data, len);
-
-        if (0 == ret)
-        {
-            __disconnect(me, "peer dropped connection");
-            return 0;
-        }
+        __disconnect(me, "peer dropped connection");
+        return 0;
     }
-
     return 1;
 }
 
@@ -539,40 +520,6 @@ void pwp_conn_send_cancel(pwp_conn_t* me_, bt_block_t * cancel)
     __send_to_peer(me, data, 17);
     __log(me, "send,cancel,piece_idx=%d offset=%d len=%d",
           cancel->piece_idx, cancel->offset, cancel->len);
-}
-
-// TODO: move bitfield into separate module
-/**
- * Send a bitfield to peer, telling them what we have */
-void pwp_conn_send_bitfield(pwp_conn_t* me_)
-{
-    pwp_conn_private_t *me = (void*)me_;
-    // TODO: replace 1000
-    unsigned char data[1000], *ptr;
-    uint32_t size;
-
-    ptr = data;
-    size = sizeof(uint32_t) + sizeof(unsigned char) + (me->num_pieces / 8) +
-        ((me->num_pieces % 8 == 0) ? 0 : 1);
-    bitstream_write_uint32(&ptr, fe(size - sizeof(uint32_t)));
-    bitstream_write_ubyte(&ptr, PWP_MSGTYPE_BITFIELD);
-
-    int i;
-    unsigned char bits;
-    /*  for all pieces set bit = 1 if we have the completed piece */
-    for (bits = 0, i = 0; i < me->num_pieces; i++)
-    {
-        bits |= sc_have(me->pieces_completed, i, 1) << (7 - (i % 8));
-        /* ...up to eight bits, write to byte */
-        if (((i + 1) % 8 == 0) || me->num_pieces - 1 == i)
-        {
-            bitstream_write_ubyte(&ptr, bits);
-            bits = 0;
-        }
-    }
-
-    __send_to_peer(me, data, size);
-    __log(me, "send,bitfield");
 }
 
 void pwp_conn_set_state(pwp_conn_t* me_, const int state)
