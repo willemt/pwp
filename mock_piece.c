@@ -14,7 +14,7 @@
 #include "bitfield.h"
 #include "pwp_connection.h"
 #include "bitstream.h"
-#include "bt_block_readwriter_i.h"
+#include "mock_block_readwriter.h"
 
 /*  bittorrent piece */
 typedef struct

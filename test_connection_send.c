@@ -9,7 +9,7 @@
 #include "pwp_connection.h"
 #include "pwp_msghandler.h"
 #include "bitstream.h"
-#include "bt_block_readwriter_i.h"
+#include "mock_block_readwriter.h"
 #include "mock_piece.h"
 #include "test_connection.h"
 #include "sparse_counter.h"
@@ -169,6 +169,7 @@ void TestPWP_send_have_is_wellformed(
 }
 
 /**
+ * TODO this could be split out into a separate testing module
  * Also checks if spare bits are set or not */
 void TestPWP_send_bitField_is_wellformed(
     CuTest * tc

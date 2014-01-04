@@ -1,12 +1,15 @@
 
 typedef void* pwp_conn_t;
 
+#ifndef HAVE_BT_BLOCK_T
+#define HAVE_BT_BLOCK_T
 typedef struct
 {
     unsigned int piece_idx;
     unsigned int offset;
     unsigned int len;
 } bt_block_t;
+#endif
 
 typedef void *(*func_getpiece_f)(
         void *udata,

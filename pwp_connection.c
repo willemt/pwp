@@ -91,9 +91,11 @@ typedef struct
     linked_list_queue_t *reqs;
     void *req_lock;
 
+    // TODO: need to remove this
     /* need the piece_length to check pieces sent/rcvd are well formed */
     int piece_len;
 
+    // TODO: need to remove this
     int num_pieces;
 
     /* info of who we are connected to */
@@ -843,9 +845,7 @@ void pwp_conn_bitfield(pwp_conn_t* me_, msg_bitfield_t* bitfield)
     for (ii = 0; ii < me->num_pieces; ii++)
     {
         if (bitfield_is_marked(&bitfield->bf,ii))
-        {
             pwp_conn_mark_peer_has_piece(me_, ii);
-        }
     }
 
     str = bitfield_str(&me->state.have_bitfield);

@@ -10,7 +10,7 @@
 #include "pwp_connection.h"
 #include "pwp_handshaker.h"
 #include "bitstream.h"
-#include "bt_block_readwriter_i.h"
+#include "mock_block_readwriter.h"
 #include "mock_piece.h"
 #include "test_connection.h"
 

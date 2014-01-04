@@ -15,9 +15,9 @@
 #include "bitfield.h"
 #include "pwp_connection.h"
 #include "bitstream.h"
-#include "bt_block_readwriter_i.h"
-#include "bt_diskmem.h"
+#include "mock_block_readwriter.h"
 #include "mock_piece.h"
+#include "bt_diskmem.h"
 #include "test_connection.h"
 
 int __FUNC_peercon_recv(

@@ -53,7 +53,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "bitfield.h"
 #include "pwp_connection.h"
-#include "bt_block_readwriter_i.h"
+#include "mock_block_readwriter.h"
 
 typedef struct
 {
