@@ -678,11 +678,9 @@ void pwp_conn_periodic(pwp_conn_t* me_)
     /* Send one pending request to the peer */
     if (0 < llqueue_count(me->peer_reqs))
     {
-        bt_block_t* blk;
-
-        blk = llqueue_poll(me->peer_reqs);
-        pwp_conn_send_piece(me_, blk);
-        free(blk);
+        bt_block_t* b = llqueue_poll(me->peer_reqs);
+        pwp_conn_send_piece(me_, b);
+        free(b);
     }
 
     /* unchoke interested peer */
