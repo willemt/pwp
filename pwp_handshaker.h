@@ -9,7 +9,8 @@ typedef struct {
 } pwp_handshake_t;
 
 /**
- * Create a new handshaker */
+ * Create a new handshaker
+ * @return newly initialised handshaker */
 void* pwp_handshaker_new(unsigned char* expected_info_hash, unsigned char* mypeerid);
 
 /**
@@ -17,12 +18,12 @@ void* pwp_handshaker_new(unsigned char* expected_info_hash, unsigned char* mypee
 void pwp_handshaker_release(void* hs);
 
 /**
- * @return null if handshake was successful */
-pwp_handshake_t* pwp_handshaker_get_handshake(void* me_);
-
-/**
  *  Receive handshake from other end
  *  Disconnect on any errors
  *  @return 1 on succesful handshake; 0 on unfinished reading; -1 on failed handshake */
 int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char** buf, unsigned int* len);
+
+/**
+ * @return null if handshake was successful */
+pwp_handshake_t* pwp_handshaker_get_handshake(void* me_);
 
