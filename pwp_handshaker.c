@@ -39,15 +39,6 @@ typedef struct {
 //    int status;
 } pwp_handshaker_t;
 
-/**
- * Send the handshake
- *
- * Steps taken:
- * 1. send handshake
- * 2. receive handshake
- * 3. show interest
- *
- * @return 0 on failure; 1 otherwise */
 int pwp_handshaker_send_handshake(
         void* callee,
         void* udata,
