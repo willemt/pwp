@@ -33,10 +33,10 @@ typedef struct {
     unsigned int bytes_read;
     unsigned int tok_bytes_read;
     union {
-        msg_have_t have;
+        msg_have_t hve;
         msg_bitfield_t bitfield;
-        bt_block_t block;
-        msg_piece_t piece;
+        bt_block_t blk;
+        msg_piece_t pce;
     };
 } msg_t;
 
@@ -137,34 +137,34 @@ int pwp_msghandler_dispatch_from_buffer(void *mh,
         unsigned int len)
 {
     bt_peer_connection_event_handler_t* me = mh;
-    msg_t* msg = &me->msg;
+    msg_t* m = &me->msg;
 
     /* while we have a stream left to read... */
     while (0 < len)
     {
         /* read at least an int */
-        if (msg->bytes_read < 4)
+        if (m->bytes_read < 4)
         {
             /* read length of message */
-            if (1 == __read_uint32(&msg->len, &me->msg, &buf, &len))
+            if (1 == __read_uint32(&m->len, m, &buf, &len))
             {
                 /* it was a keep alive message */
-                if (0 == msg->len)
+                if (0 == m->len)
                 {
                     pwp_conn_keepalive(me->pc);
-                    __endmsg(&me->msg);
+                    __endmsg(m);
                 }
             }
         }
         /* get message ID */
-        else if (4 == msg->bytes_read)
+        else if (4 == m->bytes_read)
         {
-            __read_byte(&msg->id, &msg->bytes_read, &buf, &len);
+            __read_byte(&m->id, &m->bytes_read, &buf, &len);
 
             /* payloadless messages */
-            if (msg->len != 1) continue;
+            if (m->len != 1) continue;
 
-            switch (msg->id)
+            switch (m->id)
             {
             case PWP_MSGTYPE_CHOKE:
                 pwp_conn_choke(me->pc);
@@ -180,19 +180,18 @@ int pwp_msghandler_dispatch_from_buffer(void *mh,
                 break;
             default: assert(0); break;
             }
-            __endmsg(&me->msg);
+            __endmsg(m);
         }
         /* messages with a payload: */
         else 
         {
-            switch (msg->id)
+            switch (m->id)
             {
             case PWP_MSGTYPE_HAVE:
-                if (1 == __read_uint32(&msg->have.piece_idx,
-                            &me->msg, &buf,&len))
+                if (1 == __read_uint32(&m->hve.piece_idx, m, &buf, &len))
                 {
-                    pwp_conn_have(me->pc,&msg->have);
-                    __endmsg(&me->msg);
+                    pwp_conn_have(me->pc, &m->hve);
+                    __endmsg(m);
                     continue;
                 }
 
@@ -202,106 +201,98 @@ int pwp_msghandler_dispatch_from_buffer(void *mh,
                     unsigned char val = 0;
                     unsigned int ii;
 
-                    if (1 + 4 == msg->bytes_read)
+                    if (1 + 4 == m->bytes_read)
                     {
-                        bitfield_init(&msg->bitfield.bf, (msg->len - 1) * 8);
+                        bitfield_init(&m->bitfield.bf, (m->len - 1) * 8);
                     }
 
-                    assert(msg->bitfield.bf.bits);
+                    assert(m->bitfield.bf.bits);
 
                     /* read and mark bits from byte */
-                    __read_byte(&val, &msg->bytes_read, &buf, &len);
+                    __read_byte(&val, &m->bytes_read, &buf, &len);
                     for (ii=0; ii<8; ii++)
                     {
                         if (0x1 == ((unsigned char)(val << ii) >> 7))
                         {
-                            bitfield_mark(&msg->bitfield.bf,
-                                    (msg->bytes_read - 5 - 1) * 8 + ii);
+                            bitfield_mark(&m->bitfield.bf,
+                                    (m->bytes_read - 5 - 1) * 8 + ii);
                         }
                     }
 
                     /* done reading bitfield */
-                    if (4 + msg->len == msg->bytes_read)
+                    if (4 + m->len == m->bytes_read)
                     {
-                        pwp_conn_bitfield(me->pc, &msg->bitfield);
-                        bitfield_release(&msg->bitfield.bf);
-                        __endmsg(&me->msg);
+                        pwp_conn_bitfield(me->pc, &m->bitfield);
+                        bitfield_release(&m->bitfield.bf);
+                        __endmsg(m);
                     }
                 }
                 break;
             case PWP_MSGTYPE_REQUEST:
-                if (msg->bytes_read < 1 + 4 + 4)
+                if (m->bytes_read < 1 + 4 + 4)
                 {
-                    __read_uint32(&msg->block.piece_idx,
-                            &me->msg, &buf,&len);
+                    __read_uint32(&m->blk.piece_idx, m, &buf, &len);
                 }
-                else if (msg->bytes_read < 1 + 4 + 4 + 4)
+                else if (m->bytes_read < 1 + 4 + 4 + 4)
                 {
-                    __read_uint32(&msg->block.offset,
-                            &me->msg,&buf,&len);
+                    __read_uint32(&m->blk.offset, m, &buf, &len);
                 }
-                else if (1 == __read_uint32(&msg->block.len,
-                            &me->msg, &buf,&len))
+                else if (1 == __read_uint32(&m->blk.len, m, &buf, &len))
                 {
-                    pwp_conn_request(me->pc, &msg->block);
-                    __endmsg(&me->msg);
+                    pwp_conn_request(me->pc, &m->blk);
+                    __endmsg(m);
                 }
 
                 break;
             case PWP_MSGTYPE_CANCEL:
-                if (msg->bytes_read < 1 + 4 + 4)
+                if (m->bytes_read < 1 + 4 + 4)
                 {
-                    __read_uint32(&msg->block.piece_idx,
-                            &me->msg, &buf,&len);
+                    __read_uint32(&m->blk.piece_idx, m, &buf, &len);
                 }
-                else if (msg->bytes_read < 1 + 4 + 4 + 4)
+                else if (m->bytes_read < 1 + 4 + 4 + 4)
                 {
-                    __read_uint32(&msg->block.offset,
-                            &me->msg,&buf,&len);
+                    __read_uint32(&m->blk.offset, m, &buf, &len);
                 }
-                else if (1 == __read_uint32(&msg->block.len,
-                            &me->msg, &buf,&len))
+                else if (1 == __read_uint32(&m->blk.len, m, &buf, &len))
                 {
-                    pwp_conn_cancel(me->pc, &msg->block);
-                    __endmsg(&me->msg);
+                    pwp_conn_cancel(me->pc, &m->blk);
+                    __endmsg(m);
                 }
                 break;
             case PWP_MSGTYPE_PIECE:
-                if (msg->bytes_read < 1 + 4 + 4)
+                if (m->bytes_read < 1 + 4 + 4)
                 {
-                    __read_uint32(&msg->piece.blk.piece_idx,
-                            &me->msg, &buf,&len);
+                    __read_uint32(&m->pce.blk.piece_idx, m, &buf, &len);
                 }
-                else if (msg->bytes_read < 9 + 4)
+                else if (m->bytes_read < 9 + 4)
                 {
-                    __read_uint32(&msg->piece.blk.offset,
-                            &me->msg,&buf,&len);
+                    __read_uint32(&m->pce.blk.offset, m, &buf, &len);
                 }
                 else
                 {
                     /* check it isn't bigger than what the message tells
                      * us we should be expecting */
-                    int size = min(len, msg->len - 1 - 4 - 4);
+                    int size = min(len, m->len - 1 - 4 - 4);
 
-                    msg->piece.data = buf;
-                    msg->piece.blk.len = size;
-                    pwp_conn_piece(me->pc, &msg->piece);
+                    m->pce.data = buf;
+                    m->pce.blk.len = size;
+                    pwp_conn_piece(me->pc, &m->pce);
 
                     /* If we haven't received the full piece, why don't we
                      * just split it "virtually"? That's what we do here: */
-                    msg->len -= size;
-                    msg->piece.blk.offset += size;
+                    m->len -= size;
+                    m->pce.blk.offset += size;
 
                     /* if we received the whole message we're done */
-                    if (9 == msg->len)
-                        __endmsg(&me->msg);
+                    if (9 == m->len)
+                        __endmsg(m);
 
                     len -= size;
                     buf += size;
                 }
                 break;
             default:
-                printf("ERROR: bad pwp msg type: '%d'\n", msg->id);
+                printf("ERROR: bad pwp msg type: '%d'\n", m->id);
                 return 0;
                 break;
             }
