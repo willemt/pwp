@@ -34,7 +34,7 @@ typedef struct {
     unsigned int tok_bytes_read;
     union {
         msg_have_t hve;
-        msg_bitfield_t bitfield;
+        msg_bitfield_t bf;
         bt_block_t blk;
         msg_piece_t pce;
     };
@@ -203,10 +203,10 @@ int pwp_msghandler_dispatch_from_buffer(void *mh,
 
                     if (1 + 4 == m->bytes_read)
                     {
-                        bitfield_init(&m->bitfield.bf, (m->len - 1) * 8);
+                        bitfield_init(&m->bf.bf, (m->len - 1) * 8);
                     }
 
-                    assert(m->bitfield.bf.bits);
+                    assert(m->bf.bf.bits);
 
                     /* read and mark bits from byte */
                     __read_byte(&val, &m->bytes_read, &buf, &len);
@@ -214,7 +214,7 @@ int pwp_msghandler_dispatch_from_buffer(void *mh,
                     {
                         if (0x1 == ((unsigned char)(val << ii) >> 7))
                         {
-                            bitfield_mark(&m->bitfield.bf,
+                            bitfield_mark(&m->bf.bf,
                                     (m->bytes_read - 5 - 1) * 8 + ii);
                         }
                     }
@@ -222,8 +222,8 @@ int pwp_msghandler_dispatch_from_buffer(void *mh,
                     /* done reading bitfield */
                     if (4 + m->len == m->bytes_read)
                     {
-                        pwp_conn_bitfield(me->pc, &m->bitfield);
-                        bitfield_release(&m->bitfield.bf);
+                        pwp_conn_bitfield(me->pc, &m->bf);
+                        bitfield_release(&m->bf.bf);
                         __endmsg(m);
                     }
                 }
