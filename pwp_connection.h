@@ -338,3 +338,16 @@ void pwp_conn_offer_block(pwp_conn_t* me_, bt_block_t *b);
 
 void pwp_conn_set_progress(pwp_conn_t* me_, void* counter);
 
+/**
+ * Send a bitfield to peer, telling them what we have
+ * @param npieces Number of pieces
+ * @param pieces_completed Sparse counter containing pieces we've completed 
+ * @param send_cb Callback for sending data
+ * @return 1 if successful, 0 otherwise */
+int pwp_send_bitfield(
+        int npieces,
+        void* pieces_completed,
+        func_send_f send_cb,
+        void* cb_ctx,
+        void* peer_udata);
+

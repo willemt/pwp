@@ -24,6 +24,9 @@
 #include "pwp_connection.h"
 #include "pwp_msghandler.h"
 
+#undef min
+#define min(a,b) ((a) < (b) ? (a) : (b))
+
 typedef struct {
     uint32_t len;
     unsigned char id;
@@ -115,8 +118,6 @@ static int __read_byte(
     return 1;
 }
 
-/**
- * create a new msg handler */
 void* pwp_msghandler_new(void *pc)
 {
     bt_peer_connection_event_handler_t* me;
@@ -131,13 +132,6 @@ void pwp_msghandler_release(void *pc)
     free(pc);
 }
 
-/**
- * Receive this much data.
- * If there is enough data this function will dispatch pwp_connection events
- * @param mh The message handler object
- * @param buf The data to be read in
- * @param len The length of the data to be read in
- * @return 1 if successful, 0 if the peer needs to be disconnected */
 int pwp_msghandler_dispatch_from_buffer(void *mh,
         const unsigned char* buf,
         unsigned int len)
@@ -285,14 +279,9 @@ int pwp_msghandler_dispatch_from_buffer(void *mh,
                 }
                 else
                 {
-                    int size;
-
-                    size = len;
-
                     /* check it isn't bigger than what the message tells
                      * us we should be expecting */
-                    if (size > msg->len - 1 - 4 - 4)
-                        size = msg->len - 1 - 4 - 4;
+                    int size = min(len, msg->len - 1 - 4 - 4);
 
                     msg->piece.data = buf;
                     msg->piece.blk.len = size;

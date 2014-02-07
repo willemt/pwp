@@ -23,12 +23,6 @@
 #include "sparse_counter.h"
 #include "bitstream.h"
 
-/**
- * Send a bitfield to peer, telling them what we have
- * @param npieces Number of pieces
- * @param pieces_completed Sparse counter containing pieces we've completed 
- * @param send_cb Callback for sending data
- * @return 1 if successful, 0 otherwise */
 int pwp_send_bitfield(
         int npieces,
         void* pieces_completed,
