@@ -114,7 +114,6 @@ typedef int (
 #define PC_PEER_INTERESTED ((unsigned int)1<<9)
 #define PC_FAILED_CONNECTION ((unsigned int)1<<10)
 
-
 typedef enum
 {
     PWP_MSGTYPE_CHOKE = 0,
@@ -128,15 +127,10 @@ typedef enum
     PWP_MSGTYPE_CANCEL = 8,
 } pwp_msg_type_e;
 
-/*  peer wire protocol configuration */
-typedef struct
-{
-    int max_pending_requests;
-} bt_pwp_cfg_t;
-
 void *pwp_conn_get_peer(pwp_conn_t* pco);
 
 void *pwp_conn_new();
+
 void pwp_conn_release(pwp_conn_t* pco);
 
 void pwp_conn_set_active(pwp_conn_t* pco, int opt);
