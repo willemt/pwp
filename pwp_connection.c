@@ -169,8 +169,6 @@ static int __send_to_peer(pwp_conn_private_t * me, void *data, const int len)
     return 1;
 }
 
-/**
- * @return peer user data */
 void *pwp_conn_get_peer(pwp_conn_t* me_)
 {
     pwp_conn_private_t *me = (void*)me_;
@@ -335,9 +333,6 @@ int pwp_conn_im_choking(pwp_conn_t* me_)
     return 0 != (me->state.flags & PC_IM_CHOKING);
 }
 
-/**
- *
- */
 int pwp_conn_flag_is_set(pwp_conn_t* me_, const int flag)
 {
     pwp_conn_private_t *me = (void*)me_;
@@ -345,8 +340,6 @@ int pwp_conn_flag_is_set(pwp_conn_t* me_, const int flag)
     return 0 != (me->state.flags & flag);
 }
 
-/**
- * @return whether I am choked or not */
 int pwp_conn_im_choked(pwp_conn_t* me_)
 {
     pwp_conn_private_t *me = (void*)me_;
@@ -400,9 +393,6 @@ int pwp_conn_get_upload_rate(const pwp_conn_t* me_ __attribute__((__unused__)))
     return meanqueue_get_value(me->bytes_urate);
 }
 
-/**
- * unchoke, choke, interested, uninterested,
- * @return non-zero if unsucessful */
 int pwp_conn_send_statechange(pwp_conn_t* me_, const unsigned char msg_type)
 {
     pwp_conn_private_t *me = (void*)me_;
@@ -421,10 +411,6 @@ int pwp_conn_send_statechange(pwp_conn_t* me_, const unsigned char msg_type)
     return 1;
 }
 
-/**
- * Send the piece highlighted by this request.
- * @pararm req - the requesting block
- **/
 void pwp_conn_send_piece(pwp_conn_t* me_, bt_block_t * req)
 {
     pwp_conn_private_t *me = (void*)me_;
@@ -472,9 +458,6 @@ void pwp_conn_send_piece(pwp_conn_t* me_, bt_block_t * req)
     free(data);
 }
 
-/**
- * Tell peer we have this piece 
- * @return 0 on error, 1 otherwise */
 int pwp_conn_send_have(pwp_conn_t* me_, const int piece_idx)
 {
     pwp_conn_private_t *me = (void*)me_;
@@ -488,8 +471,6 @@ int pwp_conn_send_have(pwp_conn_t* me_, const int piece_idx)
     return 1;
 }
 
-/**
- * Send request for a block */
 void pwp_conn_send_request(pwp_conn_t* me_, const bt_block_t * request)
 {
     pwp_conn_private_t *me = (void*)me_;
@@ -506,8 +487,6 @@ void pwp_conn_send_request(pwp_conn_t* me_, const bt_block_t * request)
           request->piece_idx, request->offset, request->len);
 }
 
-/**
- * Tell peer we are cancelling the request for this block */
 void pwp_conn_send_cancel(pwp_conn_t* me_, bt_block_t * cancel)
 {
     pwp_conn_private_t *me = (void*)me_;
@@ -538,9 +517,6 @@ int pwp_conn_get_state(pwp_conn_t* me_)
     return me->state.flags;
 }
 
-/**
- * Peer told us they have this piece.
- * @return 0 on error, 1 otherwise */
 int pwp_conn_mark_peer_has_piece(pwp_conn_t* me_, const int piece_idx)
 {
     pwp_conn_private_t *me = (void*)me_;
@@ -572,24 +548,18 @@ static void __req_fit(bt_block_t * request, const unsigned int piece_len)
     }
 }
 
-/**
- * @return number of requests we required from the peer */
 int pwp_conn_get_npending_requests(const pwp_conn_t* me_)
 {
     const pwp_conn_private_t * me = (void*)me_;
     return hashmap_count(me->recv_reqs);
 }
 
-/**
- * @return number of requests we will request from the peer */
 int pwp_conn_get_npending_peer_requests(const pwp_conn_t* me_)
 {
     const pwp_conn_private_t * me = (void*)me_;
     return llqueue_count(me->peer_reqs);
 }
 
-/**
- * pend a block request */
 void pwp_conn_request_block_from_peer(pwp_conn_t* me_, bt_block_t * blk)
 {
     pwp_conn_private_t * me = (void*)me_;
@@ -614,8 +584,6 @@ void pwp_conn_request_block_from_peer(pwp_conn_t* me_, bt_block_t * blk)
 #endif
 }
 
-/**
- * Tells the peerconn that the connection failed */
 void pwp_conn_connect_failed(pwp_conn_t* me_)
 {
     pwp_conn_private_t *me = (void*)me_;
@@ -652,8 +620,6 @@ static void* __poll_block(
     return llqueue_poll(me->reqs);
 }
 
-/**
- * Provide a block for us to request from the peer */
 void pwp_conn_offer_block(pwp_conn_t* me_, bt_block_t *b)
 {
     pwp_conn_private_t* me = (void*)me_;
@@ -743,8 +709,6 @@ cleanup:
     return;
 }
 
-/** 
- *  @return 1 if the peer has this piece; otherwise 0 */
 int pwp_conn_peer_has_piece(pwp_conn_t* me_, const int piece_idx)
 {
     pwp_conn_private_t *me = (void*)me_;
@@ -813,8 +777,6 @@ void pwp_conn_have(pwp_conn_t* me_, msg_have_t* have)
     }
 }
 
-/**
- * Receive a bitfield */
 void pwp_conn_bitfield(pwp_conn_t* me_, msg_bitfield_t* bitfield)
 {
     pwp_conn_private_t* me = (void*)me_;
@@ -851,9 +813,6 @@ void pwp_conn_bitfield(pwp_conn_t* me_, msg_bitfield_t* bitfield)
     free(str);
 }
 
-/**
- * Respond to a peer's request for a block
- * @return 0 on error, 1 otherwise */
 int pwp_conn_request(pwp_conn_t* me_, bt_block_t *r)
 {
     pwp_conn_private_t* me = (void*)me_;
@@ -928,8 +887,6 @@ int pwp_conn_request(pwp_conn_t* me_, bt_block_t *r)
     return 1;
 }
 
-/**
- * Receive a cancel message. */
 void pwp_conn_cancel(pwp_conn_t* me_, bt_block_t *cancel)
 {
     pwp_conn_private_t* me = (void*)me_;
@@ -945,8 +902,6 @@ void pwp_conn_cancel(pwp_conn_t* me_, bt_block_t *cancel)
 //  queue_remove(peer->request_queue);
 }
 
-/**
- * @return 1 if the request is still pending; otherwise 0 */
 int pwp_conn_block_request_is_pending(void* pc, bt_block_t *b)
 {
     pwp_conn_private_t* me = pc;
@@ -1060,9 +1015,6 @@ static void __conn_remove_pending_request(pwp_conn_private_t* me, const bt_block
     llqueue_free(add);
 }
 
-/**
- * Receive a piece message
- * @return 1 on sucess; otherwise 0 */
 int pwp_conn_piece(pwp_conn_t* me_, msg_piece_t *p)
 {
     pwp_conn_private_t* me = (void*)me_;

@@ -127,15 +127,13 @@ typedef enum
     PWP_MSGTYPE_CANCEL = 8,
 } pwp_msg_type_e;
 
-void *pwp_conn_get_peer(pwp_conn_t* pco);
-
 void *pwp_conn_new();
 
 void pwp_conn_release(pwp_conn_t* pco);
 
-void pwp_conn_set_active(pwp_conn_t* pco, int opt);
-
-int pwp_conn_is_active(pwp_conn_t* pco);
+/**
+ * @return peer user data */
+void *pwp_conn_get_peer(pwp_conn_t* pco);
 
 void pwp_conn_set_my_peer_id(pwp_conn_t* pco, const char *peer_id);
 
@@ -149,6 +147,8 @@ int pwp_conn_peer_is_interested(pwp_conn_t* pco);
 
 int pwp_conn_im_choking(pwp_conn_t* pco);
 
+/**
+ * @return whether I am choked or not */
 int pwp_conn_im_choked(pwp_conn_t* pco);
 
 int pwp_conn_im_interested(pwp_conn_t* pco);
@@ -159,29 +159,31 @@ int pwp_conn_get_download_rate(const pwp_conn_t* pco);
 
 int pwp_conn_get_upload_rate(const pwp_conn_t* pco);
 
+/**
+ * unchoke, choke, interested, uninterested,
+ * @return non-zero if unsucessful */
 int pwp_conn_send_statechange(pwp_conn_t* pco, const unsigned char msg_type);
 
+/**
+ * Send the piece highlighted by this request.
+ * @pararm req - the requesting block
+ **/
 void pwp_conn_send_piece(pwp_conn_t* pco, bt_block_t * req);
 
+/**
+ * Tell peer we have this piece 
+ * @return 0 on error, 1 otherwise */
 int pwp_conn_send_have(pwp_conn_t* pco, const int piece_idx);
 
+/**
+ * Send request for a block */
 void pwp_conn_send_request(pwp_conn_t* pco, const bt_block_t * request);
 
+/**
+ * Tell peer we are cancelling the request for this block */
 void pwp_conn_send_cancel(pwp_conn_t* pco, bt_block_t * cancel);
 
-int pwp_send_bitfield(
-        int npieces,
-        void* pieces_completed,
-        func_send_f send_cb,
-        void* cb_ctx,
-        void* peer_udata
-        );
-
 void pwp_conn_set_im_interested(pwp_conn_t* me_);
-
-int pwp_conn_recv_handshake(pwp_conn_t* pco, const char *info_hash);
-
-int pwp_conn_send_handshake(pwp_conn_t* pco);
 
 void pwp_conn_set_piece_info(pwp_conn_t* pco, int num_pieces, int piece_len);
 
@@ -189,20 +191,27 @@ void pwp_conn_set_state(pwp_conn_t* pco, const int state);
 
 int pwp_conn_get_state(pwp_conn_t* pco);
 
+/**
+ * Peer told us they have this piece.
+ * @return 0 on error, 1 otherwise */
 int pwp_conn_mark_peer_has_piece(pwp_conn_t* pco, const int piece_idx);
 
-int pwp_conn_process_request(pwp_conn_t* pco, bt_block_t * request);
-
-int pwp_conn_process_msg(pwp_conn_t* pco);
-
+/**
+ * @return number of requests we required from the peer */
 int pwp_conn_get_npending_requests(const pwp_conn_t* pco);
 
+/**
+ * @return number of requests we will request from the peer */
 int pwp_conn_get_npending_peer_requests(const pwp_conn_t* pco);
 
+/**
+ * pend a block request */
 void pwp_conn_request_block_from_peer(pwp_conn_t* pco, bt_block_t * blk);
 
 void pwp_conn_periodic(pwp_conn_t* pco);
 
+/** 
+ *  @return 1 if the peer has this piece; otherwise 0 */
 int pwp_conn_peer_has_piece(pwp_conn_t* pco, const int piece_idx);
 
 typedef struct {
@@ -290,24 +299,41 @@ void pwp_conn_uninterested(pwp_conn_t* pco);
 
 void pwp_conn_have(pwp_conn_t* pco, msg_have_t* have);
 
+/**
+ * Receive a bitfield */
 void pwp_conn_bitfield(pwp_conn_t* pco, msg_bitfield_t* bitfield);
 
+/**
+ * Respond to a peer's request for a block
+ * @return 0 on error, 1 otherwise */
 int pwp_conn_request(pwp_conn_t* pco, bt_block_t *request);
 
+/**
+ * Receive a cancel message. */
 void pwp_conn_cancel(pwp_conn_t* pco, bt_block_t *cancel);
 
+/**
+ * Receive a piece message
+ * @return 1 on sucess; otherwise 0 */
 int pwp_conn_piece(pwp_conn_t* pco, msg_piece_t *piece);
 
 void pwp_conn_set_cbs(pwp_conn_t* pco, pwp_conn_cbs_t* funcs, void* caller);
 
+/**
+ *
+ */
 int pwp_conn_flag_is_set(pwp_conn_t* pco, const int flag);
 
-void pwp_conn_connected(pwp_conn_t* pco);
-
+/**
+ * Tells the peerconn that the connection failed */
 void pwp_conn_connect_failed(pwp_conn_t* pco);
 
+/**
+ * @return 1 if the request is still pending; otherwise 0 */
 int pwp_conn_block_request_is_pending(void* pc, bt_block_t *b);
 
+/**
+ * Provide a block for us to request from the peer */
 void pwp_conn_offer_block(pwp_conn_t* me_, bt_block_t *b);
 
 void pwp_conn_set_progress(pwp_conn_t* me_, void* counter);
