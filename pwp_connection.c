@@ -47,6 +47,7 @@
 /*  state */
 typedef struct
 {
+    /* TODO: this should be removed */
     /* this bitfield indicates which pieces the peer has */
     bitfield_t have_bitfield;
 
@@ -758,16 +759,12 @@ void pwp_conn_have(pwp_conn_t* me_, msg_have_t* have)
 {
     pwp_conn_private_t* me = (void*)me_;
 
-//    assert(payload_len == 4);
-
     __log(me, "read,have,piece_idx=%d", have->piece_idx);
 
     if (1 == pwp_conn_mark_peer_has_piece(me_, have->piece_idx))
     {
 //      assert(pwp_conn_peer_has_piece(me, piece_idx));
     }
-
-//  bitfield_mark(&me->state.have_bitfield, piece_idx);
 
     /* tell the peer we are intested if we don't have this piece */
     if (!sc_have(me->pieces_completed, have->piece_idx, 1))
@@ -897,7 +894,6 @@ void pwp_conn_cancel(pwp_conn_t* me_, bt_block_t *cancel)
 
     removed = llqueue_remove_item_via_cmpfunction(
             me->peer_reqs, cancel, (void*)__req_cmp);
-
     free(removed);
 //  queue_remove(peer->request_queue);
 }
@@ -935,7 +931,6 @@ static void __conn_remove_pending_request(pwp_conn_private_t* me, const bt_block
 #endif
 
     hashmap_iterator_t iter;
-
     for (hashmap_iterator(me->recv_reqs, &iter);
          (r = hashmap_iterator_next_value(me->recv_reqs, &iter));)
     {
@@ -1029,7 +1024,6 @@ int pwp_conn_piece(pwp_conn_t* me_, msg_piece_t *p)
     __conn_remove_pending_request(me, &p->blk);
     me->cb.pushblock(me->cb_ctx, me->peer_udata, &p->blk, p->data);
     me->bytes_downloaded_this_period += p->blk.len;
-
     return 1;
 }
 
