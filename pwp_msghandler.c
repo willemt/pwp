@@ -264,7 +264,7 @@ int pwp_msghandler_dispatch_from_buffer(void *mh,
                 {
                     __read_uint32(&m->pce.blk.piece_idx, m, &buf, &len);
                 }
-                else if (m->bytes_read < 9 + 4)
+                else if (m->bytes_read < 1 + 4 + 4 + 4)
                 {
                     __read_uint32(&m->pce.blk.offset, m, &buf, &len);
                 }
@@ -282,13 +282,15 @@ int pwp_msghandler_dispatch_from_buffer(void *mh,
                      * just split it "virtually"? That's what we do here: */
                     m->len -= size;
                     m->pce.blk.offset += size;
+                    buf += size;
+                    len -= size;
 
                     /* if we received the whole message we're done */
                     if (9 == m->len)
+                    {
                         __endmsg(m);
+                    }
 
-                    len -= size;
-                    buf += size;
                 }
                 break;
             default:

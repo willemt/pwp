@@ -132,14 +132,14 @@ static long __req_cmp(const void *obj, const void *other)
 static void __log(pwp_conn_private_t * me, const char *format, ...)
 {
     char buffer[1000];
-
     va_list args;
 
     if (NULL == me->cb.log)
         return;
 
+    sprintf(buffer,"%lx ",(unsigned long)me);
     va_start(args, format);
-    (void)vsnprintf(buffer, 1000, format, args);
+    (void)vsnprintf(buffer+strlen(buffer), 1000, format, args);
     me->cb.log(me->cb_ctx, me->peer_udata, buffer);
 }
 
