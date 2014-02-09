@@ -52,34 +52,30 @@ downloadcontrib: chashmap cbitfield cbitstream clinkedlistqueue cmeanqueue cspar
 
 main_connection.c:
 	if test -d $(HASHMAP_DIR); then echo have; else make downloadcontrib; fi
-	sh make-tests.sh "test_connection*.c" > main_connection.c
+	sh make-tests.sh "tests/test_connection*.c" > main_connection.c
 
 main_msghandler.c:
-	sh make-tests.sh "test_msghandler.c" > main_msghandler.c
+	sh make-tests.sh "tests/test_msghandler.c" > main_msghandler.c
 
 main_handshaker.c:
-	sh make-tests.sh "test_handshaker.c" > main_handshaker.c
+	sh make-tests.sh "tests/test_handshaker.c" > main_handshaker.c
 
-tests_handler: main_msghandler.c pwp_msghandler.c test_msghandler.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c
-	$(CC) $(CCFLAGS) -o $@ $^
+tests_handler: main_msghandler.c pwp_msghandler.c tests/test_msghandler.c tests/CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c
+	$(CC) $(CCFLAGS) -I. -o $@ $^
 	./tests_handler
-	gcov main_msghandler.c test_msghandler.c pwp_msghandler.c
+	gcov main_msghandler.c tests/test_msghandler.c pwp_msghandler.c
 
-tests_handshaker: main_handshaker.c pwp_handshaker.c test_handshaker.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c 
-	$(CC) $(CCFLAGS) -o $@ $^
+tests_handshaker: main_handshaker.c pwp_handshaker.c tests/test_handshaker.c tests/CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c 
+	$(CC) $(CCFLAGS) -I. -o $@ $^
 	./tests_handshaker
-	gcov main_handshaker.c test_handshaker.c pwp_handshaker.c
+	gcov main_handshaker.c tests/test_handshaker.c pwp_handshaker.c
 
-
-tests_connection: main_connection.c pwp_connection.o pwp_msghandler.c pwp_bitfield.c pwp_util.c test_connection.c test_connection_send.c mock_caller.c mock_piece.c bt_diskmem.c CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c $(MEANQUEUE_DIR)/meanqueue.c $(SPARSECOUNTER_DIR)/sparse_counter.c 
-	$(CC) $(CCFLAGS) -o $@ $^
+tests_connection: main_connection.c pwp_connection.o pwp_msghandler.c pwp_bitfield.c pwp_util.c tests/test_connection.c tests/test_connection_send.c tests/mock_caller.c tests/mock_piece.c tests/bt_diskmem.c tests/CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c $(MEANQUEUE_DIR)/meanqueue.c $(SPARSECOUNTER_DIR)/sparse_counter.c 
+	$(CC) $(CCFLAGS) -I. -o $@ $^
 	./tests_connection
-	gcov main_connection.c test_connection.c test_connection_send.c pwp_connection.c
-
-#lfds611_queue/lfds611_queue_delete.c lfds611_queue/lfds611_queue_new.c lfds611_queue/lfds611_queue_query.c lfds611_queue/lfds611_queue_queue.c lfds611_freelist\lfds611_freelist_delete.c lfds611_freelist\lfds611_freelist_get_and_set.c lfds611_freelist\lfds611_freelist_new.c lfds611_freelist\lfds611_freelist_pop_push.c lfds611_freelist\lfds611_freelist_query.c lfds611_liblfds\lfds611_liblfds_aligned_free.c lfds611_liblfds\lfds611_liblfds_aligned_malloc.c lfds611_abstraction\lfds611_abstraction_free.c lfds611_abstraction\lfds611_abstraction_malloc.c
-
+	gcov main_connection.c tests/test_connection.c tests/test_connection_send.c pwp_connection.c
 pwp_connection.o: pwp_connection.c 
 	$(CC) $(CCFLAGS) -c -o $@ $^
 
 clean:
-	rm -f main_connection.c main_msghandler.c main_handshaker.c *.o tests $(GCOV_OUTPUT)
+	rm -f main_connection.c main_msghandler.c main_handshaker.c *.o $(GCOV_OUTPUT)
