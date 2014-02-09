@@ -40,18 +40,37 @@ typedef struct {
     };
 } msg_t;
 
-typedef struct {
+typedef struct pwp_msghandler_item_s pwp_msghandler_item_t;
+typedef struct pwp_msghandler_private_s pwp_msghandler_private_t; 
+
+struct pwp_msghandler_private_s {
     /* current message we are reading */
     msg_t msg;
 
     /* peer connection */
     void* pc;
-} bt_peer_connection_event_handler_t;
 
-static void __endmsg(msg_t* msg)
-{
-    memset(msg,0,sizeof(msg_t));
-}
+    int (*process_item)(
+        pwp_msghandler_private_t* me,
+        msg_t *m,
+        const unsigned char** buf,
+        unsigned int *len);
+
+    int nhandlers;
+
+    pwp_msghandler_item_t* handlers;
+} ;
+
+struct pwp_msghandler_item_s {
+    int (*func)(
+        pwp_msghandler_private_t* me,
+        msg_t *m,
+        const unsigned char** buf,
+        unsigned int *len);
+    void* udata;
+}; 
+
+void mh_endmsg(pwp_msghandler_private_t* me);
 
 /**
  * Flip endianess
@@ -70,7 +89,7 @@ static uint32_t fe(uint32_t i)
     return o;
 }
 
-static int __read_uint32(
+static int mh_uint32(
         uint32_t* in,
         msg_t *msg,
         const unsigned char** buf,
@@ -102,7 +121,7 @@ static int __read_uint32(
  * @param tot_bytes_read Running total of total number of bytes read
  * @param buf Read data from
  * @param len Length of stream left to read from */
-static int __read_byte(
+static int mh_byte(
         unsigned char* in,
         unsigned int *tot_bytes_read,
         const unsigned char** buf,
@@ -118,189 +137,262 @@ static int __read_byte(
     return 1;
 }
 
-void* pwp_msghandler_new(void *pc)
+int __pwp_piece_data(pwp_msghandler_private_t *me, msg_t* m,
+        const unsigned char** buf, unsigned int* len)
 {
-    bt_peer_connection_event_handler_t* me;
+    /* check it isn't bigger than what the message tells
+     * us we should be expecting */
+    int size = min(*len, m->len - 1 - 4 - 4);
 
-    me = calloc(1,sizeof(bt_peer_connection_event_handler_t));
-    me->pc = pc;
-    return me;
+    m->pce.data = *buf;
+    m->pce.blk.len = size;
+    pwp_conn_piece(me->pc, &m->pce);
+
+    /* If we haven't received the full piece, why don't we
+     * just split it "virtually"? That's what we do here: */
+    m->len -= size;
+    m->pce.blk.offset += size;
+    *buf += size;
+    *len -= size;
+
+    /* if we received the whole message we're done */
+    if (9 == m->len)
+    {
+        mh_endmsg(me);
+    }
+
+    return 1;
 }
 
-void pwp_msghandler_release(void *pc)
+int __pwp_piece_offset(pwp_msghandler_private_t *me, msg_t* m,
+        const unsigned char** buf, unsigned int *len)
 {
-    free(pc);
+    if (1 == mh_uint32(&m->pce.blk.offset, m, buf, len))
+        me->process_item = __pwp_piece_data;
+    return 1;
+}
+
+int __pwp_piece_pieceidx(pwp_msghandler_private_t *me, msg_t* m,
+        const unsigned char** buf, unsigned int *len)
+{
+    if (1 == mh_uint32(&m->pce.blk.piece_idx, m, buf, len))
+        me->process_item = __pwp_piece_offset;
+    return 1;
+}
+
+int __pwp_request_len(pwp_msghandler_private_t *me, msg_t* m,
+        const unsigned char** buf, unsigned int* len)
+{
+    if (1 == mh_uint32(&m->blk.len, m, buf, len))
+    {
+        pwp_conn_request(me->pc, &m->blk);
+        mh_endmsg(me);
+    }
+    return 1;
+}
+
+int __pwp_request_offset(pwp_msghandler_private_t *me, msg_t* m,
+        const unsigned char** buf, unsigned int *len)
+{
+    if (1 == mh_uint32(&m->blk.offset, m, buf, len))
+        me->process_item = __pwp_request_len;
+    return 1;
+}
+
+int __pwp_request_pieceidx(pwp_msghandler_private_t *me, msg_t* m,
+        const unsigned char** buf, unsigned int *len)
+{
+    if (1 == mh_uint32(&m->blk.piece_idx, m, buf, len))
+        me->process_item = __pwp_request_offset;
+    return 1;
+}
+
+int __pwp_cancel_len(pwp_msghandler_private_t *me, msg_t* m,
+        const unsigned char** buf, unsigned int* len)
+{
+    if (1 == mh_uint32(&m->blk.len, m, buf, len))
+    {
+        pwp_conn_cancel(me->pc, &m->blk);
+        mh_endmsg(me);
+    }
+    return 1;
+}
+
+int __pwp_cancel_offset(pwp_msghandler_private_t *me, msg_t* m,
+        const unsigned char** buf, unsigned int *len)
+{
+    if (1 == mh_uint32(&m->blk.offset, m, buf, len))
+        me->process_item = __pwp_cancel_len;
+    return 1;
+}
+
+int __pwp_cancel_pieceidx(pwp_msghandler_private_t *me, msg_t* m,
+        const unsigned char** buf, unsigned int *len)
+{
+    if (1 == mh_uint32(&m->blk.piece_idx, m, buf, len))
+        me->process_item = __pwp_cancel_offset;
+    return 1;
+}
+
+int __pwp_have(pwp_msghandler_private_t *me, msg_t* m,
+        const unsigned char** buf, unsigned int *len)
+{
+    if (1 == mh_uint32(&m->hve.piece_idx, m, buf, len))
+    {
+        pwp_conn_have(me->pc, &m->hve);
+        mh_endmsg(me);
+    }
+
+    return 1;
+}
+
+int __pwp_bitfield(pwp_msghandler_private_t *me, msg_t* m,
+        const unsigned char** buf, unsigned int *len)
+{
+    unsigned char val = 0;
+    unsigned int ii;
+
+    if (1 + 4 == m->bytes_read)
+    {
+        bitfield_init(&m->bf.bf, (m->len - 1) * 8);
+    }
+
+    assert(m->bf.bf.bits);
+
+    /* read and mark bits from byte */
+    mh_byte(&val, &m->bytes_read, buf, len);
+    for (ii=0; ii<8; ii++)
+    {
+        if (0x1 == ((unsigned char)(val << ii) >> 7))
+        {
+            bitfield_mark(&m->bf.bf, (m->bytes_read - 5 - 1) * 8 + ii);
+        }
+    }
+
+    /* done reading bitfield */
+    if (4 + m->len == m->bytes_read)
+    {
+        pwp_conn_bitfield(me->pc, &m->bf);
+        bitfield_release(&m->bf.bf);
+        mh_endmsg(me);
+    }
+
+    return 1;
+}
+
+int __pwp_type(pwp_msghandler_private_t *me, msg_t* m,
+        const unsigned char** buf,
+        unsigned int *len)
+{
+    assert(4 == m->bytes_read);
+
+    mh_byte(&m->id, &m->bytes_read, buf, len);
+
+    /* payloadless messages */
+    if (m->len == 1)
+    {
+        switch (m->id)
+        {
+        case PWP_MSGTYPE_CHOKE:
+            pwp_conn_choke(me->pc);
+            break;
+        case PWP_MSGTYPE_UNCHOKE:
+            pwp_conn_unchoke(me->pc);
+            break;
+        case PWP_MSGTYPE_INTERESTED:
+            pwp_conn_interested(me->pc);
+            break;
+        case PWP_MSGTYPE_UNINTERESTED:
+            pwp_conn_uninterested(me->pc);
+            break;
+        default: assert(0); break;
+        }
+        mh_endmsg(me);
+    }
+    else
+    {
+        if (me->nhandlers < m->id) 
+        {
+            printf("ERROR: bad pwp msg type: '%d'\n", m->id);
+            mh_endmsg(me);
+            return 0;
+        }
+        me->process_item = me->handlers[m->id].func;
+    }
+
+    return 1;
+}
+
+int __pwp_length(pwp_msghandler_private_t *me, msg_t* m,
+        const unsigned char** buf,
+        unsigned int *len)
+{
+    assert(m->bytes_read < 4);
+
+    if (1 == mh_uint32(&m->len, m, buf, len))
+    {
+        if (0 == m->len)
+        {
+            pwp_conn_keepalive(me->pc);
+            mh_endmsg(me);
+        }
+        else
+        {
+            me->process_item = __pwp_type;
+        }
+    }
+
+    return 1;
 }
 
 int pwp_msghandler_dispatch_from_buffer(void *mh,
         const unsigned char* buf,
         unsigned int len)
 {
-    bt_peer_connection_event_handler_t* me = mh;
+    pwp_msghandler_private_t* me = mh;
     msg_t* m = &me->msg;
 
     /* while we have a stream left to read... */
     while (0 < len)
     {
-        /* read at least an int */
-        if (m->bytes_read < 4)
+        switch(me->process_item(me,m,&buf,&len))
         {
-            /* read length of message */
-            if (1 == __read_uint32(&m->len, m, &buf, &len))
-            {
-                /* it was a keep alive message */
-                if (0 == m->len)
-                {
-                    pwp_conn_keepalive(me->pc);
-                    __endmsg(m);
-                }
-            }
-        }
-        /* get message ID */
-        else if (4 == m->bytes_read)
-        {
-            __read_byte(&m->id, &m->bytes_read, &buf, &len);
-
-            /* payloadless messages */
-            if (m->len != 1) continue;
-
-            switch (m->id)
-            {
-            case PWP_MSGTYPE_CHOKE:
-                pwp_conn_choke(me->pc);
-                break;
-            case PWP_MSGTYPE_UNCHOKE:
-                pwp_conn_unchoke(me->pc);
-                break;
-            case PWP_MSGTYPE_INTERESTED:
-                pwp_conn_interested(me->pc);
-                break;
-            case PWP_MSGTYPE_UNINTERESTED:
-                pwp_conn_uninterested(me->pc);
-                break;
-            default: assert(0); break;
-            }
-            __endmsg(m);
-        }
-        /* messages with a payload: */
-        else 
-        {
-            switch (m->id)
-            {
-            case PWP_MSGTYPE_HAVE:
-                if (1 == __read_uint32(&m->hve.piece_idx, m, &buf, &len))
-                {
-                    pwp_conn_have(me->pc, &m->hve);
-                    __endmsg(m);
-                    continue;
-                }
-
-                break;
-            case PWP_MSGTYPE_BITFIELD:
-                {
-                    unsigned char val = 0;
-                    unsigned int ii;
-
-                    if (1 + 4 == m->bytes_read)
-                    {
-                        bitfield_init(&m->bf.bf, (m->len - 1) * 8);
-                    }
-
-                    assert(m->bf.bf.bits);
-
-                    /* read and mark bits from byte */
-                    __read_byte(&val, &m->bytes_read, &buf, &len);
-                    for (ii=0; ii<8; ii++)
-                    {
-                        if (0x1 == ((unsigned char)(val << ii) >> 7))
-                        {
-                            bitfield_mark(&m->bf.bf,
-                                    (m->bytes_read - 5 - 1) * 8 + ii);
-                        }
-                    }
-
-                    /* done reading bitfield */
-                    if (4 + m->len == m->bytes_read)
-                    {
-                        pwp_conn_bitfield(me->pc, &m->bf);
-                        bitfield_release(&m->bf.bf);
-                        __endmsg(m);
-                    }
-                }
-                break;
-            case PWP_MSGTYPE_REQUEST:
-                if (m->bytes_read < 1 + 4 + 4)
-                {
-                    __read_uint32(&m->blk.piece_idx, m, &buf, &len);
-                }
-                else if (m->bytes_read < 1 + 4 + 4 + 4)
-                {
-                    __read_uint32(&m->blk.offset, m, &buf, &len);
-                }
-                else if (1 == __read_uint32(&m->blk.len, m, &buf, &len))
-                {
-                    pwp_conn_request(me->pc, &m->blk);
-                    __endmsg(m);
-                }
-
-                break;
-            case PWP_MSGTYPE_CANCEL:
-                if (m->bytes_read < 1 + 4 + 4)
-                {
-                    __read_uint32(&m->blk.piece_idx, m, &buf, &len);
-                }
-                else if (m->bytes_read < 1 + 4 + 4 + 4)
-                {
-                    __read_uint32(&m->blk.offset, m, &buf, &len);
-                }
-                else if (1 == __read_uint32(&m->blk.len, m, &buf, &len))
-                {
-                    pwp_conn_cancel(me->pc, &m->blk);
-                    __endmsg(m);
-                }
-                break;
-            case PWP_MSGTYPE_PIECE:
-                if (m->bytes_read < 1 + 4 + 4)
-                {
-                    __read_uint32(&m->pce.blk.piece_idx, m, &buf, &len);
-                }
-                else if (m->bytes_read < 1 + 4 + 4 + 4)
-                {
-                    __read_uint32(&m->pce.blk.offset, m, &buf, &len);
-                }
-                else
-                {
-                    /* check it isn't bigger than what the message tells
-                     * us we should be expecting */
-                    int size = min(len, m->len - 1 - 4 - 4);
-
-                    m->pce.data = buf;
-                    m->pce.blk.len = size;
-                    pwp_conn_piece(me->pc, &m->pce);
-
-                    /* If we haven't received the full piece, why don't we
-                     * just split it "virtually"? That's what we do here: */
-                    m->len -= size;
-                    m->pce.blk.offset += size;
-                    buf += size;
-                    len -= size;
-
-                    /* if we received the whole message we're done */
-                    if (9 == m->len)
-                    {
-                        __endmsg(m);
-                    }
-
-                }
-                break;
-            default:
-                printf("ERROR: bad pwp msg type: '%d'\n", m->id);
+            case 0:
                 return 0;
+            default:
                 break;
-            }
         }
     }
 
     return 1;
+}
+
+void mh_endmsg(pwp_msghandler_private_t* me)
+{
+    me->process_item = __pwp_length;
+    memset(&me->msg,0,sizeof(msg_t));
+}
+
+void* pwp_msghandler_new(void *pc)
+{
+    pwp_msghandler_private_t* me;
+
+    me = calloc(1,sizeof(pwp_msghandler_private_t));
+    me->pc = pc;
+    me->process_item = __pwp_length;
+    me->handlers =
+        calloc(1, sizeof(pwp_msghandler_item_t) * (PWP_MSGTYPE_CANCEL + 1));
+    me->handlers[PWP_MSGTYPE_HAVE].func = __pwp_have;
+    me->handlers[PWP_MSGTYPE_BITFIELD].func = __pwp_bitfield;
+    me->handlers[PWP_MSGTYPE_REQUEST].func = __pwp_request_pieceidx;
+    me->handlers[PWP_MSGTYPE_PIECE].func = __pwp_piece_pieceidx;
+    me->handlers[PWP_MSGTYPE_CANCEL].func = __pwp_cancel_pieceidx;
+    me->nhandlers = PWP_MSGTYPE_CANCEL + 1;
+    return me;
+}
+
+void pwp_msghandler_release(void *pc)
+{
+    free(pc);
 }
 
