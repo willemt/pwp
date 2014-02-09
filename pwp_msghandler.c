@@ -327,7 +327,11 @@ void mh_endmsg(pwp_msghandler_private_t* me)
     memset(&me->msg,0,sizeof(msg_t));
 }
 
-void* pwp_msghandler_new(void *pc)
+void* pwp_msghandler_new(
+        void *pc,
+        pwp_msghandler_item_t* handlers,
+        int nhandlers,
+        unsigned int max_workload_bytes)
 {
     pwp_msghandler_private_t* me;
 

@@ -1,7 +1,22 @@
 
+
+typedef struct {
+    int (*func)(
+        void* mh,
+        void *message,
+        void* udata,
+        const unsigned char** buf,
+        unsigned int *len);
+    void* udata;
+} pwp_msghandler_item_t; 
+
 /**
  * @return new msg handler */
-void* pwp_msghandler_new(void *mh);
+void* pwp_msghandler_new(
+        void *pc,
+        pwp_msghandler_item_t* handlers,
+        int nhandlers,
+        unsigned int max_workload_bytes);
 
 /**
  * Release memory used by message handler */
