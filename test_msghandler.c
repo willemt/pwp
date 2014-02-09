@@ -122,7 +122,7 @@ void TestPWP_keepalive(
 
     /* keepalive */
     ptr = data;
-    mh = pwp_msghandler_new(&pc,NULL,0,0);
+    mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(0));
     pwp_msghandler_dispatch_from_buffer(mh, data, 4);
     CuAssertTrue(tc, -1 == pc.mtype);
@@ -140,7 +140,7 @@ void TestPWP_choke(
 
     /* choke */
     ptr = data;
-    mh = pwp_msghandler_new(&pc,NULL,0,0);
+    mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(1));
     bitstream_write_ubyte(&ptr,PWP_MSGTYPE_CHOKE);
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1);
@@ -159,7 +159,7 @@ void TestPWP_unchoke(
 
     /* unchoke */
     ptr = data;
-    mh = pwp_msghandler_new(&pc,NULL,0,0);
+    mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(1));
     bitstream_write_ubyte(&ptr,PWP_MSGTYPE_UNCHOKE);
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1);
@@ -178,7 +178,7 @@ void TestPWP_interested(
 
     /* interested */
     ptr = data;
-    mh = pwp_msghandler_new(&pc,NULL,0,0);
+    mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(1));
     bitstream_write_ubyte(&ptr,PWP_MSGTYPE_INTERESTED);
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1);
@@ -197,7 +197,7 @@ void TestPWP_uninterested(
 
     /* uninterested */
     ptr = data;
-    mh = pwp_msghandler_new(&pc,NULL,0,0);
+    mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(1));
     bitstream_write_ubyte(&ptr,PWP_MSGTYPE_UNINTERESTED);
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1);
@@ -216,7 +216,7 @@ void TestPWP_have(
 
     /* have */
     ptr = data;
-    mh = pwp_msghandler_new(&pc,NULL,0,0);
+    mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(5));
     bitstream_write_ubyte(&ptr,PWP_MSGTYPE_HAVE);
     bitstream_write_uint32(&ptr, fe(999));
@@ -237,7 +237,7 @@ void TestPWP_request(
 
     /* request */
     ptr = data;
-    mh = pwp_msghandler_new(&pc,NULL,0,0);
+    mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(13));
     bitstream_write_ubyte(&ptr,PWP_MSGTYPE_REQUEST);
     bitstream_write_uint32(&ptr, fe(123));
@@ -262,7 +262,7 @@ void TestPWP_cancel(
 
     /* cancel */
     ptr = data;
-    mh = pwp_msghandler_new(&pc,NULL,0,0);
+    mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(13));
     bitstream_write_ubyte(&ptr,PWP_MSGTYPE_CANCEL);
     bitstream_write_uint32(&ptr, fe(123));
@@ -287,7 +287,7 @@ void TestPWP_bitfield(
 
     /* bitfield */
     ptr = data;
-    mh = pwp_msghandler_new(&pc,NULL,0,0);
+    mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(2));
     bitstream_write_ubyte(&ptr,PWP_MSGTYPE_BITFIELD);
     bitstream_write_ubyte(&ptr,0x4e);
@@ -310,7 +310,7 @@ void TestPWP_piece(
 
     /* piece */
     ptr = data;
-    mh = pwp_msghandler_new(&pc,NULL,0,0);
+    mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(9 + 10));
     bitstream_write_ubyte(&ptr,PWP_MSGTYPE_PIECE);
     bitstream_write_uint32(&ptr, fe(1));
@@ -345,7 +345,7 @@ void TestPWP_piece_halfread(
 
     /* piece */
     ptr = data;
-    mh = pwp_msghandler_new(&pc,NULL,0,0);
+    mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(9 + 10));
     bitstream_write_ubyte(&ptr,PWP_MSGTYPE_PIECE);
     bitstream_write_uint32(&ptr, fe(1));
@@ -390,7 +390,7 @@ void TestPWP_two_pieces(
 
     /* piece */
     ptr = data;
-    mh = pwp_msghandler_new(&pc,NULL,0,0);
+    mh = pwp_msghandler_new(&pc);
     /* piece 1 */
     bitstream_write_uint32(&ptr, fe(9 + 10));
     bitstream_write_ubyte(&ptr,PWP_MSGTYPE_PIECE);

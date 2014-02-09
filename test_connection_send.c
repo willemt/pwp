@@ -66,7 +66,7 @@ void T_estPWP_send_request_spawns_wellformed_piece_response(
 
     /* setup */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc,
                           PC_CONNECTED | PC_HANDSHAKE_SENT |
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
@@ -386,7 +386,7 @@ void TestPWP_read_havemsg_marks_peer_as_having_piece(
 
     /*  peer connection */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
@@ -422,7 +422,7 @@ void TestPWP_read_havemsg_disconnects_with_piece_idx_out_of_bounds(
 
     /*  peer connection */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
@@ -462,7 +462,7 @@ void TestPWP_send_interested_if_lacking_piece_from_have_msg(
 
     /*  peer connection */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
@@ -497,7 +497,7 @@ void TestPWP_read_chokemsg_marks_us_as_choked(
 
     /*  peer connection */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
@@ -526,7 +526,7 @@ void TestPWP_read_chokemsg_empties_our_pending_requests(
 
     /*  peer connection */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
@@ -564,7 +564,7 @@ void TestPWP_read_unchokemsg_marks_us_as_unchoked(
 
     /* setup */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
@@ -609,7 +609,7 @@ void TestPWP_read_request_msg_disconnects_if_peer_is_choked(
 //    bitstream_write_ubyte(&ptr, 0);
 
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV | PC_IM_CHOKING);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
@@ -640,7 +640,7 @@ void TestPWP_read_peerisinterested_marks_peer_as_interested(
 
     /*  peer connection */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
@@ -671,7 +671,7 @@ void TestPWP_read_peerisuninterested_marks_peer_as_uninterested(
 
     /*  peer connection */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
@@ -714,7 +714,7 @@ void TestPWP_read_bitfield_marks_peers_pieces_as_haved_by_peer(
 
     /* setup */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
@@ -753,7 +753,7 @@ void TestPWP_read_disconnect_if_bitfield_received_more_than_once(
 
     /* setup */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc,
                           PC_CONNECTED | PC_HANDSHAKE_SENT |
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
@@ -784,7 +784,7 @@ void T_estPWP_read_bitfield_greaterthan_npieces_results_in_disconnect(
 
     /* setup */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
@@ -822,7 +822,7 @@ void T_estPWP_readBitfieldLessThanNPieces(
     bitstream_write_ubyte(&ptr, 0x00);     // 00000000
 
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
@@ -866,7 +866,7 @@ void TestPWP_read_request_of_piece_not_completed_disconnects_peer(
 
     /* recv */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc,
                           PC_CONNECTED | PC_HANDSHAKE_SENT |
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
@@ -907,7 +907,7 @@ void TestPWP_read_request_with_invalid_piece_idx_disconnects_peer(
 
     /* setup */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc,
                           PC_CONNECTED | PC_HANDSHAKE_SENT |
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
@@ -951,7 +951,7 @@ void TestPWP_read_request_with_invalid_block_length_disconnects_peer(
 
     /* setup */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc,
                           PC_CONNECTED | PC_HANDSHAKE_SENT |
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
@@ -988,7 +988,7 @@ void TestPWP_read_request_of_piece_which_client_has_results_in_disconnect(
 
     /*  peer connection */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
@@ -1044,7 +1044,7 @@ void TxestPWP_read_piece_results_in_disconnect_if_we_havent_requested_this_piece
 
     /* setup */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
@@ -1081,7 +1081,7 @@ void TestPWP_read_piece_results_in_correct_receivable(
 
     /* setup */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc,
                           PC_CONNECTED | PC_HANDSHAKE_SENT |
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
@@ -1226,7 +1226,7 @@ void TestPWP_read_piece_decreases_pending_requests(
 
     /*  peer connection */
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
@@ -1450,7 +1450,7 @@ void TestPWP_read_cancelmsg_cancels_last_request(
     /* setup */
     __sender_set(&sender,r_msg,s_msg);
     pc = pwp_conn_new();
-    mh = pwp_msghandler_new(pc,NULL,0,0);
+    mh = pwp_msghandler_new(pc);
     pwp_conn_set_state(pc,
                           PC_CONNECTED | PC_HANDSHAKE_SENT |
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);

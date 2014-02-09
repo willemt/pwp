@@ -25,7 +25,6 @@
 #include "pwp_msghandler.h"
 #include "pwp_msghandler_private.h"
 
-
 /**
  * Flip endianess **/
 static uint32_t fe(uint32_t i)
@@ -327,7 +326,7 @@ void mh_endmsg(pwp_msghandler_private_t* me)
     memset(&me->msg,0,sizeof(msg_t));
 }
 
-void* pwp_msghandler_new(
+void* pwp_msghandler_new2(
         void *pc,
         pwp_msghandler_item_t* handlers,
         int nhandlers,
@@ -338,15 +337,34 @@ void* pwp_msghandler_new(
     me = calloc(1,sizeof(pwp_msghandler_private_t));
     me->pc = pc;
     me->process_item = __pwp_length;
-    me->handlers =
-        calloc(1, sizeof(pwp_msghandler_item_t) * (PWP_MSGTYPE_CANCEL + 1));
+
+    int i, size = PWP_MSGTYPE_CANCEL + 1;
+
+    if (handlers)
+        size += nhandlers;
+
+    me->nhandlers = size;
+    me->handlers = calloc(1, sizeof(pwp_msghandler_item_t) * size);
+
+    /* add standard handlers */
     me->handlers[PWP_MSGTYPE_HAVE].func = __pwp_have;
     me->handlers[PWP_MSGTYPE_BITFIELD].func = __pwp_bitfield;
     me->handlers[PWP_MSGTYPE_REQUEST].func = __pwp_request_pieceidx;
     me->handlers[PWP_MSGTYPE_PIECE].func = __pwp_piece_pieceidx;
     me->handlers[PWP_MSGTYPE_CANCEL].func = __pwp_cancel_pieceidx;
-    me->nhandlers = PWP_MSGTYPE_CANCEL + 1;
+
+    /* add custom handlers */
+    for (i=PWP_MSGTYPE_CANCEL + 1; handlers && i<size;i++)
+    {
+        me->handlers[i].func = ((msghandler_item_t*)handlers)[i].func;
+        me->handlers[i].udata = ((msghandler_item_t*)handlers)[i].udata;
+    }
     return me;
+}
+
+void* pwp_msghandler_new(void *pc)
+{
+    return pwp_msghandler_new2(pc,NULL,0,0);
 }
 
 void pwp_msghandler_release(void *pc)

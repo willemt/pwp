@@ -12,11 +12,15 @@ typedef struct {
 
 /**
  * @return new msg handler */
-void* pwp_msghandler_new(
+void* pwp_msghandler_new2(
         void *pc,
         pwp_msghandler_item_t* handlers,
         int nhandlers,
         unsigned int max_workload_bytes);
+
+/**
+ * @return new msg handler */
+void* pwp_msghandler_new(void* pc);
 
 /**
  * Release memory used by message handler */
