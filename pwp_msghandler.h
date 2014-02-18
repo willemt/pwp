@@ -14,7 +14,7 @@ typedef struct {
  * @return new msg handler */
 void* pwp_msghandler_new2(
         void *pc,
-        pwp_msghandler_item_t* handlers,
+        pwp_msghandler_item_t* custom_handlers,
         int nhandlers,
         unsigned int max_workload_bytes);
 

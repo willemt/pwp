@@ -142,8 +142,6 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char** buf, un
         if (me->curr_value == NULL)
         {
             hs->pn_len = __readbyte(&me->bytes_read, buf, len);
-
-            /* invalid length */
             if (0 == hs->pn_len)
             {
                 printf("ERROR: invalid length\n");
@@ -240,8 +238,8 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char** buf, un
         }
     /* Peer ID:
     The last 20 bytes of the handshake are to be interpreted as the
-    self-designated name of the peer. The local peer must use this name to id
-    entify the connection hereafter. Thus, if this name matches the local
+    self-designated name of the peer. The local peer must use this name to
+    identify the connection hereafter. Thus, if this name matches the local
     peers own ID name, the connection MUST be dropped. Also, if any other
     peer has already identified itself to the local peer using that same peer
     ID, the connection MUST be dropped. */

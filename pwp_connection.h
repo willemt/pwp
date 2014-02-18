@@ -127,7 +127,10 @@ typedef enum
     PWP_MSGTYPE_CANCEL = 8,
 } pwp_msg_type_e;
 
-void *pwp_conn_new();
+/**
+ * Create a new connection
+ * @param if non-null, use this as memory for the connection */
+void *pwp_conn_new(void* mem);
 
 void pwp_conn_release(pwp_conn_t* pco);
 

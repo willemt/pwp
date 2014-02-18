@@ -28,7 +28,10 @@
 #include "linked_list_queue.h"
 #include "sparse_counter.h"
 #include "bitstream.h"
+
+/* for upload/download rate identification */
 #include "meanqueue.h"
+
 #include "pwp_connection_private.h"
 
 #define TRUE 1
@@ -48,19 +51,16 @@
 static unsigned long __req_hash(const void *obj)
 {
     const bt_block_t *req = obj;
-
     return req->piece_idx + req->len + req->offset;
 }
 
 static long __req_cmp(const void *obj, const void *other)
 {
     const bt_block_t *req1 = obj, *req2 = other;
-
     if (req1->piece_idx == req2->piece_idx &&
         req1->len == req2->len &&
         req1->offset == req2->offset)
         return 0;
-
     return 1;
 }
 
@@ -126,11 +126,15 @@ void pwp_conn_set_progress(pwp_conn_t* me_, void* counter)
     me->pieces_completed = counter;
 }
 
-void *pwp_conn_new()
+void *pwp_conn_new(void* mem)
 {
     pwp_conn_private_t *me;
 
-    if(!(me = calloc(1, sizeof(pwp_conn_private_t))))
+    if (mem)
+    {
+        me = mem;
+    }
+    else if(!(me = calloc(1, sizeof(pwp_conn_private_t))))
     {
         perror("out of memory");
         exit(0);
@@ -250,7 +254,6 @@ void pwp_conn_set_piece_info(pwp_conn_t* me_, int num_pieces, int piece_len)
 void pwp_conn_set_cbs(pwp_conn_t* me_, pwp_conn_cbs_t* funcs, void* cb_ctx)
 {
     pwp_conn_private_t *me = (void*)me_;
-
     memcpy(&me->cb, funcs, sizeof(pwp_conn_cbs_t));
     me->cb_ctx = cb_ctx;
 }
@@ -258,35 +261,30 @@ void pwp_conn_set_cbs(pwp_conn_t* me_, pwp_conn_cbs_t* funcs, void* cb_ctx)
 int pwp_conn_peer_is_interested(pwp_conn_t* me_)
 {
     pwp_conn_private_t *me = (void*)me_;
-
     return 0 != (me->state.flags & PC_PEER_INTERESTED);
 }
 
 int pwp_conn_im_choking(pwp_conn_t* me_)
 {
     pwp_conn_private_t *me = (void*)me_;
-
     return 0 != (me->state.flags & PC_IM_CHOKING);
 }
 
 int pwp_conn_flag_is_set(pwp_conn_t* me_, const int flag)
 {
     pwp_conn_private_t *me = (void*)me_;
-
     return 0 != (me->state.flags & flag);
 }
 
 int pwp_conn_im_choked(pwp_conn_t* me_)
 {
     pwp_conn_private_t *me = (void*)me_;
-
     return 0 != (me->state.flags & PC_PEER_CHOKING);
 }
 
 int pwp_conn_im_interested(pwp_conn_t* me_)
 {
     pwp_conn_private_t *me = (void*)me_;
-
     return 0 != (me->state.flags & PC_IM_INTERESTED);
 }
 

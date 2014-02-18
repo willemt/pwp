@@ -22,7 +22,7 @@ void TestPWP_init_has_us_choked(
 {
     void *pc;
 
-    pc = pwp_conn_new();
+    pc = pwp_conn_new(NULL);
     CuAssertTrue(tc, 1 == pwp_conn_im_choked(pc));
 }
 
@@ -32,7 +32,7 @@ void TestPWP_init_not_interested(
 {
     void *pc;
 
-    pc = pwp_conn_new();
+    pc = pwp_conn_new(NULL);
     CuAssertTrue(tc, 0 == pwp_conn_im_interested(pc));
 }
 
@@ -45,7 +45,7 @@ void TestPWP_choke_sets_as_choked(
 {
     void *pc;
 
-    pc = pwp_conn_new();
+    pc = pwp_conn_new(NULL);
     pwp_conn_choke_peer(pc);
     CuAssertTrue(tc, pwp_conn_im_choking(pc));
     pwp_conn_release(pc);
@@ -57,7 +57,7 @@ void TestPWP_unchoke_sets_as_unchoked(
 {
     void *pc;
 
-    pc = pwp_conn_new();
+    pc = pwp_conn_new(NULL);
     pwp_conn_choke_peer(pc);
     pwp_conn_unchoke_peer(pc);
     CuAssertTrue(tc, !pwp_conn_im_choking(pc));
@@ -70,7 +70,7 @@ void TestPWP_unchoke_setget_flag(
 {
     void *pc;
 
-    pc = pwp_conn_new();
+    pc = pwp_conn_new(NULL);
     pwp_conn_set_state(pc, PC_IM_CHOKING | PC_HANDSHAKE_RECEIVED);
     CuAssertTrue(tc, pwp_conn_flag_is_set(pc, PC_IM_CHOKING));
     pwp_conn_release(pc);
