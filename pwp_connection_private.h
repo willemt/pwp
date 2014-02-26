@@ -1,3 +1,5 @@
+#ifndef PWP_CONNECTION_PRIVATE_H
+#define PWP_CONNECTION_PRIVATE_H
 
 /*  state */
 typedef struct
@@ -65,3 +67,4 @@ typedef struct
 
 } pwp_conn_private_t;
 
+#endif /* PWP_CONNECTION_PRIVATE_H */

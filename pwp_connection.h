@@ -99,7 +99,7 @@ typedef int (
 );
 #endif
 
-#define PC_NONE ((unsigned int)0)
+//#define PC_NONE ((unsigned int)0)
 #define PC_HANDSHAKE_SENT ((unsigned int)1<<0)
 #define PC_HANDSHAKE_RECEIVED ((unsigned int)1<<1)
 #define PC_DISCONNECTED ((unsigned int)1<<2)
