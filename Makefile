@@ -10,7 +10,11 @@ GCOV_OUTPUT = *.gcda *.gcno *.gcov
 GCOV_CCFLAGS = -fprofile-arcs -ftest-coverage
 SHELL  = /bin/bash
 CC     = gcc
-CCFLAGS = -g -O2 -Wall -Werror -Werror=return-type -Werror=uninitialized -Wcast-align -fno-omit-frame-pointer -fno-common -fsigned-char $(GCOV_CCFLAGS) -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR) -I$(LLQUEUE_DIR) -I$(MEANQUEUE_DIR) -I$(SPARSECOUNTER_DIR)
+CCFLAGS = -g -O2 -Wall -Werror -Werror=return-type -Werror=uninitialized \
+	  -Wcast-align -fno-omit-frame-pointer -fno-common -fsigned-char \
+	  $(GCOV_CCFLAGS) -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR) \
+	  -I$(LLQUEUE_DIR) -I$(MEANQUEUE_DIR) -I$(SPARSECOUNTER_DIR) \
+	  -std=c99
 
 all: tests_connection tests_handler tests_handshaker
 

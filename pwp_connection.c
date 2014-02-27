@@ -75,6 +75,9 @@ static void __log(pwp_conn_private_t * me, const char *format, ...)
     sprintf(buffer,"%lx ",(unsigned long)me);
     va_start(args, format);
     (void)vsnprintf(buffer+strlen(buffer), 1000, format, args);
+#if 0 /* debugging */
+    printf("%s\n", buffer);
+#endif
     me->cb.log(me->cb_ctx, me->peer_udata, buffer);
 }
 
@@ -86,6 +89,9 @@ static void __disconnect(pwp_conn_private_t * me, const char *reason, ...)
 
     va_start(args, reason);
     (void)vsnprintf(buffer, 128, reason, args);
+#if 0 /* debugging */
+    printf("%s\n", buffer);
+#endif
     if (me->cb.disconnect)
        (void)me->cb.disconnect(me->cb_ctx, me->peer_udata, buffer);
 }
@@ -108,21 +114,18 @@ static int __send_to_peer(pwp_conn_private_t * me, void *data, const int len)
 void *pwp_conn_get_peer(pwp_conn_t* me_)
 {
     pwp_conn_private_t *me = (void*)me_;
-
     return me->peer_udata;
 }
 
 void pwp_conn_set_peer(pwp_conn_t* me_, void * peer)
 {
     pwp_conn_private_t *me = (void*)me_;
-
     me->peer_udata = peer;
 }
 
 void pwp_conn_set_progress(pwp_conn_t* me_, void* counter)
 {
     pwp_conn_private_t *me = (void*)me_;
-
     me->pieces_completed = counter;
 }
 
@@ -147,6 +150,7 @@ void *pwp_conn_new(void* mem)
     me->reqs = llqueue_new();
     me->req_lock = NULL;
     me->state.flags = PC_IM_CHOKING | PC_PEER_CHOKING;
+    me->pieces_peerhas = sc_init(0);
     return me;
 }
 
@@ -247,7 +251,7 @@ void pwp_conn_set_piece_info(pwp_conn_t* me_, int num_pieces, int piece_len)
     pwp_conn_private_t *me = (void*)me_;
 
     me->num_pieces = num_pieces;
-    bitfield_init(&me->state.have_bitfield, me->num_pieces);
+    //bitfield_init(&me->state.have_bitfield, me->num_pieces);
     me->piece_len = piece_len;
 }
 
@@ -440,32 +444,28 @@ void pwp_conn_send_cancel(pwp_conn_t* me_, bt_block_t * cancel)
 void pwp_conn_set_state(pwp_conn_t* me_, const int state)
 {
     pwp_conn_private_t *me = (void*)me_;
-
     me->state.flags = state;
 }
 
 int pwp_conn_get_state(pwp_conn_t* me_)
 {
     pwp_conn_private_t *me = (void*)me_;
-
     return me->state.flags;
 }
 
 int pwp_conn_mark_peer_has_piece(pwp_conn_t* me_, const int piece_idx)
 {
     pwp_conn_private_t *me = (void*)me_;
-    int bf_len;
 
-    /* make sure piece is within bitfield length */
-    bf_len = bitfield_get_length(&me->state.have_bitfield);
-    if (bf_len <= piece_idx || piece_idx < 0)
+    if (me->num_pieces <= piece_idx || piece_idx < 0)
     {
         __disconnect(me, "piece idx fits outside of boundary");
         return 0;
     }
 
     /* remember that they have this piece */
-    bitfield_mark(&me->state.have_bitfield, piece_idx);
+//    bitfield_mark(&me->state.have_bitfield, piece_idx);
+    sc_mark_complete(me->pieces_peerhas, piece_idx, 1);
     if (me->cb.peer_have_piece)
         me->cb.peer_have_piece(me->cb_ctx, me->peer_udata, piece_idx);
 
@@ -599,12 +599,12 @@ void pwp_conn_periodic(pwp_conn_t* me_)
             goto cleanup;
         }
 
-        int ii, end;
+        int end;
         
         // TODO: turn 10 into configuration value
         /*  max out pipeline */
         end = 10 - pwp_conn_get_npending_requests(me_);
-        for (ii = 0; ii < end; ii++)
+        for (int ii = 0; ii < end; ii++)
         {
             if (0 == me->cb.pollblock(me->cb_ctx, me->peer_udata))
             {
@@ -646,13 +646,13 @@ cleanup:
 int pwp_conn_peer_has_piece(pwp_conn_t* me_, const int piece_idx)
 {
     pwp_conn_private_t *me = (void*)me_;
-
-    return bitfield_is_marked(&me->state.have_bitfield, piece_idx);
+    //return bitfield_is_marked(&me->state.have_bitfield, piece_idx);
+    return sc_have(me->pieces_peerhas, piece_idx, 1);
 }
 
 void pwp_conn_keepalive(pwp_conn_t* me_ __attribute__((__unused__)))
 {
-
+    // TODO
 }
 
 void pwp_conn_choke(pwp_conn_t* me_)
@@ -710,8 +710,6 @@ void pwp_conn_have(pwp_conn_t* me_, msg_have_t* have)
 void pwp_conn_bitfield(pwp_conn_t* me_, msg_bitfield_t* bitfield)
 {
     pwp_conn_private_t* me = (void*)me_;
-    char *str;
-    int ii;
 
      /* A peer MUST send this message immediately after the handshake
      * operation, and MAY choose not to send it if it has no pieces at
@@ -732,15 +730,16 @@ void pwp_conn_bitfield(pwp_conn_t* me_, msg_bitfield_t* bitfield)
 
     me->state.flags |= PC_BITFIELD_RECEIVED;
 
-    for (ii = 0; ii < me->num_pieces; ii++)
+    for (int ii = 0; ii < me->num_pieces; ii++)
     {
         if (bitfield_is_marked(&bitfield->bf,ii))
             pwp_conn_mark_peer_has_piece(me_, ii);
     }
 
-    str = bitfield_str(&me->state.have_bitfield);
-    __log(me, "read,bitfield,%s", str);
-    free(str);
+    //char *str;
+    //str = bitfield_str(&me->state.have_bitfield);
+    //__log(me, "read,bitfield,%s", str);
+    //free(str);
 }
 
 int pwp_conn_request(pwp_conn_t* me_, bt_block_t *r)

@@ -6,7 +6,7 @@ typedef struct
 {
     /* TODO: this should be removed */
     /* this bitfield indicates which pieces the peer has */
-    bitfield_t have_bitfield;
+    //bitfield_t have_bitfield;
 
     /* for recording state machine's state */
     unsigned int flags;
@@ -63,7 +63,11 @@ typedef struct
     pwp_conn_cbs_t cb;
     void *cb_ctx;
 
+    /* we obtain this read only counter from our caller (ie. cb_ctx) */
     const sparsecounter_t *pieces_completed;
+
+    /* pieces that the piece has */
+    sparsecounter_t *pieces_peerhas;
 
 } pwp_conn_private_t;
 

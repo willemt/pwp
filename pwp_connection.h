@@ -1,3 +1,5 @@
+#ifndef PWP_CONNECTION_H
+#define PWP_CONNECTION_H
 
 typedef void* pwp_conn_t;
 
@@ -339,6 +341,9 @@ int pwp_conn_block_request_is_pending(void* pc, bt_block_t *b);
  * Provide a block for us to request from the peer */
 void pwp_conn_offer_block(pwp_conn_t* me_, bt_block_t *b);
 
+// TODO: this could be renamed or documented better
+/**
+ * Set the progress counter for pieces we've downloaded */
 void pwp_conn_set_progress(pwp_conn_t* me_, void* counter);
 
 /**
@@ -354,3 +359,4 @@ int pwp_send_bitfield(
         void* cb_ctx,
         void* peer_udata);
 
+#endif /* PWP_CONNECTION_H */

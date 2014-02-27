@@ -699,10 +699,12 @@ void TestPWP_read_bitfield_marks_peers_pieces_as_haved_by_peer(
 )
 {
     pwp_conn_cbs_t funcs = {
+        .peer_have_piece = __FUNC_peer_piece_have
     };
     void *pc, *mh;
     test_sender_t sender;
     unsigned char msg[50], *ptr = msg;
+    sparsecounter_t* sc;
 
     /*  bitfield */
     __sender_set(&sender,msg,NULL);
@@ -713,10 +715,13 @@ void TestPWP_read_bitfield_marks_peers_pieces_as_haved_by_peer(
     bitstream_write_ubyte(&ptr, 0xf0);     /*  11110000 */
 
     /* setup */
+    sender.sc = sc = sc_init(0);
     pc = pwp_conn_new(NULL);
     mh = pwp_msghandler_new(pc);
+    pwp_conn_set_progress(pc,sc);
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
     pwp_conn_set_piece_info(pc,20,20);
+    /* use sparse counter as callback context */
     pwp_conn_set_cbs(pc, &funcs, &sender);
     CuAssertTrue(tc, 0 == pwp_conn_peer_has_piece(pc, 0));
 
@@ -1159,6 +1164,7 @@ void TestPWP_read_request_doesnt_duplicate_within_pending_queue(
         .disconnect = __FUNC_disconnect,
         .pushblock = __FUNC_push_block,
         .write_block_to_stream = __FUNC_piece_write_block_to_stream,
+        .peer_have_piece = __FUNC_peer_piece_have
     };
 
     unsigned char msg[1000];//, *ptr = msg;
@@ -1170,12 +1176,11 @@ void TestPWP_read_request_doesnt_duplicate_within_pending_queue(
     /* setup */
     __sender_set(&sender,NULL,msg);
     pc = pwp_conn_new(NULL);
-    pwp_conn_set_state(pc,
-                          PC_CONNECTED | PC_HANDSHAKE_SENT |
+    pwp_conn_set_state(pc, PC_CONNECTED | PC_HANDSHAKE_SENT |
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
-    sc = sc_init(0);
+    sender.sc = sc = sc_init(0);
     pwp_conn_set_progress(pc,sc);
     sc_mark_complete(sc,0,20);
 
@@ -1183,7 +1188,8 @@ void TestPWP_read_request_doesnt_duplicate_within_pending_queue(
     request.piece_idx = 0;
     request.offset = 0;
     request.len = 2;
-    pwp_conn_request(pc, &request);
+    CuAssertTrue(tc, 1 == pwp_conn_request(pc, &request));
+    CuAssertTrue(tc, 1 == pwp_conn_get_npending_peer_requests(pc));
 
     /* send same request message */
     pwp_conn_request(pc, &request);
