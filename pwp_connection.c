@@ -599,12 +599,12 @@ void pwp_conn_periodic(pwp_conn_t* me_)
             goto cleanup;
         }
 
-        int end;
+        int end, ii;
         
         // TODO: turn 10 into configuration value
         /*  max out pipeline */
         end = 10 - pwp_conn_get_npending_requests(me_);
-        for (int ii = 0; ii < end; ii++)
+        for (ii = 0; ii < end; ii++)
         {
             if (0 == me->cb.pollblock(me->cb_ctx, me->peer_udata))
             {
@@ -730,7 +730,9 @@ void pwp_conn_bitfield(pwp_conn_t* me_, msg_bitfield_t* bitfield)
 
     me->state.flags |= PC_BITFIELD_RECEIVED;
 
-    for (int ii = 0; ii < me->num_pieces; ii++)
+    int ii;
+
+    for (ii = 0; ii < me->num_pieces; ii++)
     {
         if (bitfield_is_marked(&bitfield->bf,ii))
             pwp_conn_mark_peer_has_piece(me_, ii);
