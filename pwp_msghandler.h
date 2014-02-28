@@ -1,4 +1,5 @@
-
+#ifndef PWP_MSGHANDLER_H
+#define PWP_MSGHANDLER_H
 
 typedef struct {
     int (*func)(
@@ -20,7 +21,7 @@ void* pwp_msghandler_new2(
 
 /**
  * @return new msg handler */
-void* pwp_msghandler_new(void* pc);
+void* pwp_msghandler_new(void *pc);//, void* unused);
 
 /**
  * Release memory used by message handler */
@@ -37,3 +38,4 @@ int pwp_msghandler_dispatch_from_buffer(void *mh,
         const unsigned char* buf,
         unsigned int len);
 
+#endif /* PWP_MSGHANDLER_H */

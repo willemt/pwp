@@ -137,7 +137,7 @@ void *pwp_conn_new(void* mem)
     {
         me = mem;
     }
-    else if(!(me = calloc(1, sizeof(pwp_conn_private_t))))
+    else if (!(me = calloc(1, sizeof(pwp_conn_private_t))))
     {
         perror("out of memory");
         exit(0);
