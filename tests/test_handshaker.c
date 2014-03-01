@@ -1,4 +1,3 @@
-#include <stdbool.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,9 +9,6 @@
 #include "pwp_connection.h"
 #include "pwp_handshaker.h"
 #include "bitstream.h"
-#include "mock_block_readwriter.h"
-#include "mock_piece.h"
-#include "test_connection.h"
 
 static char* __mock_infohash = "abcdef12345678900000";
 static char* __mock_their_peer_id = "00000000000000000000";

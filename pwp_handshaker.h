@@ -1,3 +1,5 @@
+#ifndef PWP_HANDSHAKER_H
+#define PWP_HANDSHAKER_H
 
 typedef struct {
     /* protocol name */
@@ -37,3 +39,4 @@ int pwp_handshaker_send_handshake(
  * @return null if handshake was successful */
 pwp_handshake_t* pwp_handshaker_get_handshake(void* me_);
 
+#endif /* PWP_HANDSHAKER_H */
