@@ -24,6 +24,9 @@ typedef struct {
         msg_piece_t piece;
     };
 
+    /* flag if custom handler was used */
+    int custom_handler;
+
 } fake_pc_t;
 
 /**
@@ -429,4 +432,43 @@ void TestPWP_two_pieces(
     CuAssertTrue(tc, 0 == strncmp("test msg2",pc.piece.data,pc.piece.blk.len));
     pwp_msghandler_release(mh);
 }
+
+static int __faux_handler(
+    void* mh,
+    void *message,
+    void* udata,
+    const unsigned char** buf,
+    unsigned int *len)
+{
+    fake_pc_t* pc = udata;
+    pc->custom_handler = 1;
+    *len = 0;
+    return 1;
+}
+
+void TestPWP_custom_handler(
+    CuTest * tc
+)
+{
+    fake_pc_t pc;
+    unsigned char data[100];
+    unsigned char* ptr;
+    void* mh;
+    pwp_msghandler_item_t handlers = {
+        __faux_handler, &pc
+    };
+
+    ptr = data;
+    memset(&pc, 0, sizeof(fake_pc_t));
+    mh = pwp_msghandler_new2(&pc, &handlers, 1, 100);
+    bitstream_write_uint32(&ptr, fe(13));
+    bitstream_write_ubyte(&ptr,PWP_MSGTYPE_CANCEL+1);
+    bitstream_write_uint32(&ptr, fe(123));
+    bitstream_write_uint32(&ptr, fe(456));
+    bitstream_write_uint32(&ptr, fe(789));
+    pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1 + 4 + 4 + 4);
+    CuAssertTrue(tc, 1 == pc.custom_handler);
+    pwp_msghandler_release(mh);
+}
+
 

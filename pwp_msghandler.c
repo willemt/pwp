@@ -239,8 +239,6 @@ int __pwp_type(pwp_msghandler_private_t *me, msg_t* m, void* udata,
 
     mh_byte(&m->id, &m->bytes_read, buf, len);
 
-    printf("got type: %d\n", m->id);
-
     /* payloadless messages */
     if (m->len == 1)
     {
@@ -270,6 +268,9 @@ int __pwp_type(pwp_msghandler_private_t *me, msg_t* m, void* udata,
             mh_endmsg(me);
             return 0;
         }
+        assert(0 < m->id);
+        assert(m->id < me->nhandlers);
+        assert(me->handlers[m->id].func);
         me->process_item = me->handlers[m->id].func;
         me->udata = me->handlers[m->id].udata;
     }
@@ -285,8 +286,6 @@ int __pwp_length(pwp_msghandler_private_t *me, msg_t* m, void* udata,
 
     if (1 == mh_uint32(&m->len, m, buf, len))
     {
-        printf("got length: %d\n", m->len);
-
         if (0 == m->len)
         {
             pwp_conn_keepalive(me->pc);
@@ -311,6 +310,7 @@ int pwp_msghandler_dispatch_from_buffer(void *mh,
     /* while we have a stream left to read... */
     while (0 < len)
     {
+        assert(me->process_item);
         switch(me->process_item(me,m,me->udata,&buf,&len))
         {
             case 0:
@@ -342,7 +342,7 @@ void* pwp_msghandler_new2(
     me->pc = pc;
     me->process_item = __pwp_length;
 
-    int i, size = PWP_MSGTYPE_CANCEL + 1;
+    int size = PWP_MSGTYPE_CANCEL + 1;
 
     if (handlers)
         size += nhandlers;
@@ -358,10 +358,11 @@ void* pwp_msghandler_new2(
     me->handlers[PWP_MSGTYPE_CANCEL].func = __pwp_cancel_pieceidx;
 
     /* add custom handlers */
-    for (i=PWP_MSGTYPE_CANCEL + 1; handlers && i<size;i++)
+    int i, s;
+    for (i=PWP_MSGTYPE_CANCEL + 1, s=0; handlers && i<size; i++, s++)
     {
-        me->handlers[i].func = ((msghandler_item_t*)handlers)[i].func;
-        me->handlers[i].udata = ((msghandler_item_t*)handlers)[i].udata;
+        me->handlers[i].func = (void*)handlers[s].func;
+        me->handlers[i].udata = handlers[s].udata;
     }
     return me;
 }
