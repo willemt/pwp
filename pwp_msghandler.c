@@ -239,6 +239,8 @@ int __pwp_type(pwp_msghandler_private_t *me, msg_t* m, void* udata,
 
     mh_byte(&m->id, &m->bytes_read, buf, len);
 
+    printf("got type: %d\n", m->id);
+
     /* payloadless messages */
     if (m->len == 1)
     {
@@ -283,6 +285,8 @@ int __pwp_length(pwp_msghandler_private_t *me, msg_t* m, void* udata,
 
     if (1 == mh_uint32(&m->len, m, buf, len))
     {
+        printf("got length: %d\n", m->len);
+
         if (0 == m->len)
         {
             pwp_conn_keepalive(me->pc);
