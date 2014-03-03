@@ -39,7 +39,7 @@ typedef struct {
 //    int status;
 } pwp_handshaker_t;
 
-int pwp_handshaker_send_handshake(
+int pwp_send_handshake(
         void* callee,
         void* udata,
         int (*send)(void *callee, const void *udata, const void *send_data, const int len),

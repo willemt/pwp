@@ -28,7 +28,7 @@ int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char** buf, un
 /**
  * Send the handshake
  * @return 0 on failure; 1 otherwise */
-int pwp_handshaker_send_handshake(
+int pwp_send_handshake(
         void* callee,
         void* udata,
         int (*send)(void *callee, const void *udata, const void *send_data, const int len),
