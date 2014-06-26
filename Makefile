@@ -13,7 +13,8 @@ CC     = gcc
 CCFLAGS = -g -O2 -Wall -Werror -Werror=return-type -Werror=uninitialized \
 	  -Wcast-align -fno-omit-frame-pointer -fno-common -fsigned-char \
 	  $(GCOV_CCFLAGS) -I$(HASHMAP_DIR) -I$(BITFIELD_DIR) -I$(BITSTREAM_DIR) \
-	  -I$(LLQUEUE_DIR) -I$(MEANQUEUE_DIR) -I$(SPARSECOUNTER_DIR) 
+	  -I$(LLQUEUE_DIR) -I$(MEANQUEUE_DIR) -I$(SPARSECOUNTER_DIR) \
+	  -Ideps/fe
 #	  -std=c99
 
 all: tests_connection tests_handler tests_handshaker
@@ -74,7 +75,7 @@ tests_handshaker: main_handshaker.c pwp_handshaker.c tests/test_handshaker.c tes
 	./tests_handshaker
 	gcov main_handshaker.c tests/test_handshaker.c pwp_handshaker.c
 
-tests_connection: main_connection.c pwp_connection.o pwp_msghandler.c pwp_bitfield.c pwp_util.c tests/test_connection.c tests/test_connection_send.c tests/mock_caller.c tests/mock_piece.c tests/bt_diskmem.c tests/CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c $(MEANQUEUE_DIR)/meanqueue.c $(SPARSECOUNTER_DIR)/sparse_counter.c 
+tests_connection: main_connection.c pwp_connection.o pwp_msghandler.c pwp_bitfield.c deps/fe/fe.c tests/test_connection.c tests/test_connection_send.c tests/mock_caller.c tests/mock_piece.c tests/bt_diskmem.c tests/CuTest.c $(HASHMAP_DIR)/linked_list_hashmap.c $(BITFIELD_DIR)/bitfield.c $(BITSTREAM_DIR)/bitstream.c $(LLQUEUE_DIR)/linked_list_queue.c $(MEANQUEUE_DIR)/meanqueue.c $(SPARSECOUNTER_DIR)/sparse_counter.c 
 	$(CC) $(CCFLAGS) -I. -o $@ $^
 	./tests_connection
 	gcov main_connection.c tests/test_connection.c tests/test_connection_send.c pwp_connection.c
