@@ -224,7 +224,7 @@ int __pwp_bitfield(pwp_msghandler_private_t *me, msg_t* m, void* udata,
     if (4 + m->len == m->bytes_read)
     {
         pwp_conn_bitfield(me->pc, &m->bf);
-        bitfield_release(&m->bf.bf);
+        bitfield_free(&m->bf.bf);
         mh_endmsg(me);
     }
 

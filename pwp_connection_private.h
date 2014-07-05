@@ -64,10 +64,10 @@ typedef struct
     void *cb_ctx;
 
     /* we obtain this read only counter from our caller (ie. cb_ctx) */
-    const sparsecounter_t *pieces_completed;
+    const chunkybar_t *pieces_completed;
 
     /* pieces that the piece has */
-    sparsecounter_t *pieces_peerhas;
+    chunkybar_t *pieces_peerhas;
 
 } pwp_conn_private_t;
 

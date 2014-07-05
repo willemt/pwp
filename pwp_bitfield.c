@@ -20,8 +20,8 @@
 #include "bitfield.h"
 #include "pwp_connection.h"
 #include "pwp_local.h"
-#include "sparse_counter.h"
 #include "bitstream.h"
+#include "chunkybar.h"
 
 int pwp_send_bitfield(
         int npieces,
@@ -47,7 +47,7 @@ int pwp_send_bitfield(
     /*  for all pieces set bit = 1 if we have the completed piece */
     for (bits = 0, i = 0; i < npieces; i++)
     {
-        bits |= sc_have(pieces_completed, i, 1) << (7 - (i % 8));
+        bits |= chunky_have(pieces_completed, i, 1) << (7 - (i % 8));
         /* ...up to eight bits, write to byte */
         if (((i + 1) % 8 == 0) || npieces - 1 == i)
         {

@@ -26,7 +26,7 @@
 #include "pwp_local.h"
 #include "linked_list_hashmap.h"
 #include "linked_list_queue.h"
-#include "sparse_counter.h"
+#include "chunkybar.h"
 #include "bitstream.h"
 
 /* for upload/download rate identification */
@@ -150,7 +150,7 @@ void *pwp_conn_new(void* mem)
     me->reqs = llqueue_new();
     me->req_lock = NULL;
     me->state.flags = PC_IM_CHOKING | PC_PEER_CHOKING;
-    me->pieces_peerhas = sc_init(0);
+    me->pieces_peerhas = chunky_new(0);
     return me;
 }
 
@@ -465,7 +465,7 @@ int pwp_conn_mark_peer_has_piece(pwp_conn_t* me_, const int piece_idx)
 
     /* remember that they have this piece */
 //    bitfield_mark(&me->state.have_bitfield, piece_idx);
-    sc_mark_complete(me->pieces_peerhas, piece_idx, 1);
+    chunky_mark_complete(me->pieces_peerhas, piece_idx, 1);
     if (me->cb.peer_have_piece)
         me->cb.peer_have_piece(me->cb_ctx, me->peer_udata, piece_idx);
 
@@ -499,9 +499,11 @@ void pwp_conn_request_block_from_peer(pwp_conn_t* me_, bt_block_t * blk)
     pwp_conn_private_t * me = (void*)me_;
     request_t *req;
 
+#if 0
     /*  drop meaningless blocks */
     if (blk->len < 0)
         return;
+#endif
 
     __req_fit(blk, me->piece_len);
     pwp_conn_send_request(me_, blk);
@@ -547,7 +549,7 @@ static void* __offer_block(void* me_, void* b)
 
 static void* __poll_block(
         void* me_,
-        void* __unused __attribute__((__unused__)))
+        void* unused __attribute__((__unused__)))
 {
     pwp_conn_private_t *me = (void*)me_;
 
@@ -560,6 +562,16 @@ void pwp_conn_offer_block(pwp_conn_t* me_, bt_block_t *b)
 
     assert(me->cb.call_exclusively);
     me->cb.call_exclusively(me, me->cb_ctx, &me->req_lock, b, __offer_block);
+}
+
+static void __process_requests(pwp_conn_private_t* me)
+{
+    void *b;
+
+    /* TODO: probably want to split the request into smaller requests */
+    b = me->cb.call_exclusively(me, me->cb_ctx, &me->req_lock, NULL, __poll_block);
+    pwp_conn_request_block_from_peer((pwp_conn_t*)me, b);
+    free(b);
 }
 
 void pwp_conn_periodic(pwp_conn_t* me_)
@@ -612,15 +624,8 @@ void pwp_conn_periodic(pwp_conn_t* me_)
             }
         }
 
-        /* process requests */
         if (0 < llqueue_count(me->reqs))
-        {
-            /* TODO: probably want to split the request into smaller requests */
-            void *b = me->cb.call_exclusively(me, me->cb_ctx, &me->req_lock,
-                    NULL, __poll_block);
-            pwp_conn_request_block_from_peer((pwp_conn_t*)me, b);
-            free(b);
-        }
+            __process_requests(me);
     }
     else
     {
@@ -647,7 +652,7 @@ int pwp_conn_peer_has_piece(pwp_conn_t* me_, const int piece_idx)
 {
     pwp_conn_private_t *me = (void*)me_;
     //return bitfield_is_marked(&me->state.have_bitfield, piece_idx);
-    return sc_have(me->pieces_peerhas, piece_idx, 1);
+    return chunky_have(me->pieces_peerhas, piece_idx, 1);
 }
 
 void pwp_conn_keepalive(pwp_conn_t* me_ __attribute__((__unused__)))
@@ -700,7 +705,7 @@ void pwp_conn_have(pwp_conn_t* me_, msg_have_t* have)
     }
 
     /* tell the peer we are intested if we don't have this piece */
-    if (!sc_have(me->pieces_completed, have->piece_idx, 1))
+    if (!chunky_have(me->pieces_completed, have->piece_idx, 1))
     {
         // TODO: do we need to be interested if we are already?
         pwp_conn_set_im_interested(me_);
@@ -772,7 +777,7 @@ int pwp_conn_request(pwp_conn_t* me_, bt_block_t *r)
     }
 
     /* Ensure that we have this piece */
-    if (!sc_have(me->pieces_completed, r->piece_idx, 1))
+    if (!chunky_have(me->pieces_completed, r->piece_idx, 1))
     {
         __disconnect(me, "requested piece %d is not available", r->piece_idx);
         return 0;

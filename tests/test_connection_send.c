@@ -12,7 +12,7 @@
 #include "mock_block_readwriter.h"
 #include "mock_piece.h"
 #include "test_connection.h"
-#include "sparse_counter.h"
+#include "chunkybar.h"
 
 #define STATE_READY_TO_SENDRECV PC_CONNECTED | PC_HANDSHAKE_SENT | PC_HANDSHAKE_RECEIVED
 
@@ -147,7 +147,7 @@ void TestPWP_send_have_is_wellformed(
     pwp_conn_cbs_t funcs = {
         .send = __FUNC_send,
     };
-    sparsecounter_t* sc;
+    chunkybar_t* sc;
 
     /* setup */
     ptr = msg;
@@ -155,9 +155,9 @@ void TestPWP_send_have_is_wellformed(
     pc = pwp_conn_new(NULL);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
-    sc = sc_init(0);
+    sc = chunky_new(0);
     pwp_conn_set_progress(pc,sc);
-    sc_mark_complete(sc,0,1);
+    chunky_mark_complete(sc,0,1);
 
     /* send msg */
     pwp_conn_send_have(pc, 17);
@@ -177,13 +177,13 @@ void TestPWP_send_bitField_is_wellformed(
 {
     test_sender_t sender;
     unsigned char msg[1000], *ptr;
-    sparsecounter_t* sc;
+    chunkybar_t* sc;
 
     /* setup */
     ptr = msg;
     __sender_set(&sender,NULL,msg);
-    sc = sc_init(0);
-    sc_mark_complete(sc,0,20);
+    sc = chunky_new(0);
+    chunky_mark_complete(sc,0,20);
 
     /* send msg */
     /*  piece complete func will always return 1 (ie. piece is complete) */
@@ -285,7 +285,7 @@ void TestPWP_send_piece_is_wellformed(
     test_sender_t sender;
     unsigned char msg[1000], *ptr;
     bt_block_t blk;
-    sparsecounter_t* sc;
+    chunkybar_t* sc;
 
     /*  get us 4 bytes of data */
     ptr = msg;
@@ -298,9 +298,9 @@ void TestPWP_send_piece_is_wellformed(
     pc = pwp_conn_new(NULL);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
-    sc = sc_init(0);
+    sc = chunky_new(0);
     pwp_conn_set_progress(pc,sc);
-    sc_mark_complete(sc,0,20);
+    chunky_mark_complete(sc,0,20);
 
     /* send msg*/
     pwp_conn_send_piece(pc, &blk);
@@ -376,7 +376,7 @@ void TestPWP_read_havemsg_marks_peer_as_having_piece(
     void *pc, *mh;
     test_sender_t sender;
     unsigned char msg[1000], *ptr = msg;
-    sparsecounter_t* sc;
+    chunkybar_t* sc;
 
     /* setup */
     __sender_set(&sender, msg, NULL);
@@ -390,9 +390,9 @@ void TestPWP_read_havemsg_marks_peer_as_having_piece(
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
-    sc = sc_init(0);
+    sc = chunky_new(0);
     pwp_conn_set_progress(pc,sc);
-    sc_mark_complete(sc,0,20);
+    chunky_mark_complete(sc,0,20);
 
     /* receive */
     pwp_msghandler_dispatch_from_buffer(mh, msg, 4 + 1 + 4);
@@ -413,7 +413,7 @@ void TestPWP_read_havemsg_disconnects_with_piece_idx_out_of_bounds(
     void *pc, *mh;
     test_sender_t sender;
     unsigned char msg[50], *ptr = msg;
-    sparsecounter_t* sc;
+    chunkybar_t* sc;
 
     __sender_set(&sender, msg, NULL);
     bitstream_write_uint32(&ptr, fe(5));
@@ -426,9 +426,9 @@ void TestPWP_read_havemsg_disconnects_with_piece_idx_out_of_bounds(
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
-    sc = sc_init(0);
+    sc = chunky_new(0);
     pwp_conn_set_progress(pc,sc);
-    sc_mark_complete(sc,0,20);
+    chunky_mark_complete(sc,0,20);
 
     /* receive */
     pwp_msghandler_dispatch_from_buffer(mh, msg, 4 + 1 + 4);
@@ -453,7 +453,7 @@ void TestPWP_send_interested_if_lacking_piece_from_have_msg(
     test_sender_t sender;
     unsigned char s_msg[1000], *s_ptr = s_msg;
     unsigned char r_msg[1000], *r_ptr = r_msg;
-    sparsecounter_t* sc;
+    chunkybar_t* sc;
 
     __sender_set(&sender,r_msg,s_msg);
     bitstream_write_uint32(&r_ptr, fe(5));       /*  length */
@@ -466,7 +466,7 @@ void TestPWP_send_interested_if_lacking_piece_from_have_msg(
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
-    sc = sc_init(0);
+    sc = chunky_new(0);
     pwp_conn_set_progress(pc,sc);
 
     /* receive */
@@ -704,7 +704,7 @@ void TestPWP_read_bitfield_marks_peers_pieces_as_haved_by_peer(
     void *pc, *mh;
     test_sender_t sender;
     unsigned char msg[50], *ptr = msg;
-    sparsecounter_t* sc;
+    chunkybar_t* sc;
 
     /*  bitfield */
     __sender_set(&sender,msg,NULL);
@@ -715,7 +715,7 @@ void TestPWP_read_bitfield_marks_peers_pieces_as_haved_by_peer(
     bitstream_write_ubyte(&ptr, 0xf0);     /*  11110000 */
 
     /* setup */
-    sender.sc = sc = sc_init(0);
+    sender.sc = sc = chunky_new(0);
     pc = pwp_conn_new(NULL);
     mh = pwp_msghandler_new(pc);
     pwp_conn_set_progress(pc,sc);
@@ -852,7 +852,7 @@ void TestPWP_read_request_of_piece_not_completed_disconnects_peer(
     void *pc, *mh;
     test_sender_t sender;
     unsigned char msg[50], *ptr = msg;
-    sparsecounter_t* sc;
+    chunkybar_t* sc;
 
     __sender_set(&sender, msg, NULL);
 
@@ -877,7 +877,7 @@ void TestPWP_read_request_of_piece_not_completed_disconnects_peer(
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
-    sc = sc_init(0);
+    sc = chunky_new(0);
     pwp_conn_set_progress(pc,sc);
 
     /* receive */
@@ -898,7 +898,7 @@ void TestPWP_read_request_with_invalid_piece_idx_disconnects_peer(
     void *pc, *mh;
     test_sender_t sender;
     unsigned char msg[50], *ptr = msg;
-    sparsecounter_t* sc;
+    chunkybar_t* sc;
 
     __sender_set(&sender,msg,NULL);
 
@@ -918,9 +918,9 @@ void TestPWP_read_request_with_invalid_piece_idx_disconnects_peer(
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
-    sc = sc_init(0);
+    sc = chunky_new(0);
     pwp_conn_set_progress(pc,sc);
-    sc_mark_complete(sc,0,20);
+    chunky_mark_complete(sc,0,20);
 
     /* receive */
     /*  we need this for us to know if the request is valid */
@@ -942,7 +942,7 @@ void TestPWP_read_request_with_invalid_block_length_disconnects_peer(
     void *pc, *mh;
     test_sender_t sender;
     unsigned char msg[50], *ptr = msg;
-    sparsecounter_t* sc;
+    chunkybar_t* sc;
 
     __sender_set(&sender,msg,NULL);
 
@@ -962,9 +962,9 @@ void TestPWP_read_request_with_invalid_block_length_disconnects_peer(
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
-    sc = sc_init(0);
+    sc = chunky_new(0);
     pwp_conn_set_progress(pc,sc);
-    sc_mark_complete(sc,0,20);
+    chunky_mark_complete(sc,0,20);
 
     /* receive */
     /*  we need this for us to know if the request is valid */
@@ -984,7 +984,7 @@ void TestPWP_read_request_of_piece_which_client_has_results_in_disconnect(
     void *pc, *mh;
     test_sender_t sender;
     unsigned char msg[1000], *ptr = msg;
-    sparsecounter_t* sc;
+    chunkybar_t* sc;
 
     __sender_set(&sender, msg, NULL);
     bitstream_write_uint32(&ptr, fe(5));       /*  length */
@@ -997,9 +997,9 @@ void TestPWP_read_request_of_piece_which_client_has_results_in_disconnect(
     pwp_conn_set_state(pc, STATE_READY_TO_SENDRECV);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
-    sc = sc_init(0);
+    sc = chunky_new(0);
     pwp_conn_set_progress(pc,sc);
-    sc_mark_complete(sc,0,20);
+    chunky_mark_complete(sc,0,20);
 
     /* receive */
     pwp_msghandler_dispatch_from_buffer(mh, msg, 4 + 1 + 4);
@@ -1122,7 +1122,7 @@ void TestPWP_send_request_is_wellformed_even_when_request_len_was_outside_piece_
     void *pc;
     test_sender_t sender;
     bt_block_t request;
-    sparsecounter_t* sc;
+    chunkybar_t* sc;
 
     __sender_set(&sender,NULL,msg);
 
@@ -1139,9 +1139,9 @@ void TestPWP_send_request_is_wellformed_even_when_request_len_was_outside_piece_
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
-    sc = sc_init(0);
+    sc = chunky_new(0);
     pwp_conn_set_progress(pc,sc);
-    sc_mark_complete(sc,0,20);
+    chunky_mark_complete(sc,0,20);
 
     /* request block */
     pwp_conn_request_block_from_peer(pc, &request);
@@ -1171,7 +1171,7 @@ void TestPWP_read_request_doesnt_duplicate_within_pending_queue(
     void *pc;
     test_sender_t sender;
     bt_block_t request;
-    sparsecounter_t* sc;
+    chunkybar_t* sc;
 
     /* setup */
     __sender_set(&sender,NULL,msg);
@@ -1180,9 +1180,9 @@ void TestPWP_read_request_doesnt_duplicate_within_pending_queue(
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
-    sender.sc = sc = sc_init(0);
+    sender.sc = sc = chunky_new(0);
     pwp_conn_set_progress(pc,sc);
-    sc_mark_complete(sc,0,20);
+    chunky_mark_complete(sc,0,20);
 
     /* send request message */
     request.piece_idx = 0;
@@ -1451,7 +1451,7 @@ void TestPWP_read_cancelmsg_cancels_last_request(
     void *pc, *mh;
     test_sender_t sender;
     bt_block_t request;
-    sparsecounter_t* sc;
+    chunkybar_t* sc;
 
     /* setup */
     __sender_set(&sender,r_msg,s_msg);
@@ -1462,9 +1462,9 @@ void TestPWP_read_cancelmsg_cancels_last_request(
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
-    sc = sc_init(0);
+    sc = chunky_new(0);
     pwp_conn_set_progress(pc,sc);
-    sc_mark_complete(sc,0,20);
+    chunky_mark_complete(sc,0,20);
 
     /* send request message */
     request.piece_idx = 0;
@@ -1504,7 +1504,7 @@ void TestPWP_request_queue_dropped_when_peer_is_choked(
     void *pc;
     test_sender_t sender;
     bt_block_t request;
-    sparsecounter_t* sc;
+    chunkybar_t* sc;
 
     /* setup */
     __sender_set(&sender,NULL,msg);
@@ -1514,9 +1514,9 @@ void TestPWP_request_queue_dropped_when_peer_is_choked(
                           PC_HANDSHAKE_RECEIVED | PC_BITFIELD_RECEIVED);
     pwp_conn_set_piece_info(pc,20,20);
     pwp_conn_set_cbs(pc, &funcs, &sender);
-    sc = sc_init(0);
+    sc = chunky_new(0);
     pwp_conn_set_progress(pc,sc);
-    sc_mark_complete(sc,0,20);
+    chunky_mark_complete(sc,0,20);
 
     /* send request message */
     request.piece_idx = 0;

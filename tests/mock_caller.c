@@ -19,7 +19,7 @@
 #include "mock_piece.h"
 #include "bt_diskmem.h"
 #include "test_connection.h"
-#include "sparse_counter.h"
+#include "chunkybar.h"
 
 int __FUNC_peercon_recv(
     void* r,
@@ -149,8 +149,8 @@ void __FUNC_peer_piece_have(
 )
 {
     test_sender_t * sender = udata;
-    sparsecounter_t* sc = sender->sc;
-    sc_mark_complete(sc, piece, 1);
+    chunkybar_t* sc = sender->sc;
+    chunky_mark_complete(sc, piece, 1);
 }
 
 /*  Just a mock.
