@@ -1,3 +1,5 @@
+#ifndef PWP_MSGHANDLER_PRIVATE_H
+#define PWP_MSGHANDLER_PRIVATE_H
 
 #undef min
 #define min(a,b) ((a) < (b) ? (a) : (b))
@@ -63,3 +65,5 @@ int mh_byte(
         const unsigned char** buf,
         unsigned int *len);
 
+
+#endif /* PWP_MSGHANDLER_PRIVATE_H */

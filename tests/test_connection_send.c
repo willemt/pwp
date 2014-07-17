@@ -706,13 +706,7 @@ void TestPWP_read_bitfield_marks_peers_pieces_as_haved_by_peer(
     unsigned char msg[50], *ptr = msg;
     chunkybar_t* sc;
 
-    /*  bitfield */
     __sender_set(&sender,msg,NULL);
-    bitstream_write_uint32(&ptr, fe(4));
-    bitstream_write_ubyte(&ptr, 5);        /*  bitpiece */
-    bitstream_write_ubyte(&ptr, 0xff);     /*  11111111 */
-    bitstream_write_ubyte(&ptr, 0xff);     /*  11111111 */
-    bitstream_write_ubyte(&ptr, 0xf0);     /*  11110000 */
 
     /* setup */
     sender.sc = sc = chunky_new(0);
@@ -724,6 +718,12 @@ void TestPWP_read_bitfield_marks_peers_pieces_as_haved_by_peer(
     /* use sparse counter as callback context */
     pwp_conn_set_cbs(pc, &funcs, &sender);
     CuAssertTrue(tc, 0 == pwp_conn_peer_has_piece(pc, 0));
+
+    bitstream_write_uint32(&ptr, fe(4));   /*  bitfield */
+    bitstream_write_ubyte(&ptr, 5);        /*  bitpiece */
+    bitstream_write_ubyte(&ptr, 0xff);     /*  11111111 */
+    bitstream_write_ubyte(&ptr, 0xff);     /*  11111111 */
+    bitstream_write_ubyte(&ptr, 0xf0);     /*  11110000 */
 
     /* receive bitfield */
     pwp_msghandler_dispatch_from_buffer(mh, msg, 4 + 1 + 1 + 1 + 1);

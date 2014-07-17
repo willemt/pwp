@@ -205,10 +205,10 @@ int __pwp_bitfield(pwp_msghandler_private_t *me, msg_t* m, void* udata,
 
     if (1 + 4 == m->bytes_read)
     {
-        bitfield_init(&m->bf.bf, (m->len - 1) * 8);
+        m->bf.bf = bitfield_new((m->len - 1) * 8);
     }
 
-    assert(m->bf.bf.bits);
+    assert(m->bf.bf->bits);
 
     /* read and mark bits from byte */
     mh_byte(&val, &m->bytes_read, buf, len);
@@ -216,7 +216,7 @@ int __pwp_bitfield(pwp_msghandler_private_t *me, msg_t* m, void* udata,
     {
         if (0x1 == ((unsigned char)(val << ii) >> 7))
         {
-            bitfield_mark(&m->bf.bf, (m->bytes_read - 5 - 1) * 8 + ii);
+            bitfield_mark(m->bf.bf, (m->bytes_read - 5 - 1) * 8 + ii);
         }
     }
 
@@ -224,7 +224,7 @@ int __pwp_bitfield(pwp_msghandler_private_t *me, msg_t* m, void* udata,
     if (4 + m->len == m->bytes_read)
     {
         pwp_conn_bitfield(me->pc, &m->bf);
-        bitfield_free(&m->bf.bf);
+        bitfield_free(m->bf.bf);
         mh_endmsg(me);
     }
 

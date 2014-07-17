@@ -285,7 +285,7 @@ typedef struct {
 } msg_have_t;
 
 typedef struct {
-   bitfield_t bf;
+   bitfield_t *bf;
 } msg_bitfield_t;
 
 void pwp_conn_choke_peer(pwp_conn_t* pco);

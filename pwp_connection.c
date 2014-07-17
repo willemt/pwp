@@ -251,7 +251,6 @@ void pwp_conn_set_piece_info(pwp_conn_t* me_, int num_pieces, int piece_len)
     pwp_conn_private_t *me = (void*)me_;
 
     me->num_pieces = num_pieces;
-    //bitfield_init(&me->state.have_bitfield, me->num_pieces);
     me->piece_len = piece_len;
 }
 
@@ -464,7 +463,6 @@ int pwp_conn_mark_peer_has_piece(pwp_conn_t* me_, const int piece_idx)
     }
 
     /* remember that they have this piece */
-//    bitfield_mark(&me->state.have_bitfield, piece_idx);
     chunky_mark_complete(me->pieces_peerhas, piece_idx, 1);
     if (me->cb.peer_have_piece)
         me->cb.peer_have_piece(me->cb_ctx, me->peer_udata, piece_idx);
@@ -651,7 +649,6 @@ cleanup:
 int pwp_conn_peer_has_piece(pwp_conn_t* me_, const int piece_idx)
 {
     pwp_conn_private_t *me = (void*)me_;
-    //return bitfield_is_marked(&me->state.have_bitfield, piece_idx);
     return chunky_have(me->pieces_peerhas, piece_idx, 1);
 }
 
@@ -739,7 +736,7 @@ void pwp_conn_bitfield(pwp_conn_t* me_, msg_bitfield_t* bitfield)
 
     for (ii = 0; ii < me->num_pieces; ii++)
     {
-        if (bitfield_is_marked(&bitfield->bf,ii))
+        if (bitfield_is_marked(bitfield->bf, ii))
             pwp_conn_mark_peer_has_piece(me_, ii);
     }
 
