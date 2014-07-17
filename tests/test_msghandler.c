@@ -87,8 +87,8 @@ void pwp_conn_bitfield(pwp_conn_t* pco, msg_bitfield_t* bitfield)
 {
     fake_pc_t* pc = (void*)pco;
     pc->mtype = PWP_MSGTYPE_BITFIELD;
-    memcpy(&pc->bitfield,bitfield,sizeof(msg_bitfield_t));
-    bitfield_clone(&bitfield->bf, &pc->bitfield.bf);
+    pc->bitfield.bf = bitfield_new(1);
+    bitfield_clone(bitfield->bf, pc->bitfield.bf);
 }
 
 int pwp_conn_request(pwp_conn_t* pco, bt_block_t *request)
@@ -298,7 +298,7 @@ void TestPWP_bitfield(
 
     /* read */
     CuAssertTrue(tc, PWP_MSGTYPE_BITFIELD == pc.mtype);
-    CuAssertTrue(tc, 0 == strncmp("01001110",bitfield_str(&pc.bitfield.bf),8));
+    CuAssertTrue(tc, 0 == strncmp("01001110", bitfield_str(pc.bitfield.bf),8));
     pwp_msghandler_release(mh);
 }
 

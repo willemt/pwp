@@ -1,3 +1,5 @@
+#ifndef MOCK_PIECE_H
+#define MOCK_PIECE_H
 
 void *mock_piece_new(const char *sha1sum, const int piece_bytes_size);
 
@@ -10,3 +12,5 @@ void mock_piece_write_block_to_stream(
     bt_block_t * blk,
     unsigned char ** msg
 );
+
+#endif /* MOCK_PIECE_H */

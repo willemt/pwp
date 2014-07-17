@@ -21,7 +21,7 @@ void* pwp_msghandler_new2(
 
 /**
  * @return new msg handler */
-void* pwp_msghandler_new(void *pc);//, void* unused);
+void* pwp_msghandler_new(void *pc);
 
 /**
  * Release memory used by message handler */

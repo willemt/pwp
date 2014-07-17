@@ -1,3 +1,5 @@
+#ifndef TEST_CONNECTION_H
+#define TEST_CONNECTION_H
 
 typedef struct
 {
@@ -101,3 +103,5 @@ void __FUNC_peer_piece_have(
     void *peer __attribute__((__unused__)),
     int piece);
 
+
+#endif /* TEST_CONNECTION_H */
