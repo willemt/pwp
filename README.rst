@@ -1,7 +1,7 @@
 PWP Connection
 ==========
-.. image:: https://travis-ci.org/willemt/CBTPWPConnection.png
-   :target: https://travis-ci.org/willemt/CBTPWPConnection
+.. image:: https://travis-ci.org/willemt/pwp.png
+   :target: https://travis-ci.org/willemt/pwp
 
 What?
 -----
