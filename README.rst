@@ -1,5 +1,4 @@
-PWP Connection
-==========
+
 .. image:: https://travis-ci.org/willemt/pwp.png
    :target: https://travis-ci.org/willemt/pwp
 
