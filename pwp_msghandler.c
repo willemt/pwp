@@ -211,7 +211,7 @@ int __pwp_bitfield(pwp_msghandler_private_t *me,
     assert(m->bf.bf->bits);
 
     /* read and mark bits from 1 byte */
-    unsigned char val;
+    unsigned char val = 0;
     mh_byte((char*)&val, &m->bytes_read, buf, len);
     unsigned int i;
     for (i=0; i<8; i++)
