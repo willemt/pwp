@@ -49,7 +49,7 @@ void bitfield_init(bitfield_t * me, const unsigned int nbits)
 
 bitfield_t* bitfield_new(const unsigned int nbits)
 {
-    bitfield_t* me = calloc(1, sizeof(bitfield_t*));
+    bitfield_t* me = malloc(sizeof(bitfield_t*));
     bitfield_init(me, nbits);
     return me;
 }

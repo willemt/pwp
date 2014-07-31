@@ -26,14 +26,14 @@ typedef struct {
     pwp_handshake_t hs;
     unsigned int bytes_read;
 
-    unsigned char* cur;
-    unsigned char* curr_value;
+    char* cur;
+    char* curr_value;
 
     /* expected infohash */
-    unsigned char* expected_ih;
+    char* expected_ih;
 
     /* my peer id */
-    unsigned char* my_pi;
+    char* my_pi;
 
     /* 1 is handshake is done; 0 otherwise */
 //    int status;
@@ -58,20 +58,20 @@ int pwp_send_handshake(
     ptr = buf;
 
     /* protocol name length */
-    bitstream_write_ubyte((unsigned char**)&ptr, strlen(protocol_name));
+    bitstream_write_byte((char**)&ptr, strlen(protocol_name));
 
     /* protocol name */
-    bitstream_write_string((unsigned char**)&ptr, protocol_name, strlen(protocol_name));
+    bitstream_write_string((char**)&ptr, protocol_name, strlen(protocol_name));
 
     /* reserved characters */
     for (ii=0;ii<8;ii++)
-        bitstream_write_ubyte((unsigned char**)&ptr, 0);
+        bitstream_write_byte((char**)&ptr, 0);
 
     /* infohash */
-    bitstream_write_string((unsigned char**)&ptr, expected_ih, 20);
+    bitstream_write_string((char**)&ptr, expected_ih, 20);
 
     /* peerid */
-    bitstream_write_string((unsigned char**)&ptr, my_pi, 20);
+    bitstream_write_string((char**)&ptr, my_pi, 20);
 
     /* calculate total handshake size */
     size = 1 + strlen(protocol_name) + 8 + 20 + 20;
@@ -85,7 +85,7 @@ int pwp_send_handshake(
     return 1;
 }
 
-void* pwp_handshaker_new(unsigned char* expected_info_hash, unsigned char* mypeerid)
+void* pwp_handshaker_new(char* expected_info_hash, char* mypeerid)
 {
     pwp_handshaker_t* me;
 
@@ -114,9 +114,9 @@ pwp_handshake_t* pwp_handshaker_get_handshake(void* me_)
     return &me->hs;
 }
 
-unsigned char __readbyte(unsigned int* bytes_read, const unsigned char **buf, unsigned int* len)
+char __readbyte(unsigned int* bytes_read, const char **buf, unsigned int* len)
 {
-    unsigned char val;
+    char val;
 
     val = **buf;
     *buf += 1;
@@ -125,7 +125,7 @@ unsigned char __readbyte(unsigned int* bytes_read, const unsigned char **buf, un
     return val;
 }
 
-int pwp_handshaker_dispatch_from_buffer(void* me_, const unsigned char** buf, unsigned int* len)
+int pwp_handshaker_dispatch_from_buffer(void* me_, const char** buf, unsigned int* len)
 {
     pwp_handshaker_t* me = me_;
     pwp_handshake_t* hs = &me->hs;

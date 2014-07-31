@@ -103,10 +103,10 @@ int __FUNC_push_block(
 /*  Send data                                                                 */
 /*----------------------------------------------------------------------------*/
 
-unsigned char *__sender_set(
+char *__sender_set(
     test_sender_t * sender,
-    unsigned char *read_msg,
-    unsigned char *send_msg
+    char *read_msg,
+    char *send_msg
 )
 {
     bt_block_t blk;
@@ -181,8 +181,8 @@ int __FUNC_send(
     {
         if (ii % 4 == 0 && ii != 0) printf(" ");
         printf("%02x,",// %c,",
-                ((const unsigned char*)send_data)[ii]
-               //,((const unsigned char*)send_data)[ii]
+                ((const char*)send_data)[ii]
+               //,((const char*)send_data)[ii]
                 );
     }
     printf("\n");
@@ -250,7 +250,7 @@ int __FUNC_pieceiscomplete_fail(
 void __FUNC_piece_write_block_to_stream(
     void * me,
     bt_block_t * blk,
-    unsigned char ** msg
+    char ** msg
 )
 {
     void *pce;

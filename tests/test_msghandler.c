@@ -35,8 +35,8 @@ typedef struct {
 static uint32_t fe(uint32_t i)
 {
     uint32_t o;
-    unsigned char *c = (unsigned char *)&i;
-    unsigned char *p = (unsigned char *)&o;
+    char *c = (char *)&i;
+    char *p = (char *)&o;
 
     p[0] = c[3];
     p[1] = c[2];
@@ -119,8 +119,8 @@ void TestPWP_keepalive(
 )
 {
     fake_pc_t pc;
-    unsigned char data[100];
-    unsigned char* ptr;
+    char data[100];
+    char* ptr;
     void* mh;
 
     /* keepalive */
@@ -137,15 +137,15 @@ void TestPWP_choke(
 )
 {
     fake_pc_t pc;
-    unsigned char data[100];
-    unsigned char* ptr;
+    char data[100];
+    char* ptr;
     void* mh;
 
     /* choke */
     ptr = data;
     mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(1));
-    bitstream_write_ubyte(&ptr,PWP_MSGTYPE_CHOKE);
+    bitstream_write_byte(&ptr,PWP_MSGTYPE_CHOKE);
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1);
     CuAssertTrue(tc, PWP_MSGTYPE_CHOKE == pc.mtype);
     pwp_msghandler_release(mh);
@@ -156,15 +156,15 @@ void TestPWP_unchoke(
 )
 {
     fake_pc_t pc;
-    unsigned char data[100];
-    unsigned char* ptr;
+    char data[100];
+    char* ptr;
     void* mh;
 
     /* unchoke */
     ptr = data;
     mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(1));
-    bitstream_write_ubyte(&ptr,PWP_MSGTYPE_UNCHOKE);
+    bitstream_write_byte(&ptr,PWP_MSGTYPE_UNCHOKE);
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1);
     CuAssertTrue(tc, PWP_MSGTYPE_UNCHOKE == pc.mtype);
     pwp_msghandler_release(mh);
@@ -175,15 +175,15 @@ void TestPWP_interested(
 )
 {
     fake_pc_t pc;
-    unsigned char data[100];
-    unsigned char* ptr;
+    char data[100];
+    char* ptr;
     void* mh;
 
     /* interested */
     ptr = data;
     mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(1));
-    bitstream_write_ubyte(&ptr,PWP_MSGTYPE_INTERESTED);
+    bitstream_write_byte(&ptr,PWP_MSGTYPE_INTERESTED);
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1);
     CuAssertTrue(tc, PWP_MSGTYPE_INTERESTED == pc.mtype);
     pwp_msghandler_release(mh);
@@ -194,15 +194,15 @@ void TestPWP_uninterested(
 )
 {
     fake_pc_t pc;
-    unsigned char data[100];
-    unsigned char* ptr;
+    char data[100];
+    char* ptr;
     void* mh;
 
     /* uninterested */
     ptr = data;
     mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(1));
-    bitstream_write_ubyte(&ptr,PWP_MSGTYPE_UNINTERESTED);
+    bitstream_write_byte(&ptr,PWP_MSGTYPE_UNINTERESTED);
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1);
     CuAssertTrue(tc, PWP_MSGTYPE_UNINTERESTED == pc.mtype);
     pwp_msghandler_release(mh);
@@ -213,15 +213,15 @@ void TestPWP_have(
 )
 {
     fake_pc_t pc;
-    unsigned char data[100];
-    unsigned char* ptr;
+    char data[100];
+    char* ptr;
     void* mh;
 
     /* have */
     ptr = data;
     mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(5));
-    bitstream_write_ubyte(&ptr,PWP_MSGTYPE_HAVE);
+    bitstream_write_byte(&ptr,PWP_MSGTYPE_HAVE);
     bitstream_write_uint32(&ptr, fe(999));
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1 + 4);
     CuAssertTrue(tc, PWP_MSGTYPE_HAVE == pc.mtype);
@@ -234,15 +234,15 @@ void TestPWP_request(
 )
 {
     fake_pc_t pc;
-    unsigned char data[100];
-    unsigned char* ptr;
+    char data[100];
+    char* ptr;
     void* mh;
 
     /* request */
     ptr = data;
     mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(13));
-    bitstream_write_ubyte(&ptr,PWP_MSGTYPE_REQUEST);
+    bitstream_write_byte(&ptr,PWP_MSGTYPE_REQUEST);
     bitstream_write_uint32(&ptr, fe(123));
     bitstream_write_uint32(&ptr, fe(456));
     bitstream_write_uint32(&ptr, fe(789));
@@ -259,15 +259,15 @@ void TestPWP_cancel(
 )
 {
     fake_pc_t pc;
-    unsigned char data[100];
-    unsigned char* ptr;
+    char data[100];
+    char* ptr;
     void* mh;
 
     /* cancel */
     ptr = data;
     mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(13));
-    bitstream_write_ubyte(&ptr,PWP_MSGTYPE_CANCEL);
+    bitstream_write_byte(&ptr,PWP_MSGTYPE_CANCEL);
     bitstream_write_uint32(&ptr, fe(123));
     bitstream_write_uint32(&ptr, fe(456));
     bitstream_write_uint32(&ptr, fe(789));
@@ -284,16 +284,14 @@ void TestPWP_bitfield(
 )
 {
     fake_pc_t pc;
-    unsigned char data[100];
-    unsigned char* ptr;
-    void* mh;
+    char data[100];
 
     /* bitfield */
-    ptr = data;
-    mh = pwp_msghandler_new(&pc);
+    char* ptr = data;
+    void* mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(2));
-    bitstream_write_ubyte(&ptr,PWP_MSGTYPE_BITFIELD);
-    bitstream_write_ubyte(&ptr,0x4e);
+    bitstream_write_byte(&ptr,PWP_MSGTYPE_BITFIELD);
+    bitstream_write_byte(&ptr,0x4e); /* 01001110 */
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1 + 1);
 
     /* read */
@@ -307,27 +305,27 @@ void TestPWP_piece(
 )
 {
     fake_pc_t pc;
-    unsigned char data[100];
-    unsigned char* ptr;
+    char data[100];
+    char* ptr;
     void* mh;
 
     /* piece */
     ptr = data;
     mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(9 + 10));
-    bitstream_write_ubyte(&ptr,PWP_MSGTYPE_PIECE);
+    bitstream_write_byte(&ptr,PWP_MSGTYPE_PIECE);
     bitstream_write_uint32(&ptr, fe(1));
     bitstream_write_uint32(&ptr, fe(2));
-    bitstream_write_ubyte(&ptr,'t');
-    bitstream_write_ubyte(&ptr,'e');
-    bitstream_write_ubyte(&ptr,'s');
-    bitstream_write_ubyte(&ptr,'t');
-    bitstream_write_ubyte(&ptr,' ');
-    bitstream_write_ubyte(&ptr,'m');
-    bitstream_write_ubyte(&ptr,'s');
-    bitstream_write_ubyte(&ptr,'g');
-    bitstream_write_ubyte(&ptr,'1');
-    bitstream_write_ubyte(&ptr,'\0');
+    bitstream_write_byte(&ptr,'t');
+    bitstream_write_byte(&ptr,'e');
+    bitstream_write_byte(&ptr,'s');
+    bitstream_write_byte(&ptr,'t');
+    bitstream_write_byte(&ptr,' ');
+    bitstream_write_byte(&ptr,'m');
+    bitstream_write_byte(&ptr,'s');
+    bitstream_write_byte(&ptr,'g');
+    bitstream_write_byte(&ptr,'1');
+    bitstream_write_byte(&ptr,'\0');
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1 + 4 + 4 + 10);
     CuAssertTrue(tc, PWP_MSGTYPE_PIECE == pc.mtype);
     CuAssertTrue(tc, 1 == pc.piece.blk.piece_idx);
@@ -342,27 +340,27 @@ void TestPWP_piece_halfread(
 )
 {
     fake_pc_t pc;
-    unsigned char data[100];
-    unsigned char* ptr;
+    char data[100];
+    char* ptr;
     void* mh;
 
     /* piece */
     ptr = data;
     mh = pwp_msghandler_new(&pc);
     bitstream_write_uint32(&ptr, fe(9 + 10));
-    bitstream_write_ubyte(&ptr,PWP_MSGTYPE_PIECE);
+    bitstream_write_byte(&ptr,PWP_MSGTYPE_PIECE);
     bitstream_write_uint32(&ptr, fe(1));
     bitstream_write_uint32(&ptr, fe(2));
-    bitstream_write_ubyte(&ptr,'t');
-    bitstream_write_ubyte(&ptr,'e');
-    bitstream_write_ubyte(&ptr,'s');
-    bitstream_write_ubyte(&ptr,'t');
-    bitstream_write_ubyte(&ptr,' ');
-    bitstream_write_ubyte(&ptr,'m');
-    bitstream_write_ubyte(&ptr,'s');
-    bitstream_write_ubyte(&ptr,'g');
-    bitstream_write_ubyte(&ptr,'2');
-    bitstream_write_ubyte(&ptr,'\0');
+    bitstream_write_byte(&ptr,'t');
+    bitstream_write_byte(&ptr,'e');
+    bitstream_write_byte(&ptr,'s');
+    bitstream_write_byte(&ptr,'t');
+    bitstream_write_byte(&ptr,' ');
+    bitstream_write_byte(&ptr,'m');
+    bitstream_write_byte(&ptr,'s');
+    bitstream_write_byte(&ptr,'g');
+    bitstream_write_byte(&ptr,'2');
+    bitstream_write_byte(&ptr,'\0');
     /* read the first 5 bytes of data payload */
     pwp_msghandler_dispatch_from_buffer(mh, data, 4 + 1 + 4 + 4 + 5);
     CuAssertTrue(tc, PWP_MSGTYPE_PIECE == pc.mtype);
@@ -387,8 +385,8 @@ void TestPWP_two_pieces(
 )
 {
     fake_pc_t pc;
-    unsigned char data[100];
-    unsigned char* ptr;
+    char data[100];
+    char* ptr;
     void* mh;
 
     /* piece */
@@ -396,34 +394,34 @@ void TestPWP_two_pieces(
     mh = pwp_msghandler_new(&pc);
     /* piece 1 */
     bitstream_write_uint32(&ptr, fe(9 + 10));
-    bitstream_write_ubyte(&ptr,PWP_MSGTYPE_PIECE);
+    bitstream_write_byte(&ptr,PWP_MSGTYPE_PIECE);
     bitstream_write_uint32(&ptr, fe(1));
     bitstream_write_uint32(&ptr, fe(2));
-    bitstream_write_ubyte(&ptr,'t');
-    bitstream_write_ubyte(&ptr,'e');
-    bitstream_write_ubyte(&ptr,'s');
-    bitstream_write_ubyte(&ptr,'t');
-    bitstream_write_ubyte(&ptr,' ');
-    bitstream_write_ubyte(&ptr,'m');
-    bitstream_write_ubyte(&ptr,'s');
-    bitstream_write_ubyte(&ptr,'g');
-    bitstream_write_ubyte(&ptr,'1');
-    bitstream_write_ubyte(&ptr,'\0');
+    bitstream_write_byte(&ptr,'t');
+    bitstream_write_byte(&ptr,'e');
+    bitstream_write_byte(&ptr,'s');
+    bitstream_write_byte(&ptr,'t');
+    bitstream_write_byte(&ptr,' ');
+    bitstream_write_byte(&ptr,'m');
+    bitstream_write_byte(&ptr,'s');
+    bitstream_write_byte(&ptr,'g');
+    bitstream_write_byte(&ptr,'1');
+    bitstream_write_byte(&ptr,'\0');
     /* piece 2 */
     bitstream_write_uint32(&ptr, fe(9 + 10));
-    bitstream_write_ubyte(&ptr,PWP_MSGTYPE_PIECE);
+    bitstream_write_byte(&ptr,PWP_MSGTYPE_PIECE);
     bitstream_write_uint32(&ptr, fe(2));
     bitstream_write_uint32(&ptr, fe(2));
-    bitstream_write_ubyte(&ptr,'t');
-    bitstream_write_ubyte(&ptr,'e');
-    bitstream_write_ubyte(&ptr,'s');
-    bitstream_write_ubyte(&ptr,'t');
-    bitstream_write_ubyte(&ptr,' ');
-    bitstream_write_ubyte(&ptr,'m');
-    bitstream_write_ubyte(&ptr,'s');
-    bitstream_write_ubyte(&ptr,'g');
-    bitstream_write_ubyte(&ptr,'2');
-    bitstream_write_ubyte(&ptr,'\0');
+    bitstream_write_byte(&ptr,'t');
+    bitstream_write_byte(&ptr,'e');
+    bitstream_write_byte(&ptr,'s');
+    bitstream_write_byte(&ptr,'t');
+    bitstream_write_byte(&ptr,' ');
+    bitstream_write_byte(&ptr,'m');
+    bitstream_write_byte(&ptr,'s');
+    bitstream_write_byte(&ptr,'g');
+    bitstream_write_byte(&ptr,'2');
+    bitstream_write_byte(&ptr,'\0');
     pwp_msghandler_dispatch_from_buffer(mh, data, (4 + 1 + 4 + 4 + 10) * 2);
     CuAssertTrue(tc, PWP_MSGTYPE_PIECE == pc.mtype);
     CuAssertTrue(tc, 2 == pc.piece.blk.piece_idx);
@@ -437,7 +435,7 @@ static int __faux_handler(
     void* mh,
     void *message,
     void* udata,
-    const unsigned char** buf,
+    const char** buf,
     unsigned int *len)
 {
     fake_pc_t* pc = udata;
@@ -451,8 +449,8 @@ void TestPWP_custom_handler(
 )
 {
     fake_pc_t pc;
-    unsigned char data[100];
-    unsigned char* ptr;
+    char data[100];
+    char* ptr;
     void* mh;
     pwp_msghandler_item_t handlers = {
         __faux_handler, &pc
@@ -462,7 +460,7 @@ void TestPWP_custom_handler(
     memset(&pc, 0, sizeof(fake_pc_t));
     mh = pwp_msghandler_new2(&pc, &handlers, 1, 100);
     bitstream_write_uint32(&ptr, fe(13));
-    bitstream_write_ubyte(&ptr,PWP_MSGTYPE_CANCEL+1);
+    bitstream_write_byte(&ptr,PWP_MSGTYPE_CANCEL+1);
     bitstream_write_uint32(&ptr, fe(123));
     bitstream_write_uint32(&ptr, fe(456));
     bitstream_write_uint32(&ptr, fe(789));

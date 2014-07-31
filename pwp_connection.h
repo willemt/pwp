@@ -20,7 +20,7 @@ typedef void *(*func_getpiece_f)(
 typedef void (*func_write_block_to_stream_f)(
         void *udata,
         bt_block_t *blk,
-        unsigned char **msg);
+        char **msg);
 
 #ifndef HAVE_FUNC_LOG
 #define HAVE_FUNC_LOG

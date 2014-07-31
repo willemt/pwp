@@ -30,8 +30,8 @@
 static uint32_t fe(uint32_t i)
 {
     uint32_t o;
-    unsigned char *c = (unsigned char *)&i;
-    unsigned char *p = (unsigned char *)&o;
+    char *c = (char *)&i;
+    char *p = (char *)&o;
 
     p[0] = c[3];
     p[1] = c[2];
@@ -43,7 +43,7 @@ static uint32_t fe(uint32_t i)
 int mh_uint32(
         uint32_t* in,
         msg_t *msg,
-        const unsigned char** buf,
+        const char** buf,
         unsigned int *len)
 {
     while (1)
@@ -59,7 +59,7 @@ int mh_uint32(
             return 0;
         }
 
-        *((unsigned char*)in + msg->tok_bytes_read) = **buf;
+        *((char*)in + msg->tok_bytes_read) = **buf;
         msg->tok_bytes_read += 1;
         msg->bytes_read += 1;
         *buf += 1;
@@ -73,9 +73,9 @@ int mh_uint32(
  * @param buf Read data from
  * @param len Length of stream left to read from */
 int mh_byte(
-        unsigned char* in,
+        char* in,
         unsigned int *tot_bytes_read,
-        const unsigned char** buf,
+        const char** buf,
         unsigned int *len)
 {
     if (*len == 0)
@@ -89,7 +89,7 @@ int mh_byte(
 }
 
 int __pwp_piece_data(pwp_msghandler_private_t *me, msg_t* m, void* udata,
-        const unsigned char** buf, unsigned int* len)
+        const char** buf, unsigned int* len)
 {
     /* check it isn't bigger than what the message tells
      * us we should be expecting */
@@ -116,7 +116,7 @@ int __pwp_piece_data(pwp_msghandler_private_t *me, msg_t* m, void* udata,
 }
 
 int __pwp_piece_offset(pwp_msghandler_private_t *me, msg_t* m, void* udata,
-        const unsigned char** buf, unsigned int *len)
+        const char** buf, unsigned int *len)
 {
     if (1 == mh_uint32(&m->pce.blk.offset, m, buf, len))
         me->process_item = __pwp_piece_data;
@@ -124,7 +124,7 @@ int __pwp_piece_offset(pwp_msghandler_private_t *me, msg_t* m, void* udata,
 }
 
 int __pwp_piece_pieceidx(pwp_msghandler_private_t *me, msg_t* m, void* udata,
-        const unsigned char** buf, unsigned int *len)
+        const char** buf, unsigned int *len)
 {
     if (1 == mh_uint32(&m->pce.blk.piece_idx, m, buf, len))
         me->process_item = __pwp_piece_offset;
@@ -132,7 +132,7 @@ int __pwp_piece_pieceidx(pwp_msghandler_private_t *me, msg_t* m, void* udata,
 }
 
 int __pwp_request_len(pwp_msghandler_private_t *me, msg_t* m, void* udata,
-        const unsigned char** buf, unsigned int* len)
+        const char** buf, unsigned int* len)
 {
     if (1 == mh_uint32(&m->blk.len, m, buf, len))
     {
@@ -143,7 +143,7 @@ int __pwp_request_len(pwp_msghandler_private_t *me, msg_t* m, void* udata,
 }
 
 int __pwp_request_offset(pwp_msghandler_private_t *me, msg_t* m, void* udata,
-        const unsigned char** buf, unsigned int *len)
+        const char** buf, unsigned int *len)
 {
     if (1 == mh_uint32(&m->blk.offset, m, buf, len))
         me->process_item = __pwp_request_len;
@@ -151,7 +151,7 @@ int __pwp_request_offset(pwp_msghandler_private_t *me, msg_t* m, void* udata,
 }
 
 int __pwp_request_pieceidx(pwp_msghandler_private_t *me, msg_t* m, void* udata,
-        const unsigned char** buf, unsigned int *len)
+        const char** buf, unsigned int *len)
 {
     if (1 == mh_uint32(&m->blk.piece_idx, m, buf, len))
         me->process_item = __pwp_request_offset;
@@ -159,7 +159,7 @@ int __pwp_request_pieceidx(pwp_msghandler_private_t *me, msg_t* m, void* udata,
 }
 
 int __pwp_cancel_len(pwp_msghandler_private_t *me, msg_t* m, void* udata,
-        const unsigned char** buf, unsigned int* len)
+        const char** buf, unsigned int* len)
 {
     if (1 == mh_uint32(&m->blk.len, m, buf, len))
     {
@@ -170,7 +170,7 @@ int __pwp_cancel_len(pwp_msghandler_private_t *me, msg_t* m, void* udata,
 }
 
 int __pwp_cancel_offset(pwp_msghandler_private_t *me, msg_t* m, void* udata,
-        const unsigned char** buf, unsigned int *len)
+        const char** buf, unsigned int *len)
 {
     if (1 == mh_uint32(&m->blk.offset, m, buf, len))
         me->process_item = __pwp_cancel_len;
@@ -178,7 +178,7 @@ int __pwp_cancel_offset(pwp_msghandler_private_t *me, msg_t* m, void* udata,
 }
 
 int __pwp_cancel_pieceidx(pwp_msghandler_private_t *me, msg_t* m, void* udata,
-        const unsigned char** buf, unsigned int *len)
+        const char** buf, unsigned int *len)
 {
     if (1 == mh_uint32(&m->blk.piece_idx, m, buf, len))
         me->process_item = __pwp_cancel_offset;
@@ -186,7 +186,7 @@ int __pwp_cancel_pieceidx(pwp_msghandler_private_t *me, msg_t* m, void* udata,
 }
 
 int __pwp_have(pwp_msghandler_private_t *me, msg_t* m, void* udata,
-        const unsigned char** buf, unsigned int *len)
+        const char** buf, unsigned int *len)
 {
     if (1 == mh_uint32(&m->hve.piece_idx, m, buf, len))
     {
@@ -197,12 +197,12 @@ int __pwp_have(pwp_msghandler_private_t *me, msg_t* m, void* udata,
     return 1;
 }
 
-int __pwp_bitfield(pwp_msghandler_private_t *me, msg_t* m, void* udata,
-        const unsigned char** buf, unsigned int *len)
+int __pwp_bitfield(pwp_msghandler_private_t *me,
+        msg_t* m,
+        void* udata,
+        const char** buf,
+        unsigned int *len)
 {
-    unsigned char val = 0;
-    unsigned int ii;
-
     if (1 + 4 == m->bytes_read)
     {
         m->bf.bf = bitfield_new((m->len - 1) * 8);
@@ -210,13 +210,15 @@ int __pwp_bitfield(pwp_msghandler_private_t *me, msg_t* m, void* udata,
 
     assert(m->bf.bf->bits);
 
-    /* read and mark bits from byte */
-    mh_byte(&val, &m->bytes_read, buf, len);
-    for (ii=0; ii<8; ii++)
+    /* read and mark bits from 1 byte */
+    unsigned char val;
+    mh_byte((char*)&val, &m->bytes_read, buf, len);
+    unsigned int i;
+    for (i=0; i<8; i++)
     {
-        if (0x1 == ((unsigned char)(val << ii) >> 7))
+        if (val & (1 << (7-i)))
         {
-            bitfield_mark(m->bf.bf, (m->bytes_read - 5 - 1) * 8 + ii);
+            bitfield_mark(m->bf.bf, (m->bytes_read - 5 - 1) * 8 + i);
         }
     }
 
@@ -231,8 +233,10 @@ int __pwp_bitfield(pwp_msghandler_private_t *me, msg_t* m, void* udata,
     return 1;
 }
 
-int __pwp_type(pwp_msghandler_private_t *me, msg_t* m, void* udata,
-        const unsigned char** buf,
+int __pwp_type(pwp_msghandler_private_t *me,
+        msg_t* m,
+        void* udata __attribute__((unused)),
+        const char** buf,
         unsigned int *len)
 {
     assert(4 == m->bytes_read);
@@ -268,18 +272,21 @@ int __pwp_type(pwp_msghandler_private_t *me, msg_t* m, void* udata,
             mh_endmsg(me);
             return 0;
         }
+        /* the next handler can be selected according to the message type */
         assert(0 < m->id);
         assert(m->id < me->nhandlers);
-        assert(me->handlers[m->id].func);
-        me->process_item = me->handlers[m->id].func;
-        me->udata = me->handlers[m->id].udata;
+        assert(me->handlers[(int)m->id].func);
+        me->process_item = me->handlers[(int)m->id].func;
+        me->udata = me->handlers[(int)m->id].udata;
     }
 
     return 1;
 }
 
-int __pwp_length(pwp_msghandler_private_t *me, msg_t* m, void* udata,
-        const unsigned char** buf,
+int __pwp_length(pwp_msghandler_private_t *me,
+        msg_t* m,
+        void* udata __attribute__((unused)),
+        const char** buf,
         unsigned int *len)
 {
     assert(m->bytes_read < 4);
@@ -301,7 +308,7 @@ int __pwp_length(pwp_msghandler_private_t *me, msg_t* m, void* udata,
 }
 
 int pwp_msghandler_dispatch_from_buffer(void *mh,
-        const unsigned char* buf,
+        const char* buf,
         unsigned int len)
 {
     pwp_msghandler_private_t* me = mh;

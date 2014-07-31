@@ -86,25 +86,21 @@ int mock_piece_write_block(
 void mock_piece_write_block_to_stream(
     void * me,
     bt_block_t * blk,
-    unsigned char ** msg
+    char ** msg
 )
 {
-    unsigned char *data;
+    char *data;
     int ii;
 
     data = priv(me)->disk->read_block(priv(me)->disk_udata, NULL, blk);
 //    data = priv(me)->data + blk->byte_offset;
 
-//    printf("writingblock \n");
     for (ii = 0; ii < blk->len; ii++)
     {
-        unsigned char val;
+        char val = *(data + ii);
+        bitstream_write_byte(msg, val);
 
-        val = *(data + ii);
-        bitstream_write_ubyte(msg, val);
-
-        if (ii % 4 == 0 && ii != 0) printf(" ");
-//        printf("%02x,", *(data + ii));
+        //if (ii % 4 == 0 && ii != 0) printf(" ");
     }
 //    printf("\n");
 }

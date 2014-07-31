@@ -16,7 +16,7 @@ typedef struct
     char *read_data;
 
     bt_block_t read_last_block;
-    unsigned char read_last_block_data[10];
+    char read_last_block_data[10];
 
     void *piece;
     char infohash[21];
@@ -56,10 +56,10 @@ int __FUNC_push_block( void* r,
         bt_block_t * block,
         const void *data);
 
-unsigned char *__sender_set(
+char *__sender_set(
     test_sender_t * sender,
-    unsigned char *read_msg,
-    unsigned char *send_msg);
+    char *read_msg,
+    char *send_msg);
 
 
 int __FUNC_MOCK_send( void* s __attribute__((__unused__)),
@@ -96,7 +96,7 @@ int __FUNC_pieceiscomplete_fail(
 void __FUNC_piece_write_block_to_stream(
     void * me,
     bt_block_t * blk,
-    unsigned char ** msg);
+    char ** msg);
 
 void __FUNC_peer_piece_have(
     void *udata,

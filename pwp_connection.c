@@ -333,10 +333,10 @@ int pwp_conn_get_upload_rate(const pwp_conn_t* me_ __attribute__((__unused__)))
 int pwp_conn_send_statechange(pwp_conn_t* me_, const unsigned char msg_type)
 {
     pwp_conn_private_t *me = (void*)me_;
-    unsigned char data[5], *ptr = data;
+    char data[5], *ptr = data;
 
     bitstream_write_uint32(&ptr, fe(1));
-    bitstream_write_ubyte(&ptr, msg_type);
+    bitstream_write_byte(&ptr, msg_type);
 
     __log(me, "send,%s", pwp_msgtype_to_string(msg_type));
 
@@ -351,8 +351,8 @@ int pwp_conn_send_statechange(pwp_conn_t* me_, const unsigned char msg_type)
 void pwp_conn_send_piece(pwp_conn_t* me_, bt_block_t * req)
 {
     pwp_conn_private_t *me = (void*)me_;
-    unsigned char *data = NULL;
-    unsigned char *ptr;
+    char *data = NULL;
+    char *ptr;
     unsigned int size;
 
     assert(NULL != me);
@@ -368,10 +368,10 @@ void pwp_conn_send_piece(pwp_conn_t* me_, bt_block_t * req)
 
     ptr = data;
     bitstream_write_uint32(&ptr, fe(size - 4));
-    bitstream_write_ubyte(&ptr, PWP_MSGTYPE_PIECE);
+    bitstream_write_byte(&ptr, PWP_MSGTYPE_PIECE);
     bitstream_write_uint32(&ptr, fe(req->piece_idx));
     bitstream_write_uint32(&ptr, fe(req->offset));
-    me->cb.write_block_to_stream(me->cb_ctx, req, (unsigned char**)&ptr);
+    me->cb.write_block_to_stream(me->cb_ctx, req, &ptr);
     __send_to_peer(me, data, size);
 
 #if 0
@@ -398,10 +398,10 @@ void pwp_conn_send_piece(pwp_conn_t* me_, bt_block_t * req)
 int pwp_conn_send_have(pwp_conn_t* me_, const int piece_idx)
 {
     pwp_conn_private_t *me = (void*)me_;
-    unsigned char data[12], *ptr = data;
+    char data[12], *ptr = data;
 
     bitstream_write_uint32(&ptr, fe(5));
-    bitstream_write_ubyte(&ptr, PWP_MSGTYPE_HAVE);
+    bitstream_write_byte(&ptr, PWP_MSGTYPE_HAVE);
     bitstream_write_uint32(&ptr, fe(piece_idx));
     __send_to_peer(me, data, 5+4);
     __log(me, "send,have,piece_idx=%d", piece_idx);
@@ -411,11 +411,11 @@ int pwp_conn_send_have(pwp_conn_t* me_, const int piece_idx)
 void pwp_conn_send_request(pwp_conn_t* me_, const bt_block_t * request)
 {
     pwp_conn_private_t *me = (void*)me_;
-    unsigned char data[32], *ptr;
+    char data[32], *ptr;
 
     ptr = data;
     bitstream_write_uint32(&ptr, fe(13));
-    bitstream_write_ubyte(&ptr, PWP_MSGTYPE_REQUEST);
+    bitstream_write_byte(&ptr, PWP_MSGTYPE_REQUEST);
     bitstream_write_uint32(&ptr, fe(request->piece_idx));
     bitstream_write_uint32(&ptr, fe(request->offset));
     bitstream_write_uint32(&ptr, fe(request->len));
@@ -427,11 +427,11 @@ void pwp_conn_send_request(pwp_conn_t* me_, const bt_block_t * request)
 void pwp_conn_send_cancel(pwp_conn_t* me_, bt_block_t * cancel)
 {
     pwp_conn_private_t *me = (void*)me_;
-    unsigned char data[32], *ptr;
+    char data[32], *ptr;
 
     ptr = data;
     bitstream_write_uint32(&ptr, fe(13));
-    bitstream_write_ubyte(&ptr, PWP_MSGTYPE_CANCEL);
+    bitstream_write_byte(&ptr, PWP_MSGTYPE_CANCEL);
     bitstream_write_uint32(&ptr, fe(cancel->piece_idx));
     bitstream_write_uint32(&ptr, fe(cancel->offset));
     bitstream_write_uint32(&ptr, fe(cancel->len));

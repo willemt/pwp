@@ -32,26 +32,25 @@ int pwp_send_bitfield(
         )
 {
     // TODO: replace 1000
-    unsigned char data[1000], *ptr;
+    char data[1000], *ptr;
     uint32_t size;
 
     ptr = data;
-    size = sizeof(uint32_t) + sizeof(unsigned char) + (npieces / 8) +
+    size = sizeof(uint32_t) + sizeof(char) + (npieces / 8) +
         ((npieces % 8 == 0) ? 0 : 1);
     bitstream_write_uint32(&ptr, fe(size - sizeof(uint32_t)));
-    bitstream_write_ubyte(&ptr, PWP_MSGTYPE_BITFIELD);
-
-    int i;
-    unsigned char bits;
+    bitstream_write_byte(&ptr, PWP_MSGTYPE_BITFIELD);
 
     /*  for all pieces set bit = 1 if we have the completed piece */
+    int i;
+    unsigned char bits;
     for (bits = 0, i = 0; i < npieces; i++)
     {
         bits |= chunky_have(pieces_completed, i, 1) << (7 - (i % 8));
         /* ...up to eight bits, write to byte */
         if (((i + 1) % 8 == 0) || npieces - 1 == i)
         {
-            bitstream_write_ubyte(&ptr, bits);
+            bitstream_write_byte(&ptr, (char)bits);
             bits = 0;
         }
     }

@@ -10,7 +10,7 @@ int mock_piece_write_block( void *me, void *caller __attribute__((__unused__)), 
 void mock_piece_write_block_to_stream(
     void * me,
     bt_block_t * blk,
-    unsigned char ** msg
+    char ** msg
 );
 
 #endif /* MOCK_PIECE_H */

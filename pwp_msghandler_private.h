@@ -6,7 +6,7 @@
 
 typedef struct {
     uint32_t len;
-    unsigned char id;
+    char id;
     unsigned int bytes_read;
     unsigned int tok_bytes_read;
     union {
@@ -33,7 +33,7 @@ struct pwp_msghandler_private_s {
         pwp_msghandler_private_t* me,
         msg_t *m,
         void* udata,
-        const unsigned char** buf,
+        const char** buf,
         unsigned int *len);
 
     int nhandlers;
@@ -46,7 +46,7 @@ struct msghandler_item_s {
         pwp_msghandler_private_t* me,
         msg_t *m,
         void* udata,
-        const unsigned char** buf,
+        const char** buf,
         unsigned int *len);
     void* udata;
 }; 
@@ -56,14 +56,13 @@ void mh_endmsg(pwp_msghandler_private_t* me);
 int mh_uint32(
         uint32_t* in,
         msg_t *msg,
-        const unsigned char** buf,
+        const char** buf,
         unsigned int *len);
 
 int mh_byte(
-        unsigned char* in,
+        char* in,
         unsigned int *tot_bytes_read,
-        const unsigned char** buf,
+        const char** buf,
         unsigned int *len);
-
 
 #endif /* PWP_MSGHANDLER_PRIVATE_H */

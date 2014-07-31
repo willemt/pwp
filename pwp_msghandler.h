@@ -6,7 +6,7 @@ typedef struct {
         void* mh,
         void *message,
         void* udata,
-        const unsigned char** buf,
+        const char** buf,
         unsigned int *len);
     void* udata;
 } pwp_msghandler_item_t; 
@@ -35,7 +35,7 @@ void pwp_msghandler_release(void *mh);
  * @param len The length of the data to be read in
  * @return 1 if successful, 0 if the peer needs to be disconnected */
 int pwp_msghandler_dispatch_from_buffer(void *mh,
-        const unsigned char* buf,
+        const char* buf,
         unsigned int len);
 
 #endif /* PWP_MSGHANDLER_H */
