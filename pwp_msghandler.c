@@ -203,11 +203,6 @@ int __pwp_bitfield(pwp_msghandler_private_t *me,
         const char** buf,
         unsigned int *len)
 {
-    if (1 + 4 == m->bytes_read)
-    {
-        m->bf.bf = bitfield_new((m->len - 1) * 8);
-    }
-
     assert(m->bf.bf->bits);
 
     /* read and mark bits from 1 byte */
@@ -230,6 +225,17 @@ int __pwp_bitfield(pwp_msghandler_private_t *me,
         mh_endmsg(me);
     }
 
+    return 1;
+}
+
+int __pwp_bitfield_start(pwp_msghandler_private_t *me,
+        msg_t* m,
+        void* udata,
+        const char** buf,
+        unsigned int *len)
+{
+    m->bf.bf = bitfield_new((m->len - 1) * 8);
+    me->process_item = __pwp_bitfield;
     return 1;
 }
 
@@ -359,7 +365,7 @@ void* pwp_msghandler_new2(
 
     /* add standard handlers */
     me->handlers[PWP_MSGTYPE_HAVE].func = __pwp_have;
-    me->handlers[PWP_MSGTYPE_BITFIELD].func = __pwp_bitfield;
+    me->handlers[PWP_MSGTYPE_BITFIELD].func = __pwp_bitfield_start;
     me->handlers[PWP_MSGTYPE_REQUEST].func = __pwp_request_pieceidx;
     me->handlers[PWP_MSGTYPE_PIECE].func = __pwp_piece_pieceidx;
     me->handlers[PWP_MSGTYPE_CANCEL].func = __pwp_cancel_pieceidx;
