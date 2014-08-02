@@ -356,21 +356,19 @@ void* pwp_msghandler_new2(
     me->process_item = __pwp_length;
 
     int size = PWP_MSGTYPE_CANCEL + 1;
-
     if (handlers)
         size += nhandlers;
-
     me->nhandlers = size;
     me->handlers = calloc(1, sizeof(pwp_msghandler_item_t) * size);
 
-    /* add standard handlers */
+    /* add standard bittorrent handlers */
     me->handlers[PWP_MSGTYPE_HAVE].func = __pwp_have;
     me->handlers[PWP_MSGTYPE_BITFIELD].func = __pwp_bitfield_start;
     me->handlers[PWP_MSGTYPE_REQUEST].func = __pwp_request_pieceidx;
     me->handlers[PWP_MSGTYPE_PIECE].func = __pwp_piece_pieceidx;
     me->handlers[PWP_MSGTYPE_CANCEL].func = __pwp_cancel_pieceidx;
 
-    /* add custom handlers */
+    /* add custom user provided handlers */
     int i, s;
     for (i=PWP_MSGTYPE_CANCEL + 1, s=0; handlers && i<size; i++, s++)
     {
